@@ -1,0 +1,126 @@
+{
+  "name": "Trakya Solar - Güneş Enerjisi Yönetim Platformu",
+  "short_name": "Trakya Solar",
+  "description": "Türkiye'nin en kapsamlı güneş enerjisi satış ve yönetim platformu",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f59e0b",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "tr",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "Dashboard"
+    },
+    {
+      "src": "/screenshots/designer.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "3D Tasarımcı"
+    },
+    {
+      "src": "/screenshots/projects.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "Proje Yönetimi"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Yeni Proje",
+      "short_name": "Proje",
+      "description": "Yeni güneş enerjisi projesi oluştur",
+      "url": "/dashboard/projects/new",
+      "icons": [{ "src": "/icons/project.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "3D Tasarımcı",
+      "short_name": "Tasarım",
+      "description": "3D çatı tasarımcısını aç",
+      "url": "/dashboard/designer",
+      "icons": [{ "src": "/icons/designer.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Teklifler",
+      "short_name": "Teklif",
+      "description": "Teklifleri görüntüle",
+      "url": "/dashboard/quotes",
+      "icons": [{ "src": "/icons/quote.png", "sizes": "96x96" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "protocol_handlers": [
+    {
+      "protocol": "mailto",
+      "url": "/dashboard/email?to=%s"
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "features": [
+    "Cross Platform",
+    "Installable",
+    "Offline Capable",
+    "Push Notifications",
+    "Background Sync"
+  ]
+}

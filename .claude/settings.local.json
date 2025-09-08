@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(tree:*)",
+      "Bash(powershell:*)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(dir:*)",
+      "Bash(npx prisma init:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npx prisma:*)",
+      "Bash(npm run:*)",
+      "Bash(curl:*)",
+      "Bash(npx shadcn-ui:*)",
+      "Bash(ls:*)",
+      "Bash(claude mcp:*)",
+      "Context7:resolve-library-id:*",
+      "Context7:get-library-docs:*",
+      "Bash(timeout 60 npm run build)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next:*)",
+      "Bash(node:*)",
+      "Bash(del test-customer-data.js)",
+      "WebFetch(domain:localhost)",
+      "Bash(taskkill:*)",
+      "Bash(timeout 5 sleep 5)",
+      "Bash(timeout 30 npm run build)",
+      "Bash(npm audit:*)",
+      "Bash(npm update:*)",
+      "Bash(del EMAIL_SERVICE_TESTING.md)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
