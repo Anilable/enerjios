@@ -15,10 +15,12 @@ Sentry.init({
   release: process.env.VERCEL_GIT_COMMIT_SHA,
   
   integrations: [
-    new Sentry.Replay({
-      maskAllText: true,
-      blockAllMedia: true,
-    }),
+    ...(typeof window !== 'undefined' && Sentry.replayIntegration ? [
+      Sentry.replayIntegration({
+        maskAllText: true,
+        blockAllMedia: true,
+      })
+    ] : []),
   ],
   
   // Error filtering

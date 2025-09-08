@@ -12,9 +12,9 @@ Sentry.init({
   
   // Server-specific configuration
   integrations: [
-    new Sentry.Integrations.Http({ tracing: true }),
-    new Sentry.Integrations.Express({ app: undefined }),
-    new Sentry.Integrations.Postgres(),
+    Sentry.httpIntegration({ tracing: true }),
+    Sentry.expressIntegration({ app: undefined }),
+    Sentry.prismaIntegration(),
   ],
   
   // Error filtering for server
