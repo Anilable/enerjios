@@ -11,7 +11,7 @@ interface Params {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Params }
+  { params }: { params: Promise<Params> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -32,9 +32,11 @@ export async function POST(
       return NextResponse.json({ error: 'Note is required and must be a non-empty string' }, { status: 400 })
     }
 
+    const { id } = await params
+
     // Get current request
     const currentRequest = await prisma.projectRequest.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!currentRequest) {
@@ -50,7 +52,7 @@ export async function POST(
 
     // Update the request with new notes
     const updatedRequest = await prisma.projectRequest.update({
-      where: { id: params.id },
+      where: { id },
       data: { 
         notes: updatedNotes,
         updatedAt: new Date()

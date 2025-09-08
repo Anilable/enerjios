@@ -18,7 +18,7 @@ const sendQuoteSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -33,9 +33,11 @@ export async function POST(
     const body = await request.json();
     const { channels, customerEmail, customerPhone, customerName, message } = sendQuoteSchema.parse(body);
 
+    const { id } = await params;
+
     // Get quote with related data
     const quote = await prisma.quote.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         customer: true,
         createdBy: true,

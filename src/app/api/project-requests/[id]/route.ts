@@ -108,7 +108,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Params }
+  { params }: { params: Promise<Params> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -123,10 +123,11 @@ export async function PUT(
     }
 
     const body = await request.json()
+    const { id } = await params
 
     // Get current request
     const currentRequest = await prisma.projectRequest.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!currentRequest) {
@@ -135,7 +136,7 @@ export async function PUT(
 
     // Update project request
     const projectRequest = await prisma.projectRequest.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         customerName: body.customerName || currentRequest.customerName,
         customerEmail: body.customerEmail || currentRequest.customerEmail,
@@ -236,7 +237,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Params }
+  { params }: { params: Promise<Params> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -250,9 +251,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const { id } = await params
+
     // Check if request exists
     const existingRequest = await prisma.projectRequest.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingRequest) {
@@ -261,7 +264,7 @@ export async function DELETE(
 
     // Delete project request (status history will be deleted due to cascade)
     await prisma.projectRequest.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ message: 'Project request deleted successfully' })

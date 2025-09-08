@@ -17,16 +17,18 @@ const approveQuoteSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const body = await request.json();
     const { customerName, customerPhone, comments, signatureData, acceptedTerms } = 
       approveQuoteSchema.parse(body);
 
+    const { token } = await params;
+
     // Find quote by delivery token
     const quote = await prisma.quote.findUnique({
-      where: { deliveryToken: params.token },
+      where: { deliveryToken: token },
       include: {
         customer: {
           include: {

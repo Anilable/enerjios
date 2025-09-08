@@ -30,7 +30,9 @@
       "Bash(timeout 30 npm run build)",
       "Bash(npm audit:*)",
       "Bash(npm update:*)",
-      "Bash(del EMAIL_SERVICE_TESTING.md)"
+      "Bash(del EMAIL_SERVICE_TESTING.md)",
+      "Bash(timeout 300 npm run build)",
+      "Bash(timeout 180 npm run build)"
     ],
     "deny": [],
     "ask": []

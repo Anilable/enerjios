@@ -9,10 +9,11 @@ interface Params {
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Params }
+  { params }: { params: Promise<Params> }
 ) {
   try {
-    console.log('[STATUS_UPDATE] Starting request for ID:', params.id)
+    const { id } = await params
+    console.log('[STATUS_UPDATE] Starting request for ID:', id)
     
     const session = await getServerSession(authOptions)
     
@@ -52,11 +53,11 @@ export async function PATCH(
     // Get current request
     console.log('[STATUS_UPDATE] Fetching project request...')
     const currentRequest = await prisma.projectRequest.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!currentRequest) {
-      console.log('[STATUS_UPDATE] Project request not found:', params.id)
+      console.log('[STATUS_UPDATE] Project request not found:', id)
       return NextResponse.json({ error: 'Project request not found' }, { status: 404 })
     }
 
@@ -75,7 +76,7 @@ export async function PATCH(
     // Update the status
     console.log('[STATUS_UPDATE] Updating project request status...')
     const updatedRequest = await prisma.projectRequest.update({
-      where: { id: params.id },
+      where: { id },
       data: { 
         status: status as any,
         updatedAt: new Date()
@@ -108,7 +109,7 @@ export async function PATCH(
     // Create status history entry
     await prisma.projectRequestStatusHistory.create({
       data: {
-        projectRequestId: params.id,
+        projectRequestId: id,
         status: status as any,
         previousStatus: currentRequest.status,
         userId: session.user.id,

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { sendEmail } from '@/lib/email'
+import { EmailService } from '@/lib/email'
 
 export async function POST(
   request: NextRequest,
@@ -108,11 +108,29 @@ export async function POST(
       </div>
     `
 
-    await sendEmail({
-      to: customer.email,
-      subject: `Teklif Hatırlatması - ${quote.quoteNumber}`,
-      html: emailContent
+    // Create a simple email send function using EmailService
+    const sendResult = await EmailService.sendQuoteDelivery({
+      customerName: customer.name,
+      customerEmail: customer.email,
+      quoteNumber: quote.quoteNumber,
+      projectTitle: quote.projectRequest.projectType || 'Güneş Enerjisi Sistemi',
+      totalAmount: quote.total || 0,
+      validUntil: quote.validUntil,
+      quoteViewUrl: quoteLink,
+      companyName: process.env.COMPANY_NAME || 'Trakya Solar',
+      engineerName: 'Sistem',
+      deliveryToken: quote.id,
+      systemDetails: {
+        capacity: quote.capacity || 0,
+        panelCount: Math.ceil((quote.capacity || 0) / 0.5),
+        estimatedProduction: (quote.capacity || 0) * 1200,
+        paybackPeriod: Math.ceil((quote.total || 0) / ((quote.capacity || 0) * 1200 * 0.5))
+      }
     })
+    
+    if (!sendResult.success) {
+      throw new Error(sendResult.error || 'Email sending failed')
+    }
 
     // Hatırlatma kaydını veritabanına ekle
     await prisma.quoteReminder.create({
