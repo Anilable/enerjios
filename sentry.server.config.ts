@@ -12,8 +12,8 @@ Sentry.init({
   
   // Server-specific configuration
   integrations: [
-    Sentry.httpIntegration({ tracing: true }),
-    Sentry.expressIntegration({ app: undefined }),
+    Sentry.httpIntegration(),
+    Sentry.expressIntegration(),
     Sentry.prismaIntegration(),
   ],
   
