@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
           prisma.project.aggregate({
             where: dateFilter,
             _count: { id: true },
-            _sum: { totalAmount: true, systemSize: true }
+            _sum: { actualCost: true, capacity: true }
           }),
           prisma.customer.aggregate({
             where: dateFilter,
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
               ...dateFilter,
               status: 'COMPLETED'
             },
-            _sum: { totalAmount: true }
+            _sum: { actualCost: true }
           })
         ])
 
@@ -88,9 +88,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
           overview: {
             totalProjects: projectStats._count.id || 0,
-            totalRevenue: revenueStats._sum.totalAmount || 0,
+            totalRevenue: revenueStats._sum.actualCost || 0,
             totalCustomers: customerStats._count.id || 0,
-            totalCapacity: projectStats._sum.systemSize || 0,
+            totalCapacity: projectStats._sum.capacity || 0,
             revenueTrend,
             projectStatusDistribution: projectStatusData.map(item => ({
               status: item.status,
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
             ...dateFilter,
             status: 'COMPLETED'
           },
-          _sum: { totalAmount: true },
+          _sum: { actualCost: true },
           _count: { id: true }
         })
 
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
           revenueTrend,
           revenueByType: revenueByType.map(item => ({
             type: item.projectType,
-            total: item._sum.totalAmount || 0,
+            total: item._sum.actualCost || 0,
             count: item._count.id
           }))
         })
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
           by: ['projectType'],
           where: dateFilter,
           _count: { id: true },
-          _sum: { systemSize: true }
+          _sum: { capacity: true }
         })
 
         const avgCompletionTime = await prisma.$queryRaw`
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
           projectsByType: projectsByType.map(item => ({
             type: item.projectType,
             count: item._count.id,
-            totalCapacity: item._sum.systemSize || 0
+            totalCapacity: item._sum.capacity || 0
           })),
           averageCompletionTime: avgCompletionTime[0]?.avg_days || 0
         })
@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
             customerType: true,
             projects: {
               select: {
-                totalAmount: true,
+                actualCost: true,
                 status: true
               }
             }
@@ -194,7 +194,7 @@ export async function GET(request: NextRequest) {
             id: customer.id,
             name: `${customer.firstName} ${customer.lastName}`,
             type: customer.customerType,
-            totalValue: customer.projects.reduce((sum, p) => sum + (p.totalAmount || 0), 0),
+            totalValue: customer.projects.reduce((sum, p) => sum + (p.actualCost || 0), 0),
             completedProjects: customer.projects.filter(p => p.status === 'COMPLETED').length
           })),
           retentionRate: customerRetention
@@ -223,7 +223,7 @@ export async function GET(request: NextRequest) {
             ...dateFilter,
             status: 'COMPLETED'
           },
-          _avg: { totalAmount: true }
+          _avg: { actualCost: true }
         })
 
         // Customer satisfaction (mock data - replace with actual ratings)
@@ -231,7 +231,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({
           conversionRate,
-          averageDealSize: avgDealSize._avg.totalAmount || 0,
+          averageDealSize: avgDealSize._avg.actualCost || 0,
           customerSatisfaction,
           performanceMetrics: {
             salesPerformance: 85,
@@ -248,15 +248,15 @@ export async function GET(request: NextRequest) {
           by: ['region'],
           where: dateFilter,
           _count: { id: true },
-          _sum: { totalAmount: true, systemSize: true }
+          _sum: { actualCost: true, capacity: true }
         })
 
         return NextResponse.json({
           regionalPerformance: regionalData.map(item => ({
             region: item.region,
             projectCount: item._count.id,
-            totalRevenue: item._sum.totalAmount || 0,
-            totalCapacity: item._sum.systemSize || 0
+            totalRevenue: item._sum.actualCost || 0,
+            totalCapacity: item._sum.capacity || 0
           }))
         })
       }
