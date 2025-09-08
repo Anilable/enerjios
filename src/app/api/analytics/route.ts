@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
         const revenueTrend = await getRevenueTrend(startDate, endDate, granularity)
         
         const revenueByType = await prisma.project.groupBy({
-          by: ['projectType'],
+          by: ['type'],
           where: {
             ...dateFilter,
             status: 'COMPLETED'
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
           revenueTrend,
           revenueByType: revenueByType.map(item => ({
-            type: item.projectType,
+            type: item.type,
             total: item._sum.actualCost || 0,
             count: item._count.id
           }))
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
         })
 
         const projectsByType = await prisma.project.groupBy({
-          by: ['projectType'],
+          by: ['type'],
           where: dateFilter,
           _count: { id: true },
           _sum: { capacity: true }
@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
             count: item._count.id
           })),
           projectsByType: projectsByType.map(item => ({
-            type: item.projectType,
+            type: item.type,
             count: item._count.id,
             totalCapacity: item._sum.capacity || 0
           })),
@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
 
       case 'customers': {
         const customersByType = await prisma.customer.groupBy({
-          by: ['customerType'],
+          by: ['type'],
           where: dateFilter,
           _count: { id: true }
         })
@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
             id: true,
             firstName: true,
             lastName: true,
-            customerType: true,
+            type: true,
             projects: {
               select: {
                 actualCost: true,
@@ -187,13 +187,13 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({
           customersByType: customersByType.map(item => ({
-            type: item.customerType,
+            type: item.type,
             count: item._count.id
           })),
           topCustomers: topCustomers.map(customer => ({
             id: customer.id,
             name: `${customer.firstName} ${customer.lastName}`,
-            type: customer.customerType,
+            type: customer.type,
             totalValue: customer.projects.reduce((sum, p) => sum + (p.actualCost || 0), 0),
             completedProjects: customer.projects.filter(p => p.status === 'COMPLETED').length
           })),
@@ -243,20 +243,44 @@ export async function GET(request: NextRequest) {
       }
 
       case 'regional': {
-        // Regional performance data
-        const regionalData = await prisma.project.groupBy({
-          by: ['region'],
+        // Regional performance data - Project model doesn't have region field
+        // Using locationId instead or create a mock regional data
+        const projectsWithLocation = await prisma.project.findMany({
           where: dateFilter,
-          _count: { id: true },
-          _sum: { actualCost: true, capacity: true }
+          select: {
+            id: true,
+            actualCost: true,
+            capacity: true,
+            location: {
+              select: {
+                city: true
+              }
+            }
+          }
         })
 
+        // Group by city as proxy for region
+        const cityGroups = projectsWithLocation.reduce((acc, project) => {
+          const city = project.location?.city || 'Unknown'
+          if (!acc[city]) {
+            acc[city] = {
+              projectCount: 0,
+              totalRevenue: 0,
+              totalCapacity: 0
+            }
+          }
+          acc[city].projectCount += 1
+          acc[city].totalRevenue += project.actualCost || 0
+          acc[city].totalCapacity += project.capacity || 0
+          return acc
+        }, {} as Record<string, { projectCount: number; totalRevenue: number; totalCapacity: number }>)
+
         return NextResponse.json({
-          regionalPerformance: regionalData.map(item => ({
-            region: item.region,
-            projectCount: item._count.id,
-            totalRevenue: item._sum.actualCost || 0,
-            totalCapacity: item._sum.capacity || 0
+          regionalPerformance: Object.entries(cityGroups).map(([city, data]) => ({
+            region: city,
+            projectCount: data.projectCount,
+            totalRevenue: data.totalRevenue,
+            totalCapacity: data.totalCapacity
           }))
         })
       }
@@ -298,7 +322,7 @@ async function getRevenueTrend(startDate: Date, endDate: Date, granularity: stri
     const trendData = await prisma.$queryRaw`
       SELECT 
         TO_CHAR(created_at, ${groupByFormat}) as period,
-        SUM(total_amount) as revenue,
+        SUM(actual_cost) as revenue,
         COUNT(*) as project_count
       FROM "Project"
       WHERE created_at >= ${startDate}
