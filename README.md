@@ -147,34 +147,22 @@ The application will be available at:
 - **Primary**: http://localhost:3000
 - **Alternative**: http://localhost:3003 (if 3000 is in use)
 
-## 🔐 Login Credentials
+## 🔐 User Roles
 
-Use these test accounts to explore different user roles:
+The platform supports multiple user roles with different access levels:
 
-### **Admin Account**
-- **Email**: admin@trakyasolar.com
-- **Password**: admin123
-- **Access**: Full system administration, user management, database control
+### **Available User Types**
+- **Admin**: Full system administration, user management, database control
+- **Company**: Project management, customer relations, installation tracking
+- **Customer**: Project viewing, energy monitoring, document management
+- **Farmer**: Agricultural solar systems, crop compatibility analysis
 
-### **Company Account**
-- **Email**: solar@gesenerji.com
-- **Password**: company123
-- **Access**: Project management, customer relations, installation tracking
-
-### **Customer Account**
-- **Email**: ahmet@gmail.com
-- **Password**: customer123
-- **Access**: Project viewing, energy monitoring, document management
-
-### **Farmer Account**
-- **Email**: mehmet@ciftci.com
-- **Password**: farmer123
-- **Access**: Agricultural solar systems, crop compatibility analysis
+*Note: Test accounts are available in development environment only. Contact system administrator for access credentials.*
 
 ## 🎯 Feature Walkthrough
 
 ### 1. **Getting Started**
-1. Navigate to the login page and use one of the test accounts
+1. Navigate to the login page and contact administrator for test credentials
 2. Explore the role-specific dashboard with quick action buttons
 3. Try the **Proje Tasarımcısı** (Project Designer) tool for 3D roof analysis
 
@@ -332,7 +320,7 @@ For technical support or questions:
 - [ ] Configure `.env.local` with required environment variables
 - [ ] Run database setup (`npm run db:generate && npm run db:migrate:dev && npm run db:seed`)
 - [ ] Start development server (`npm run dev`)
-- [ ] Test login with provided credentials
+- [ ] Contact administrator for access credentials
 - [ ] Explore the Proje Tasarımcısı (Project Designer) feature
 - [ ] Check admin dashboard at `/dashboard/database`
 

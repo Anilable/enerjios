@@ -1,0 +1,150 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import PDFDocument from 'pdfkit'
+import { Readable } from 'stream'
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const { id: quoteId } = await params
+
+    // Quote'u veritabanından çek
+    const quote = await prisma.quote.findUnique({
+      where: { id: quoteId },
+      include: {
+        projectRequest: {
+          include: {
+            customer: true
+          }
+        },
+        quoteItems: true
+      }
+    })
+
+    if (!quote) {
+      return NextResponse.json(
+        { error: 'Quote not found' },
+        { status: 404 }
+      )
+    }
+
+    // PDF oluştur
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: 50
+    })
+
+    // PDF başlığı
+    doc.fontSize(20)
+       .font('Helvetica-Bold')
+       .text('GÜNEŞ ENERJİSİ SİSTEMİ TEKLİFİ', 50, 50)
+
+    // Teklif numarası
+    doc.fontSize(14)
+       .font('Helvetica')
+       .text(`Teklif No: ${quote.quoteNumber}`, 50, 100)
+       .text(`Tarih: ${new Date(quote.createdAt).toLocaleDateString('tr-TR')}`, 50, 120)
+       .text(`Geçerlilik: ${new Date(quote.validUntil).toLocaleDateString('tr-TR')}`, 50, 140)
+
+    // Müşteri bilgileri
+    doc.fontSize(16)
+       .font('Helvetica-Bold')
+       .text('MÜŞTERİ BİLGİLERİ', 50, 180)
+
+    doc.fontSize(12)
+       .font('Helvetica')
+       .text(`Ad Soyad: ${quote.projectRequest.customer.name}`, 50, 210)
+       .text(`Email: ${quote.projectRequest.customer.email}`, 50, 230)
+       .text(`Telefon: ${quote.projectRequest.customer.phone || 'N/A'}`, 50, 250)
+
+    // Proje detayları
+    doc.fontSize(16)
+       .font('Helvetica-Bold')
+       .text('PROJE DETAYLARI', 50, 290)
+
+    doc.fontSize(12)
+       .font('Helvetica')
+       .text(`Proje Tipi: ${quote.projectRequest.projectType}`, 50, 320)
+       .text(`Sistem Gücü: ${quote.capacity} kW`, 50, 340)
+
+    // Teklif kalemleri
+    doc.fontSize(16)
+       .font('Helvetica-Bold')
+       .text('TEKLİF KALEMLERİ', 50, 380)
+
+    let yPos = 410
+    const items = quote.quoteItems || []
+    
+    for (const item of items) {
+      doc.fontSize(12)
+         .font('Helvetica-Bold')
+         .text(item.name, 50, yPos)
+         .font('Helvetica')
+         .text(item.description || '', 50, yPos + 15)
+         .text(`Miktar: ${item.quantity} - Birim Fiyat: ${item.unitPrice.toLocaleString('tr-TR')} TL`, 50, yPos + 30)
+         .text(`Toplam: ${item.total.toLocaleString('tr-TR')} TL`, 400, yPos + 30)
+      
+      yPos += 60
+    }
+
+    // Fiyat özeti
+    yPos += 30
+    doc.fontSize(16)
+       .font('Helvetica-Bold')
+       .text('FİYAT ÖZETİ', 50, yPos)
+
+    yPos += 30
+    doc.fontSize(12)
+       .font('Helvetica')
+       .text(`Ara Toplam: ${quote.subtotal.toLocaleString('tr-TR')} TL`, 50, yPos)
+       .text(`İndirim: -${quote.discount.toLocaleString('tr-TR')} TL`, 50, yPos + 20)
+       .text(`KDV (18%): ${quote.tax.toLocaleString('tr-TR')} TL`, 50, yPos + 40)
+       
+    doc.fontSize(16)
+       .font('Helvetica-Bold')
+       .text(`TOPLAM: ${quote.total.toLocaleString('tr-TR')} TL`, 50, yPos + 70)
+
+    // PDF'i stream'e dönüştür
+    const stream = new Readable({
+      read() {}
+    })
+
+    doc.pipe(stream)
+    doc.end()
+
+    // Stream'i buffer'a çevir
+    const chunks: Buffer[] = []
+    for await (const chunk of stream) {
+      chunks.push(chunk)
+    }
+    const buffer = Buffer.concat(chunks)
+
+    // Response headers
+    const headers = new Headers()
+    headers.set('Content-Type', 'application/pdf')
+    headers.set('Content-Disposition', `attachment; filename="teklif-${quote.quoteNumber}.pdf"`)
+    headers.set('Content-Length', buffer.length.toString())
+
+    return new NextResponse(buffer, { headers })
+
+  } catch (error) {
+    console.error('Error generating PDF:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
