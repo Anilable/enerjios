@@ -7,7 +7,7 @@ import { rateLimit } from '@/lib/rate-limit'
 export async function GET(request: NextRequest) {
   try {
     // Rate limiting
-    const ip = request.ip ?? '127.0.0.1'
+    const ip = (request as any).ip ?? request.headers.get('x-forwarded-for') ?? '127.0.0.1'
     const result = await rateLimit(request, 'api')
     if (result && !result.success) {
       return NextResponse.json(
