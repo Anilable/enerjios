@@ -1,7 +1,9 @@
 import { prisma } from '@/lib/db'
 import { getSocket } from '@/lib/socket'
 
-export type NotificationType = 'info' | 'success' | 'warning' | 'error'
+import { NotificationType as PrismaNotificationType } from '@prisma/client'
+
+export type NotificationType = 'QUOTE_RECEIVED' | 'QUOTE_ACCEPTED' | 'PROJECT_UPDATE' | 'PAYMENT_DUE' | 'INSTALLATION_SCHEDULED' | 'MAINTENANCE_REMINDER' | 'SYSTEM_ALERT'
 
 export interface NotificationData {
   title: string
@@ -25,14 +27,11 @@ export class NotificationService {
           userId: data.userId,
           projectId: data.projectId,
           actionUrl: data.actionUrl,
-          isRead: false
+          read: false
         },
         include: {
           user: {
             select: { id: true, name: true, email: true }
-          },
-          project: {
-            select: { id: true, name: true }
           }
         }
       })
@@ -46,8 +45,7 @@ export class NotificationService {
           message: notification.message,
           type: notification.type,
           timestamp: notification.createdAt.toISOString(),
-          actionUrl: notification.actionUrl,
-          project: notification.project
+          actionUrl: notification.actionUrl
         })
       }
 
@@ -80,8 +78,7 @@ export class NotificationService {
           userId: userId
         },
         data: {
-          isRead: true,
-          readAt: new Date()
+          read: true
         }
       })
 
@@ -98,11 +95,10 @@ export class NotificationService {
       const notifications = await prisma.notification.updateMany({
         where: {
           userId: userId,
-          isRead: false
+          read: false
         },
         data: {
-          isRead: true,
-          readAt: new Date()
+          read: true
         }
       })
 
@@ -127,7 +123,7 @@ export class NotificationService {
 
       const where = {
         userId,
-        ...(options?.unreadOnly && { isRead: false }),
+        ...(options?.unreadOnly && { read: false }),
         ...(options?.type && { type: options.type })
       }
 
@@ -136,12 +132,7 @@ export class NotificationService {
           where,
           orderBy: { createdAt: 'desc' },
           skip,
-          take: limit,
-          include: {
-            project: {
-              select: { id: true, name: true }
-            }
-          }
+          take: limit
         }),
         prisma.notification.count({ where })
       ])
@@ -184,7 +175,7 @@ export class NotificationService {
       const count = await prisma.notification.count({
         where: {
           userId,
-          isRead: false
+          read: false
         }
       })
 
@@ -201,17 +192,17 @@ export class NotificationService {
       'APPROVED': {
         title: 'Proje Onaylandı! 🎉',
         message: 'Projeniz onaylandı ve işlemler başlatıldı.',
-        type: 'success' as NotificationType
+        type: 'PROJECT_UPDATE' as NotificationType
       },
       'REJECTED': {
         title: 'Proje İncelemeye Alındı',
         message: 'Projeniz inceleme aşamasında. En kısa sürede geri döneceğiz.',
-        type: 'warning' as NotificationType
+        type: 'PROJECT_UPDATE' as NotificationType
       },
       'COMPLETED': {
         title: 'Proje Tamamlandı! ✅',
         message: 'Projenizin kurulumu başarıyla tamamlandı.',
-        type: 'success' as NotificationType
+        type: 'PROJECT_UPDATE' as NotificationType
       }
     }
 
@@ -230,7 +221,7 @@ export class NotificationService {
     await this.create({
       title: 'Yeni Teklif Hazır! 📄',
       message: 'Projeniz için yeni bir teklif hazırlandı.',
-      type: 'info',
+      type: 'QUOTE_RECEIVED',
       userId,
       projectId,
       actionUrl: `/dashboard/projects/${projectId}/quote`
@@ -241,7 +232,7 @@ export class NotificationService {
     await this.create({
       title: 'Ödeme Alındı! 💳',
       message: `${amount.toLocaleString('tr-TR')} TL ödemeniz başarıyla alındı.`,
-      type: 'success',
+      type: 'PAYMENT_DUE',
       userId,
       projectId,
       actionUrl: projectId ? `/dashboard/projects/${projectId}/payments` : '/dashboard/payments'

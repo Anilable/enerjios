@@ -22,7 +22,7 @@ export default withAuth(
 
     // Rate limiting for API routes
     if (pathname.startsWith('/api/') && ratelimit) {
-      const ip = req.ip ?? req.headers.get('x-forwarded-for') ?? '127.0.0.1'
+      const ip = (req as any).ip ?? req.headers.get('x-forwarded-for') ?? '127.0.0.1'
       const { success, limit, reset, remaining } = await ratelimit.limit(ip)
 
       if (!success) {

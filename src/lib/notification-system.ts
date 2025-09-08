@@ -1,4 +1,4 @@
-import { sendWelcomeEmail, sendQuoteNotification, sendPaymentConfirmation, sendInstallationNotification } from './email'
+import { EmailService } from './email'
 
 export type NotificationType = 
   | 'project_created'
@@ -424,13 +424,24 @@ class NotificationSystem {
     processed: { subject?: string; title: string; content: string },
     template: NotificationTemplate
   ): Promise<void> {
-    const emailService = new EmailService()
-    
-    await emailService.sendTemplatedEmail({
-      to: recipient.email,
-      subject: processed.subject || processed.title,
-      html: processed.content,
-      templateName: template.id
+    // Use EmailService static method instead of instance
+    await EmailService.sendQuoteDelivery({
+      customerName: recipient.name,
+      customerEmail: recipient.email,
+      quoteNumber: `NOTIF-${Date.now()}`,
+      projectTitle: processed.title,
+      totalAmount: 0,
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      quoteViewUrl: 'https://app.com/quote',
+      companyName: process.env.COMPANY_NAME || 'EnerjiOS',
+      engineerName: 'System',
+      deliveryToken: `token-${Date.now()}`,
+      systemDetails: {
+        capacity: 0,
+        panelCount: 0,
+        estimatedProduction: 0,
+        paybackPeriod: 0
+      }
     })
   }
 

@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
     // Generate upload URL
     const uploadUrl = `${process.env.NEXTAUTH_URL}/photo-upload/${token}`
     
-    let emailResult = { success: false, error: 'Email not attempted' }
+    let emailResult: { success: boolean; error?: string; messageId?: string } = { success: false, error: 'Email not attempted' }
     
     // Send email notification if email provided
     if (validatedData.customerEmail) {
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
         console.error('📧 Email service error:', emailError)
         emailResult = { 
           success: false, 
-          error: emailError instanceof Error ? emailError.message : 'Unknown email error' 
+          error: emailError instanceof Error ? emailError.message : 'Unknown email error'
         }
       }
     } else {
@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
       expiresAt: photoRequest.expiresAt,
       emailSent: emailResult.success,
       emailError: emailResult.error,
-      messageId: emailResult.messageId
+      ...(emailResult.messageId && { messageId: emailResult.messageId })
     })
 
   } catch (error) {
@@ -215,7 +215,7 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const offset = (page - 1) * limit
 
-    const where = status ? { status } : undefined
+    const where = status ? { status: status as any } : undefined
 
     const [photoRequests, totalCount] = await Promise.all([
       prisma.photoRequest.findMany({
