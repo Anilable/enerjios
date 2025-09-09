@@ -38,13 +38,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const updatedNotification = await prisma.notification.update({
       where: { id },
       data: {
-        isRead: isRead ?? true,
-        readAt: isRead !== false ? new Date() : null
-      },
-      include: {
-        project: {
-          select: { id: true, name: true }
-        }
+        read: isRead ?? true
       }
     })
 

@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
         id: project.id,
         projectName: project.name,
         status: project.status,
-        startDate: project.startDate || project.createdAt
+        startDate: project.startDate
       }))
     }))
 

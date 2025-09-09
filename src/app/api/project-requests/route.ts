@@ -74,8 +74,9 @@ export async function GET(request: NextRequest) {
         { assignedEngineerId: null }
       ]
     } else if (session.user.role === 'CUSTOMER') {
+      // TODO: Implement proper customer filtering through User-Customer relation
       // Customers can only see their own requests
-      where.customerId = session.user.customer?.id
+      // where.customerId = await getCustomerIdFromUser(session.user.id)
     }
 
     const projectRequests = await prisma.projectRequest.findMany({

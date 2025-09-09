@@ -27,7 +27,7 @@ const sendNotificationSchema = z.object({
       push: z.boolean().optional()
     }).optional()
   }),
-  data: z.record(z.any()),
+  data: z.record(z.string(), z.any()),
   channels: z.array(z.enum(['email', 'sms', 'whatsapp', 'push'])).optional()
 })
 
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.issues },
         { status: 400 }
       )
     }

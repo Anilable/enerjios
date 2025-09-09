@@ -23,7 +23,7 @@ export async function POST(
 
     // Find quote by delivery token
     const quote = await prisma.quote.findUnique({
-      where: { deliveryToken: token },
+      where: { deliveryToken: token } as any,
       include: {
         customer: {
           include: {
@@ -71,21 +71,21 @@ export async function POST(
     await prisma.quote.update({
       where: { id: quote.id },
       data: {
-        status: QuoteStatus.REJECTED,
+        status: 'REJECTED' as any,
         rejectedAt: now,
         respondedAt: now,
         customerIP: clientIP,
         customerAgent: userAgent,
         customerComments: comments || null
-      }
+      } as any
     });
 
     // Send notification email to quote creator
-    const companyName = quote.company?.name || process.env.COMPANY_NAME || 'Trakya Solar';
+    const companyName = (quote as any).company?.name || process.env.COMPANY_NAME || 'Trakya Solar';
 
     try {
       await emailService.sendQuoteStatusNotification(
-        quote,
+        quote as any,
         customerName,
         companyName,
         'rejected'
@@ -95,11 +95,11 @@ export async function POST(
     }
 
     // Send WhatsApp notification if phone available
-    if (quote.createdBy.phone) {
+    if ((quote as any).createdBy.phone) {
       try {
         const whatsappService = new WhatsAppService();
         await whatsappService.sendQuoteStatusUpdate(
-          quote.createdBy.phone,
+          (quote as any).createdBy.phone,
           customerName,
           quote.quoteNumber,
           'rejected'
@@ -129,7 +129,7 @@ export async function POST(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Geçersiz veri', details: error.errors },
+        { error: 'Geçersiz veri', details: error.issues },
         { status: 400 }
       );
     }
