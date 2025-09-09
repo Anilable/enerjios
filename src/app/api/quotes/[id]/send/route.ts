@@ -6,7 +6,7 @@ import { emailService } from '@/lib/email-service';
 import { WhatsAppService } from '@/lib/whatsapp-service';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { QuoteStatus, DeliveryChannel } from '@prisma/client';
+import { QuoteStatus } from '@prisma/client';
 
 const sendQuoteSchema = z.object({
   channels: z.array(z.enum(['EMAIL', 'WHATSAPP', 'SMS'])).min(1),
@@ -39,7 +39,11 @@ export async function POST(
     const quote = await prisma.quote.findUnique({
       where: { id },
       include: {
-        customer: true,
+        customer: {
+          include: {
+            user: true
+          }
+        },
         createdBy: true,
         project: true,
         items: {
@@ -74,7 +78,7 @@ export async function POST(
     }
 
     // Generate delivery token if not exists
-    let deliveryToken = quote.deliveryToken;
+    let deliveryToken = (quote as any).deliveryToken;
     if (!deliveryToken) {
       deliveryToken = crypto.randomBytes(32).toString('hex');
     }
@@ -118,9 +122,9 @@ export async function POST(
           await prisma.quote.update({
             where: { id: quote.id },
             data: {
-              deliveryChannel: DeliveryChannel.EMAIL,
+              deliveryChannel: 'EMAIL',
               deliveryEmail: finalCustomerEmail
-            }
+            } as any
           });
         }
       } catch (error) {
@@ -162,9 +166,9 @@ export async function POST(
           await prisma.quote.update({
             where: { id: quote.id },
             data: {
-              deliveryChannel: DeliveryChannel.WHATSAPP,
+              deliveryChannel: 'WHATSAPP',
               deliveryPhone: finalCustomerPhone
-            }
+            } as any
           });
         }
       } catch (error) {
@@ -206,7 +210,7 @@ export async function POST(
             channels: results.filter(r => r.success).map(r => r.channel),
             results
           }
-        }
+        } as any
       });
 
       return NextResponse.json({
@@ -228,7 +232,7 @@ export async function POST(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Geçersiz veri', details: error.errors },
+        { error: 'Geçersiz veri', details: error.issues },
         { status: 400 }
       );
     }

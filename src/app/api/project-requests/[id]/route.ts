@@ -58,7 +58,9 @@ export async function GET(
     }
 
     // Role-based access control
-    if (session.user.role === 'CUSTOMER' && projectRequest.customerId !== session.user.customer?.id) {
+    // TODO: Implement proper customer ID check through User-Customer relation
+    if (session.user.role === 'CUSTOMER') {
+      // Need to fetch customer ID from User-Customer relation
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

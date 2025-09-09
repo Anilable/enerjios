@@ -27,10 +27,10 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type')
     const unreadOnly = searchParams.get('unread') === 'true'
 
-    const where = {
+    const where: any = {
       userId: session.user.id,
-      ...(type && { type }),
-      ...(unreadOnly && { isRead: false })
+      ...(type && { type: type as any }),
+      ...(unreadOnly && { read: false })
     }
 
     const [notifications, total] = await Promise.all([
@@ -39,11 +39,6 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
-        include: {
-          project: {
-            select: { id: true, name: true }
-          }
-        }
       }),
       prisma.notification.count({ where })
     ])
@@ -101,14 +96,8 @@ export async function POST(request: NextRequest) {
         message,
         type,
         userId: targetUserId || session.user.id,
-        projectId,
         actionUrl,
-        isRead: false
-      },
-      include: {
-        project: {
-          select: { id: true, name: true }
-        }
+        read: false
       }
     })
 

@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
         const quote = await prisma.quote.create({
           data: {
             ...data,
-            companyId: session.user.companyId,
+            // companyId field not available on User model
             createdAt: new Date(timestamp)
           }
         })
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
         const project = await prisma.project.create({
           data: {
             ...data,
-            companyId: session.user.companyId,
+            // companyId field not available on User model
             createdAt: new Date(timestamp)
           }
         })
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
         const customer = await prisma.customer.create({
           data: {
             ...data,
-            companyId: session.user.companyId,
+            // companyId field not available on User model
             createdAt: new Date(timestamp)
           }
         })

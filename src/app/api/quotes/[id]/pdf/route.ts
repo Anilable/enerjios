@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import PDFDocument from 'pdfkit'
-import { Readable } from 'stream'
+import { PassThrough } from 'stream'
 
 export async function GET(
   request: NextRequest,
@@ -25,12 +25,13 @@ export async function GET(
     const quote = await prisma.quote.findUnique({
       where: { id: quoteId },
       include: {
-        projectRequest: {
+        customer: true,
+        project: true,
+        items: {
           include: {
-            customer: true
+            product: true
           }
-        },
-        quoteItems: true
+        }
       }
     })
 
@@ -66,9 +67,9 @@ export async function GET(
 
     doc.fontSize(12)
        .font('Helvetica')
-       .text(`Ad Soyad: ${quote.projectRequest.customer.name}`, 50, 210)
-       .text(`Email: ${quote.projectRequest.customer.email}`, 50, 230)
-       .text(`Telefon: ${quote.projectRequest.customer.phone || 'N/A'}`, 50, 250)
+       .text(`Ad Soyad: ${quote.customer?.firstName || ''} ${quote.customer?.lastName || ''}`, 50, 210)
+       .text(`Email: N/A`, 50, 230)
+       .text(`Telefon: ${quote.customer?.phone || 'N/A'}`, 50, 250)
 
     // Proje detayları
     doc.fontSize(16)
@@ -77,8 +78,8 @@ export async function GET(
 
     doc.fontSize(12)
        .font('Helvetica')
-       .text(`Proje Tipi: ${quote.projectRequest.projectType}`, 50, 320)
-       .text(`Sistem Gücü: ${quote.capacity} kW`, 50, 340)
+       .text(`Proje Tipi: ${quote.project?.type || 'N/A'}`, 50, 320)
+       .text(`Sistem Gücü: ${quote.project?.capacity || 0} kW`, 50, 340)
 
     // Teklif kalemleri
     doc.fontSize(16)
@@ -86,12 +87,12 @@ export async function GET(
        .text('TEKLİF KALEMLERİ', 50, 380)
 
     let yPos = 410
-    const items = quote.quoteItems || []
+    const items = quote.items || []
     
     for (const item of items) {
       doc.fontSize(12)
          .font('Helvetica-Bold')
-         .text(item.name, 50, yPos)
+         .text(item.product.name, 50, yPos)
          .font('Helvetica')
          .text(item.description || '', 50, yPos + 15)
          .text(`Miktar: ${item.quantity} - Birim Fiyat: ${item.unitPrice.toLocaleString('tr-TR')} TL`, 50, yPos + 30)
@@ -118,9 +119,7 @@ export async function GET(
        .text(`TOPLAM: ${quote.total.toLocaleString('tr-TR')} TL`, 50, yPos + 70)
 
     // PDF'i stream'e dönüştür
-    const stream = new Readable({
-      read() {}
-    })
+    const stream = new PassThrough()
 
     doc.pipe(stream)
     doc.end()

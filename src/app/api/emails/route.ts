@@ -176,7 +176,7 @@ const emailTemplates = {
 const sendEmailSchema = z.object({
   to: z.union([z.string().email(), z.array(z.string().email())]),
   template: z.enum(['projectStatusUpdate', 'customerWelcome', 'invoiceGenerated', 'maintenanceReminder']),
-  data: z.record(z.any()),
+  data: z.record(z.string(), z.any()),
   from: z.string().email().optional(),
   replyTo: z.string().email().optional()
 })
@@ -252,7 +252,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           error: 'Invalid request data',
-          details: error.errors
+          details: error.issues
         },
         { status: 400 }
       )
