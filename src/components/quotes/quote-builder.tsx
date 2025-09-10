@@ -23,7 +23,48 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react'
-import type { QuoteData, QuoteItem } from '@/app/dashboard/quotes/page'
+interface QuoteData {
+  id: string
+  quoteNumber: string
+  projectRequestId?: string
+  customerName: string
+  customerEmail: string
+  customerPhone?: string
+  customerId?: string
+  projectType?: string
+  projectTitle?: string
+  systemSize?: number
+  panelCount?: number
+  capacity?: number
+  subtotal: number
+  tax: number
+  discount: number
+  total: number
+  laborCost?: number
+  margin?: number
+  status: 'DRAFT' | 'SENT' | 'VIEWED' | 'APPROVED' | 'REJECTED' | 'EXPIRED'
+  createdAt: string
+  validUntil: string
+  version?: number
+  items: QuoteItem[]
+  profitAmount?: number
+  financialAnalysis?: any
+  updatedAt?: any
+}
+
+interface QuoteItem {
+  id: string
+  productId: string
+  productName: string
+  name?: string
+  type?: string
+  brand?: string
+  quantity: number
+  unitPrice: number
+  total: number
+  totalPrice?: number
+  specifications?: any
+}
 
 interface QuoteBuilderProps {
   quote: QuoteData | null
@@ -190,16 +231,16 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
       setFormData({
         customerName: quote.customerName,
         customerEmail: quote.customerEmail,
-        customerPhone: quote.customerPhone,
+        customerPhone: quote.customerPhone || '',
         customerAddress: '', // Not in current QuoteData type
-        projectTitle: quote.projectTitle,
-        systemSize: quote.systemSize,
-        panelCount: quote.panelCount,
+        projectTitle: quote.projectTitle || '',
+        systemSize: quote.systemSize || 0,
+        panelCount: quote.panelCount || 0,
         validityDays: 30
       })
       setItems(quote.items)
-      setLaborHours(Math.floor(quote.laborCost / laborRate))
-      setMarginPercent(quote.margin)
+      setLaborHours(Math.floor((quote.laborCost || 0) / laborRate))
+      setMarginPercent(quote.margin || 0)
     }
   }, [quote])
 
@@ -209,7 +250,7 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
   }, [items, laborHours, laborRate, marginPercent])
 
   const calculateTotals = () => {
-    const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0)
+    const subtotal = items.reduce((sum, item) => sum + (item.totalPrice || item.total || 0), 0)
     const laborCost = laborHours * laborRate
     const subtotalWithLabor = subtotal + laborCost
     const marginAmount = (subtotalWithLabor * marginPercent) / 100
@@ -230,10 +271,13 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
   const addItem = (type: QuoteItem['type']) => {
     const newItem: QuoteItem = {
       id: Date.now().toString(),
+      productId: '',
+      productName: '',
       type,
       name: '',
       quantity: 1,
       unitPrice: 0,
+      total: 0,
       totalPrice: 0
     }
     setItems(prev => [...prev, newItem])
@@ -273,11 +317,14 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
     const panel = productCatalog.panels[0] // Default to first panel
     const newItem: QuoteItem = {
       id: Date.now().toString(),
+      productId: panel.id,
+      productName: panel.name,
       type: 'PANEL',
       name: panel.name,
       brand: panel.brand,
       quantity: formData.panelCount || 20,
       unitPrice: panel.price,
+      total: (formData.panelCount || 20) * panel.price,
       totalPrice: (formData.panelCount || 20) * panel.price,
       specifications: panel
     }
@@ -289,11 +336,14 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
     const quantity = Math.ceil((formData.systemSize || 10) / 15) // 15kW inverters
     const newItem: QuoteItem = {
       id: Date.now().toString(),
+      productId: inverter.id,
+      productName: inverter.name,
       type: 'INVERTER',
       name: inverter.name,
       brand: inverter.brand,
       quantity,
       unitPrice: inverter.price,
+      total: quantity * inverter.price,
       totalPrice: quantity * inverter.price,
       specifications: inverter
     }
@@ -334,8 +384,9 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
       subtotal: calculations.subtotal,
       laborCost: calculations.laborCost,
       tax: calculations.tax,
+      discount: 0,
       total: calculations.total,
-      validUntil,
+      validUntil: validUntil.toISOString(),
       margin: marginPercent,
       profitAmount: calculations.profitAmount,
       financialAnalysis: {
@@ -347,9 +398,9 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
         irr: 12.5,
         cashFlow: []
       },
-      createdAt: quote?.createdAt || new Date(),
+      createdAt: quote?.createdAt || new Date().toISOString(),
       updatedAt: new Date(),
-      version: quote ? quote.version + 1 : 1
+      version: quote ? (quote.version || 0) + 1 : 1
     }
 
     onSave(newQuote)
@@ -651,7 +702,7 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
                       
                       <div className="col-span-3">
                         <div className="font-medium text-right">
-                          ₺{item.totalPrice.toLocaleString()}
+                          ₺{(item.totalPrice || item.total || 0).toLocaleString()}
                         </div>
                       </div>
                       

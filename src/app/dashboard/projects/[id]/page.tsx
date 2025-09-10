@@ -19,7 +19,7 @@ import { ProjectDetailSkeleton } from '@/components/projects/project-detail-skel
 import {
   ArrowLeft, Settings, Share2, Download, MoreHorizontal,
   MapPin, Calendar, User, Zap, DollarSign, Activity,
-  AlertTriangle, CheckCircle, Clock, Pause
+  AlertTriangle, CheckCircle, Clock, Pause, FileText
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -109,14 +109,14 @@ const PROJECT_STATUS_CONFIG = {
   QUOTE_SENT: { 
     label: 'Teklif Gönderildi', 
     color: 'bg-yellow-500', 
-    variant: 'warning' as const,
+    variant: 'outline' as const,
     icon: Clock,
     description: 'Müşteri onayı bekleniyor'
   },
   APPROVED: { 
     label: 'Onaylandı', 
     color: 'bg-green-500', 
-    variant: 'success' as const,
+    variant: 'secondary' as const,
     icon: CheckCircle,
     description: 'Kuruluma hazır'
   },
@@ -130,7 +130,7 @@ const PROJECT_STATUS_CONFIG = {
   COMPLETED: { 
     label: 'Tamamlandı', 
     color: 'bg-green-600', 
-    variant: 'success' as const,
+    variant: 'secondary' as const,
     icon: CheckCircle,
     description: 'Proje başarıyla tamamlandı'
   },

@@ -411,7 +411,7 @@ export default function ProductManagementPage() {
   const handleDuplicateProduct = async (product: Product) => {
     const duplicatedProduct = {
       ...product,
-      id: undefined,
+      id: '', // Use empty string instead of undefined for new products
       name: `${product.name} (Kopya)`,
       inventory: {
         ...product.inventory,

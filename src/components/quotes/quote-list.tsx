@@ -27,7 +27,44 @@ import {
   ExternalLink,
   Phone
 } from 'lucide-react'
-import type { QuoteData } from '@/app/dashboard/quotes/page'
+interface QuoteData {
+  id: string
+  quoteNumber: string
+  projectRequestId?: string
+  customerName: string
+  customerEmail: string
+  customerPhone?: string
+  customerId?: string
+  projectType?: string
+  projectTitle?: string
+  systemSize?: number
+  panelCount?: number
+  capacity?: number
+  subtotal: number
+  tax: number
+  discount: number
+  total: number
+  laborCost?: number
+  margin?: number
+  status: 'DRAFT' | 'SENT' | 'VIEWED' | 'APPROVED' | 'REJECTED' | 'EXPIRED'
+  createdAt: string
+  validUntil: string
+  version?: number
+  items?: any[]
+  profitAmount?: number
+  financialAnalysis?: any
+  updatedAt?: any
+  sentAt?: string
+  deliveryChannel?: string
+  deliveryEmail?: string
+  deliveryPhone?: string
+  viewedAt?: string
+  respondedAt?: string
+  approvedAt?: string
+  rejectedAt?: string
+  deliveryToken?: string
+  designData?: any
+}
 
 interface QuoteListProps {
   quotes: QuoteData[]
@@ -54,7 +91,7 @@ export function QuoteList({
     const matchesSearch = searchQuery === '' || 
       quote.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       quote.quoteNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      quote.projectTitle.toLowerCase().includes(searchQuery.toLowerCase())
+      quote.projectTitle?.toLowerCase().includes(searchQuery.toLowerCase())
     
     const matchesStatus = statusFilter === 'all' || quote.status === statusFilter
     
@@ -183,20 +220,20 @@ export function QuoteList({
                       <h3 className="font-semibold text-gray-900">
                         {quote.quoteNumber}
                       </h3>
-                      <p className="text-sm text-gray-600">{quote.projectTitle}</p>
+                      <p className="text-sm text-gray-600">{quote.projectTitle || 'Proje başlığı yok'}</p>
                     </div>
                     
                     <Badge className={`${getStatusColor(quote.status)} border-0`}>
                       {getStatusLabel(quote.status)}
                     </Badge>
                     
-                    {isExpiringSoon(quote.validUntil) && (
+                    {isExpiringSoon(new Date(quote.validUntil)) && (
                       <Badge variant="destructive" className="text-xs">
                         Yakında Sona Eriyor
                       </Badge>
                     )}
                     
-                    {isExpired(quote.validUntil) && (
+                    {isExpired(new Date(quote.validUntil)) && (
                       <Badge variant="secondary" className="text-xs bg-gray-500 text-white">
                         Süresi Doldu
                       </Badge>
@@ -232,9 +269,9 @@ export function QuoteList({
                     <div className="flex items-center space-x-2">
                       <Calendar className="w-4 h-4 text-gray-400" />
                       <div>
-                        <div className="font-medium">{formatDate(quote.createdAt)}</div>
+                        <div className="font-medium">{formatDate(new Date(quote.createdAt))}</div>
                         <div className="text-gray-600">
-                          Geçerli: {formatDate(quote.validUntil)}
+                          Geçerli: {formatDate(new Date(quote.validUntil))}
                         </div>
                       </div>
                     </div>
@@ -303,7 +340,7 @@ export function QuoteList({
                             <span>Görüntülendi</span>
                           </div>
                           <div className="font-medium">
-                            {formatDate(new Date(getDeliveryInfo(quote)!.viewedAt))}
+                            {getDeliveryInfo(quote)!.viewedAt && formatDate(new Date(getDeliveryInfo(quote)!.viewedAt!))}
                           </div>
                         </div>
                       )}
@@ -329,7 +366,7 @@ export function QuoteList({
                             )}
                           </div>
                           <div className="font-medium">
-                            {formatDate(new Date(getDeliveryInfo(quote)!.respondedAt))}
+                            {getDeliveryInfo(quote)!.respondedAt && formatDate(new Date(getDeliveryInfo(quote)!.respondedAt!))}
                           </div>
                         </div>
                       )}

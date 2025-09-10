@@ -29,7 +29,17 @@ import {
   Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle,
   X, File, Loader2, MapPin, RefreshCw, Info
 } from 'lucide-react'
-import { DataImportService, DataExportService, ImportResult } from '@/lib/data-import-export'
+import { DataImportService, DataExportService } from '@/lib/data-import-export'
+
+// Local type definition since ImportResult is not exported
+interface ImportResult {
+  success: boolean
+  errors?: Array<{ row: number; field: string; message: string }>
+  duplicates?: any[]
+  importedCount?: number
+  skippedCount?: number
+  errorCount?: number
+}
 import { ProductCategoryManager } from '@/lib/product-categories'
 
 interface BulkImportModalProps {
@@ -453,7 +463,7 @@ export function BulkImportModal({ isOpen, onClose, onImportComplete }: BulkImpor
                       <Card className="p-4">
                         <div className="text-center">
                           <div className="text-2xl font-bold text-green-600">
-                            {importResult.importedCount}
+                            {importResult.importedCount || 0}
                           </div>
                           <div className="text-sm text-muted-foreground">İçe Aktarılan</div>
                         </div>
@@ -461,7 +471,7 @@ export function BulkImportModal({ isOpen, onClose, onImportComplete }: BulkImpor
                       <Card className="p-4">
                         <div className="text-center">
                           <div className="text-2xl font-bold text-yellow-600">
-                            {importResult.skippedCount}
+                            {importResult.skippedCount || 0}
                           </div>
                           <div className="text-sm text-muted-foreground">Atlanılan</div>
                         </div>
@@ -469,7 +479,7 @@ export function BulkImportModal({ isOpen, onClose, onImportComplete }: BulkImpor
                       <Card className="p-4">
                         <div className="text-center">
                           <div className="text-2xl font-bold text-red-600">
-                            {importResult.errorCount}
+                            {importResult.errorCount || 0}
                           </div>
                           <div className="text-sm text-muted-foreground">Hatalı</div>
                         </div>
@@ -477,11 +487,11 @@ export function BulkImportModal({ isOpen, onClose, onImportComplete }: BulkImpor
                     </div>
 
                     {/* Errors */}
-                    {importResult.errors.length > 0 && (
+                    {importResult.errors && importResult.errors.length > 0 && (
                       <div>
                         <h4 className="font-medium mb-2 text-red-600">Hatalar:</h4>
                         <div className="space-y-1 max-h-40 overflow-y-auto">
-                          {importResult.errors.map((error, index) => (
+                          {importResult.errors?.map((error: { row: number; field: string; message: string }, index: number) => (
                             <div key={index} className="text-sm p-2 bg-red-50 rounded border">
                               <strong>Satır {error.row}:</strong> {error.field} - {error.message}
                             </div>
@@ -491,11 +501,11 @@ export function BulkImportModal({ isOpen, onClose, onImportComplete }: BulkImpor
                     )}
 
                     {/* Duplicates */}
-                    {importResult.duplicates.length > 0 && (
+                    {importResult.duplicates && importResult.duplicates.length > 0 && (
                       <div>
                         <h4 className="font-medium mb-2 text-yellow-600">Dublikasyonlar:</h4>
                         <div className="space-y-1 max-h-40 overflow-y-auto">
-                          {importResult.duplicates.map((dup, index) => (
+                          {importResult.duplicates?.map((dup: any, index: number) => (
                             <div key={index} className="text-sm p-2 bg-yellow-50 rounded border">
                               <strong>Satır {dup.row}:</strong> {dup.identifier} - {dup.message}
                             </div>

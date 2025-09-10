@@ -202,7 +202,7 @@ export default async function PhotoUploadPage({ params }: PhotoUploadPageProps) 
             <PhotoUploadForm
               token={token}
               photoRequestId={photoRequest.id}
-              customerName={customerName}
+              customerName={customerName || 'Müşteri'}
               maxPhotos={20}
               maxFileSize={10 * 1024 * 1024} // 10MB
               existingPhotos={photoRequest.photos}

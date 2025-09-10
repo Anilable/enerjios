@@ -19,7 +19,8 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+// Sheet component not available - using simple overlay instead
+// import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
 import { useTouch } from '@/hooks/useTouch'
 import { cn } from '@/lib/utils'
@@ -139,21 +140,29 @@ export default function MobileNavigation({ className }: MobileNavigationProps) {
           })}
           
           {/* Menu Button */}
-          <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                className="flex flex-col items-center justify-center space-y-1 text-xs h-full rounded-none"
-              >
-                <Menu className="h-5 w-5" />
-                <span>Menü</span>
-              </Button>
-            </SheetTrigger>
+          <div className="relative">
+            <Button
+              variant="ghost"
+              className="flex flex-col items-center justify-center space-y-1 text-xs h-full rounded-none"
+              onClick={() => setIsOpen(!isOpen)}
+            >
+              <Menu className="h-5 w-5" />
+              <span>Menü</span>
+            </Button>
             
-            <SheetContent side="right" className="w-80 p-0">
-              <MobileMenu onClose={() => setIsOpen(false)} />
-            </SheetContent>
-          </Sheet>
+            {/* Simple overlay menu */}
+            {isOpen && (
+              <>
+                <div 
+                  className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                  onClick={() => setIsOpen(false)}
+                />
+                <div className="fixed right-0 top-0 h-full w-80 bg-white z-50 p-0">
+                  <MobileMenu onClose={() => setIsOpen(false)} />
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </nav>
 

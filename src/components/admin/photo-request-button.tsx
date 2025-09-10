@@ -26,7 +26,7 @@ interface PhotoRequestButtonProps {
   projectId?: string
   projectName?: string
   variant?: 'default' | 'outline' | 'ghost'
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'default' | 'sm' | 'lg' | 'icon'
   trigger?: React.ReactNode
 }
 
@@ -131,8 +131,7 @@ Fotoğraflar güneş enerjisi sistem tasarımında çok kritik rol oynar. Net ve
       
       toast({
         title: 'Başarılı',
-        description: `Fotoğraf talebi oluşturuldu.\n${emailStatus}\nToken: ${result.token.substring(0, 12)}...`,
-        duration: result.emailSent ? 5000 : 8000
+        description: `Fotoğraf talebi oluşturuldu.\n${emailStatus}\nToken: ${result.token.substring(0, 12)}...`
       })
       
       console.log('📧 Email Status:', { 

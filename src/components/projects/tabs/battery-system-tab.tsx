@@ -17,7 +17,7 @@ import {
   Battery, Zap, TrendingUp, TrendingDown, Activity, AlertTriangle,
   CheckCircle, Settings, RefreshCw, Download, Thermometer,
   Power, Clock, Target, Gauge, BarChart3, Wifi, WifiOff,
-  Sun, Moon, Home, ArrowUp, ArrowDown, ArrowRight
+  Sun, Moon, Home, ArrowUp, ArrowDown, ArrowRight, ArrowLeft
 } from 'lucide-react'
 
 interface BatterySystemTabProps {
@@ -417,7 +417,7 @@ export function BatterySystemTab({ project }: BatterySystemTabProps) {
                     <Badge variant={
                       metric.status === 'excellent' ? 'default' :
                       metric.status === 'good' ? 'secondary' : 'destructive'
-                    } size="sm">
+                    }>
                       {metric.status === 'excellent' ? 'Mükemmel' :
                        metric.status === 'good' ? 'İyi' : 'Dikkat'}
                     </Badge>

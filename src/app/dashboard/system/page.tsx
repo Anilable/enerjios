@@ -213,8 +213,7 @@ export default async function SystemPage() {
                       {log.time}
                     </span>
                     <Badge 
-                      variant="secondary" 
-                      size="sm"
+                      variant="secondary"
                       className={
                         log.level === 'ERROR' ? 'bg-red-100 text-red-800' :
                         log.level === 'WARN' ? 'bg-orange-100 text-orange-800' :

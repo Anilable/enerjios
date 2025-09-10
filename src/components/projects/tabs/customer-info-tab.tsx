@@ -30,10 +30,10 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import {
-  User, Phone, Mail, MapPin, Building2, Calendar, FileText,
+  User, Users, Phone, Mail, MapPin, Building2, Calendar, FileText,
   Edit, Save, X, Plus, MessageSquare, Star, Clock, DollarSign,
   CreditCard, Receipt, Download, Upload, Eye, AlertCircle,
-  CheckCircle, History, Camera, QrCode, Printer, Send
+  CheckCircle, History, Camera, QrCode, Printer, Send, Calculator
 } from 'lucide-react'
 
 interface CustomerInfoTabProps {
@@ -819,10 +819,10 @@ export function CustomerInfoTab({ project }: CustomerInfoTabProps) {
                               </div>
                             </div>
                             <div className="flex items-center gap-2 mt-1 mb-2">
-                              <Badge variant="outline" size="sm">
+                              <Badge variant="outline">
                                 {typeConfig.label}
                               </Badge>
-                              <Badge variant="secondary" size="sm">
+                              <Badge variant="secondary">
                                 {comm.employee}
                               </Badge>
                             </div>

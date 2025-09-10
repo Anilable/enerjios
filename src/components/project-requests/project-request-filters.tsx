@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ProjectRequestFilters } from '@/types/project-request'
+import type { ProjectRequestFilters } from '@/types/project-request'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -134,7 +134,7 @@ export function ProjectRequestFilters({ onFilterChange }: ProjectRequestFiltersP
           <Label htmlFor="source">Kaynak</Label>
           <Select 
             value={filters.source || ''} 
-            onValueChange={(value) => updateFilter('source', value)}
+            onValueChange={(value) => updateFilter('source', value as any)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Kaynak seçin" />

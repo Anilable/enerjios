@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState, Suspense } from 'react'
 import { signIn, getSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -11,10 +11,21 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AlertCircle, Eye, EyeOff, Sun } from 'lucide-react'
 
-export function SignInForm() {
-  const router = useRouter()
+// Separate component for handling search params
+function SearchParamsHandler({ onCallbackUrl }: { onCallbackUrl: (url: string) => void }) {
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
+  
+  // Use useEffect to pass the callback URL to parent component
+  React.useEffect(() => {
+    onCallbackUrl(callbackUrl)
+  }, [callbackUrl, onCallbackUrl])
+  
+  return null
+}
+
+function SignInFormContent({ callbackUrl }: { callbackUrl: string }) {
+  const router = useRouter()
   const { sendEmail } = useEmail()
   
   const [email, setEmail] = useState('')
@@ -203,5 +214,19 @@ export function SignInForm() {
         </div>
       </CardFooter>
     </Card>
+  )
+}
+
+// Main export component with Suspense boundary
+export function SignInForm() {
+  const [callbackUrl, setCallbackUrl] = useState('/dashboard')
+
+  return (
+    <>
+      <Suspense fallback={<div>Loading...</div>}>
+        <SearchParamsHandler onCallbackUrl={setCallbackUrl} />
+      </Suspense>
+      <SignInFormContent callbackUrl={callbackUrl} />
+    </>
   )
 }

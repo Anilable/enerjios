@@ -164,9 +164,9 @@ export function PhotoRequestsTable() {
 
     return (
       <div className="flex gap-1 text-xs">
-        {approved > 0 && <Badge size="sm" className="bg-green-100 text-green-800">{approved} ✓</Badge>}
-        {rejected > 0 && <Badge size="sm" variant="destructive">{rejected} ✗</Badge>}
-        {pending > 0 && <Badge size="sm" variant="outline">{pending} ⏳</Badge>}
+        {approved > 0 && <Badge className="bg-green-100 text-green-800">{approved} ✓</Badge>}
+        {rejected > 0 && <Badge variant="destructive">{rejected} ✗</Badge>}
+        {pending > 0 && <Badge variant="outline">{pending} ⏳</Badge>}
       </div>
     )
   }

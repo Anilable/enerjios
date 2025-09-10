@@ -12,7 +12,7 @@ import {
   Smile, MoreVertical, Phone, Video, Minimize2, Maximize2,
   Bot, User, Clock, CheckCheck, Check
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+// Framer-motion replaced with regular transitions
 
 export interface ChatMessage {
   id: string
@@ -221,14 +221,8 @@ export function ChatWidget({
   return (
     <>
       {/* Chat Button */}
-      <AnimatePresence>
-        {!isOpen && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            exit={{ scale: 0 }}
-            className={`fixed ${positionClasses} z-50`}
-          >
+      {!isOpen && (
+        <div className={`fixed ${positionClasses} z-50`}>
             <Button
               onClick={() => setIsOpen(true)}
               className="rounded-full w-14 h-14 shadow-lg hover:shadow-xl transition-shadow"
@@ -244,17 +238,12 @@ export function ChatWidget({
                 1
               </span>
             </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
 
       {/* Chat Window */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
+      {isOpen && (
+        <div
             className={`fixed ${positionClasses} z-50`}
             style={{
               width: isMinimized ? '320px' : '380px',
@@ -441,9 +430,8 @@ export function ChatWidget({
                 </>
               )}
             </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
     </>
   )
 }

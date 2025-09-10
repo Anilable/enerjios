@@ -5,23 +5,23 @@ import { ComponentLoading, PageLoading } from '@/components/ui/loading'
 
 // Lazy load heavy components with loading states
 
-// 3D Designer - Heavy Three.js components
-export const LazyDesignerCanvas = dynamic(
-  () => import('@/components/designer/designer-canvas').then(mod => ({ default: mod.DesignerCanvas })),
-  {
-    loading: () => <PageLoading text="3D Designer yükleniyor..." />,
-    ssr: false // Disable SSR for Three.js components
-  }
-)
+// 3D Designer - Component not available
+// export const LazyDesignerCanvas = dynamic(
+//   () => import('@/components/designer/designer-canvas').then(mod => ({ default: mod.DesignerCanvas })),
+//   {
+//     loading: () => <PageLoading text="3D Designer yükleniyor..." />,
+//     ssr: false // Disable SSR for Three.js components
+//   }
+// )
 
-// Mapbox components - Heavy mapping library
-export const LazyMapboxMap = dynamic(
-  () => import('@/components/designer/mapbox-integration').then(mod => ({ default: mod.MapboxIntegration })),
-  {
-    loading: () => <ComponentLoading />,
-    ssr: false // Mapbox requires client-side rendering
-  }
-)
+// Mapbox components - Component not available
+// export const LazyMapboxMap = dynamic(
+//   () => import('@/components/designer/mapbox-integration').then(mod => ({ default: mod.MapboxIntegration })),
+//   {
+//     loading: () => <ComponentLoading />,
+//     ssr: false // Mapbox requires client-side rendering
+//   }
+// )
 
 // Chart components - Heavy recharts library
 export const LazyChartContainer = dynamic(
@@ -68,14 +68,14 @@ export const LazyLoanCalculator = dynamic(
   }
 )
 
-// PDF and document components
-export const LazyPDFViewer = dynamic(
-  () => import('@/components/ui/pdf-viewer').then(mod => ({ default: mod.PDFViewer })),
-  {
-    loading: () => <PageLoading text="PDF görüntüleyici yükleniyor..." />,
-    ssr: false
-  }
-)
+// PDF and document components - Component not available
+// export const LazyPDFViewer = dynamic(
+//   () => import('@/components/ui/pdf-viewer').then(mod => ({ default: mod.PDFViewer })),
+//   {
+//     loading: () => <PageLoading text="PDF görüntüleyici yükleniyor..." />,
+//     ssr: false
+//   }
+// )
 
 // Heavy form components
 export const LazyQuoteBuilder = dynamic(
@@ -85,21 +85,21 @@ export const LazyQuoteBuilder = dynamic(
   }
 )
 
-// Admin components (loaded only when needed)
-export const LazyUserManagement = dynamic(
-  () => import('@/components/admin/user-management').then(mod => ({ default: mod.UserManagement })),
-  {
-    loading: () => <PageLoading text="Kullanıcı yönetimi yükleniyor..." />
-  }
-)
+// Admin components - Component not available
+// export const LazyUserManagement = dynamic(
+//   () => import('@/components/admin/user-management').then(mod => ({ default: mod.UserManagement })),
+//   {
+//     loading: () => <PageLoading text="Kullanıcı yönetimi yükleniyor..." />
+//   }
+// )
 
-// Analytics and reporting
-export const LazyAnalyticsDashboard = dynamic(
-  () => import('@/components/analytics/dashboard').then(mod => ({ default: mod.AnalyticsDashboard })),
-  {
-    loading: () => <PageLoading text="Analitik panosu yükleniyor..." />
-  }
-)
+// Analytics and reporting - Component not available
+// export const LazyAnalyticsDashboard = dynamic(
+//   () => import('@/components/analytics/dashboard').then(mod => ({ default: mod.AnalyticsDashboard })),
+//   {
+//     loading: () => <PageLoading text="Analitik panosu yükleniyor..." />
+//   }
+// )
 
 // Export utility function for dynamic imports
 export function withLazyLoading<T>(
@@ -111,17 +111,17 @@ export function withLazyLoading<T>(
   }
 ) {
   return dynamic(importFn, {
-    loading: options?.loading || (() => <ComponentLoading />),
+    loading: options?.loading || (() => <ComponentLoading />) as any,
     ssr: options?.ssr ?? true
   })
 }
 
-// Preload functions for critical components
-export const preloadDesigner = () => {
-  const componentImport = import('@/components/designer/designer-canvas')
-  const mapboxImport = import('@/components/designer/mapbox-integration')
-  return Promise.all([componentImport, mapboxImport])
-}
+// Preload functions for critical components - Components not available
+// export const preloadDesigner = () => {
+//   const componentImport = import('@/components/designer/designer-canvas')
+//   const mapboxImport = import('@/components/designer/mapbox-integration')
+//   return Promise.all([componentImport, mapboxImport])
+// }
 
 export const preloadCharts = () => {
   return import('recharts')

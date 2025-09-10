@@ -52,8 +52,8 @@ function Roof3D({ roofPoints, showRoof }: { roofPoints: Array<{ x: number; y: nu
       {/* Roof Edges */}
       <Line
         points={[
-          ...points.map(p => [p.x, p.y + 0.01, p.z]),
-          [points[0].x, points[0].y + 0.01, points[0].z] // Close the loop
+          ...points.map(p => [p.x, p.y + 0.01, p.z] as [number, number, number]),
+          [points[0].x, points[0].y + 0.01, points[0].z] as [number, number, number] // Close the loop
         ]}
         color="#654321"
         lineWidth={3}
@@ -162,7 +162,7 @@ function ShadowAnalysis({ showShadows, sunAngle = 45 }: { showShadows: boolean, 
   return (
     <group>
       {shadowPositions.map((pos, index) => (
-        <mesh key={index} position={pos} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh key={index} position={pos as [number, number, number]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[1, shadowLength]} />
           <meshBasicMaterial 
             color="#000000" 
@@ -207,7 +207,6 @@ function CameraControls() {
 
   return (
     <OrbitControls
-      args={[camera, gl.domElement]}
       enablePan={true}
       enableZoom={true}
       enableRotate={true}
