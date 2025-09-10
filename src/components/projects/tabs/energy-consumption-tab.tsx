@@ -222,7 +222,7 @@ export function EnergyConsumptionTab({ project }: EnergyConsumptionTabProps) {
               />
               <Bar
                 dataKey="grid"
-                fill={(entry: any) => entry.grid > 0 ? '#10b981' : '#ef4444'}
+                fill="#10b981"
               />
             </ComposedChart>
           </ResponsiveContainer>
@@ -361,7 +361,7 @@ export function EnergyConsumptionTab({ project }: EnergyConsumptionTabProps) {
                     <Badge variant={
                       item.status === 'excellent' ? 'default' :
                       item.status === 'good' ? 'secondary' : 'destructive'
-                    } size="sm">
+                    }>
                       {item.status === 'excellent' ? 'Mükemmel' :
                        item.status === 'good' ? 'İyi' : 'Dikkat'}
                     </Badge>

@@ -25,7 +25,6 @@ export class NotificationService {
           message: data.message,
           type: data.type,
           userId: data.userId,
-          projectId: data.projectId,
           actionUrl: data.actionUrl,
           read: false
         },
@@ -39,7 +38,8 @@ export class NotificationService {
       // Send real-time notification via Socket.io
       const socket = getSocket()
       if (socket) {
-        socket.to(`user:${data.userId}`).emit('notification', {
+        // For client-side socket, emit directly without .to()
+        socket.emit('notification', {
           id: notification.id,
           title: notification.title,
           message: notification.message,

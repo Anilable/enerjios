@@ -4,6 +4,15 @@ import Papa from 'papaparse'
 export type ExportFormat = 'csv' | 'xlsx' | 'json'
 export type DataType = 'customers' | 'projects' | 'quotes' | 'companies' | 'products' | 'analytics'
 
+interface ValidationRule {
+  required?: boolean
+  type?: 'email' | 'number' | 'date' | 'string'
+  minLength?: number
+  maxLength?: number
+}
+
+type ValidationRules = Record<string, ValidationRule>
+
 interface ExportOptions {
   format: ExportFormat
   filename?: string
@@ -105,7 +114,7 @@ export class DataExportService {
     })
   }
 
-  private static selectColumns<T>(data: T[], columns: string[]): Partial<T>[] {
+  private static selectColumns<T>(data: T[], columns: string[]): T[] {
     return data.map(item => {
       const filteredItem: any = {}
       columns.forEach(column => {
@@ -113,7 +122,7 @@ export class DataExportService {
           filteredItem[column] = (item as any)[column]
         }
       })
-      return filteredItem
+      return filteredItem as T
     })
   }
 
@@ -403,11 +412,11 @@ export class DataImportService {
     return { errors, validData }
   }
 
-  private static getValidationRules(dataType: DataType, customRules?: Record<string, any>) {
-    const baseRules = {
+  private static getValidationRules(dataType: DataType, customRules?: Record<string, any>): ValidationRules {
+    const baseRules: Record<DataType, ValidationRules> = {
       customers: {
         name: { required: true, minLength: 2, maxLength: 100 },
-        email: { required: true, type: 'email' },
+        email: { required: true, type: 'email' as const },
         phone: { required: false, minLength: 10, maxLength: 15 },
         type: { required: true }
       },
@@ -415,26 +424,26 @@ export class DataImportService {
         name: { required: true, minLength: 2, maxLength: 200 },
         customerName: { required: true },
         type: { required: true },
-        capacity: { required: true, type: 'number' },
+        capacity: { required: true, type: 'number' as const },
         location: { required: true }
       },
       quotes: {
         customerName: { required: true },
         projectType: { required: true },
-        systemSize: { required: true, type: 'number' },
-        totalPrice: { required: true, type: 'number' }
+        systemSize: { required: true, type: 'number' as const },
+        totalPrice: { required: true, type: 'number' as const }
       },
       companies: {
         name: { required: true, minLength: 2, maxLength: 200 },
-        email: { required: true, type: 'email' },
+        email: { required: true, type: 'email' as const },
         phone: { required: true },
         serviceType: { required: true }
       },
       products: {
         name: { required: true },
         category: { required: true },
-        price: { required: true, type: 'number' },
-        power: { required: false, type: 'number' }
+        price: { required: true, type: 'number' as const },
+        power: { required: false, type: 'number' as const }
       },
       analytics: {}
     }

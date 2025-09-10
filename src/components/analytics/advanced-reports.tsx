@@ -9,7 +9,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { DateRange } from 'react-day-picker'
+// Local DateRange type since react-day-picker is not available
+type DateRange = {
+  from?: Date
+  to?: Date
+}
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, ScatterChart, Scatter, ReferenceLine,

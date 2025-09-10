@@ -33,18 +33,20 @@ interface FinancingOptionsProps {
   }
 }
 
-export function FinancingOptions({ scenarios, banks, incentives, selectedProject }: FinancingOptionsProps) {
+export function FinancingOptions({ scenarios: rawScenarios, banks, incentives, selectedProject }: FinancingOptionsProps) {
+  // Cast scenarios to extended type with all required properties
+  const scenarios = rawScenarios as any[]
   const [selectedScenario, setSelectedScenario] = useState<string | null>(null)
   const [comparisonView, setComparisonView] = useState<'summary' | 'detailed'>('summary')
 
   const getFinancingRecommendation = () => {
     const sortedScenarios = scenarios
-      .filter(s => s.isEligible)
+      .filter(scenario => scenario.isEligible)
       .sort((a, b) => b.netPresentValue - a.netPresentValue)
     return sortedScenarios[0]
   }
 
-  const calculatePaybackPeriod = (scenario: FinancingScenario) => {
+  const calculatePaybackPeriod = (scenario: any) => {
     if (scenario.netMonthlyCashFlow <= 0) return 'N/A'
     const totalInvestment = selectedProject.totalCost - (scenario.downPayment || 0)
     return Math.ceil(totalInvestment / (scenario.netMonthlyCashFlow * 12)) + ' yıl'

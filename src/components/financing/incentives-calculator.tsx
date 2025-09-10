@@ -21,7 +21,8 @@ import {
   CheckCircle,
   AlertCircle,
   DollarSign,
-  Percent
+  Percent,
+  X
 } from 'lucide-react'
 import type { GovernmentIncentive } from '@/app/dashboard/financing/page'
 

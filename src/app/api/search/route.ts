@@ -43,12 +43,11 @@ export async function GET(request: NextRequest) {
 
     // Search based on type or search all if no type specified
     if (!type || type === 'projects') {
-      results.projects = await prisma.project.findMany({
+      results.projects = await (prisma.project.findMany({
         where: {
           OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { description: { contains: query, mode: 'insensitive' } },
-            { address: { contains: query, mode: 'insensitive' } }
+            { name: { contains: query } as any },
+            { description: { contains: query } as any }
           ]
         },
         select: {
@@ -56,8 +55,8 @@ export async function GET(request: NextRequest) {
           name: true,
           description: true,
           status: true,
-          totalAmount: true,
-          systemSize: true,
+          actualCost: true,
+          capacity: true,
           createdAt: true,
           customer: {
             select: {
@@ -73,28 +72,24 @@ export async function GET(request: NextRequest) {
         },
         take: limit,
         orderBy: { createdAt: 'desc' }
-      })
+      }) as any)
     }
 
     if (!type || type === 'customers') {
-      results.customers = await prisma.customer.findMany({
+      results.customers = await (prisma.customer.findMany({
         where: {
           OR: [
-            { firstName: { contains: query, mode: 'insensitive' } },
-            { lastName: { contains: query, mode: 'insensitive' } },
-            { email: { contains: query, mode: 'insensitive' } },
-            { phone: { contains: query, mode: 'insensitive' } },
-            { company: { contains: query, mode: 'insensitive' } }
+            { firstName: { contains: query } as any },
+            { lastName: { contains: query } as any },
+            { phone: { contains: query } as any }
           ]
         },
         select: {
           id: true,
           firstName: true,
           lastName: true,
-          email: true,
           phone: true,
-          company: true,
-          customerType: true,
+          type: true,
           createdAt: true,
           projects: {
             select: { id: true, status: true },
@@ -103,28 +98,26 @@ export async function GET(request: NextRequest) {
         },
         take: limit,
         orderBy: { createdAt: 'desc' }
-      })
+      }) as any)
     }
 
     if (!type || type === 'companies') {
       // Only admins can search companies
       if (session.user.role === 'ADMIN') {
-        results.companies = await prisma.company.findMany({
+        results.companies = await (prisma.company.findMany({
           where: {
             OR: [
-              { name: { contains: query, mode: 'insensitive' } },
-              { email: { contains: query, mode: 'insensitive' } },
-              { phone: { contains: query, mode: 'insensitive' } },
-              { website: { contains: query, mode: 'insensitive' } }
+              { name: { contains: query } as any },
+              { phone: { contains: query } as any },
+              { website: { contains: query } as any }
             ]
           },
           select: {
             id: true,
             name: true,
-            email: true,
             phone: true,
             website: true,
-            isActive: true,
+            verified: true,
             createdAt: true,
             projects: {
               select: { id: true, status: true },
@@ -133,50 +126,48 @@ export async function GET(request: NextRequest) {
           },
           take: limit,
           orderBy: { createdAt: 'desc' }
-        })
+        }) as any)
       }
     }
 
     if (!type || type === 'products') {
-      results.products = await prisma.product.findMany({
+      results.products = await (prisma.product.findMany({
         where: {
           OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { description: { contains: query, mode: 'insensitive' } },
-            { manufacturer: { contains: query, mode: 'insensitive' } },
-            { model: { contains: query, mode: 'insensitive' } }
+            { name: { contains: query } as any },
+            { description: { contains: query } as any },
+            { brand: { contains: query } as any },
+            { model: { contains: query } as any }
           ]
         },
         select: {
           id: true,
           name: true,
           description: true,
-          manufacturer: true,
+          brand: true,
           model: true,
-          category: true,
+          type: true,
           price: true,
-          isActive: true,
           specifications: true
         },
         take: limit,
         orderBy: { name: 'asc' }
-      })
+      }) as any)
     }
 
     if (!type || type === 'quotes') {
-      results.quotes = await prisma.quote.findMany({
+      results.quotes = await (prisma.quote.findMany({
         where: {
           OR: [
-            { title: { contains: query, mode: 'insensitive' } },
-            { description: { contains: query, mode: 'insensitive' } }
+            { notes: { contains: query } as any }
           ]
         },
         select: {
           id: true,
-          title: true,
-          description: true,
+          quoteNumber: true,
+          notes: true,
           status: true,
-          totalAmount: true,
+          total: true,
           validUntil: true,
           createdAt: true,
           customer: {
@@ -188,13 +179,13 @@ export async function GET(request: NextRequest) {
           project: {
             select: {
               name: true,
-              systemSize: true
+              capacity: true
             }
           }
         },
         take: limit,
         orderBy: { createdAt: 'desc' }
-      })
+      }) as any)
     }
 
     // Calculate total results count
@@ -249,23 +240,22 @@ export async function POST(request: NextRequest) {
     // Apply filters based on entity type
     if (filters?.entityType === 'projects') {
       whereConditions.OR = [
-        { name: { contains: query, mode: 'insensitive' } },
-        { description: { contains: query, mode: 'insensitive' } },
-        { address: { contains: query, mode: 'insensitive' } }
+        { name: { contains: query } as any },
+        { description: { contains: query } as any }
       ]
 
       if (filters.status) {
         whereConditions.status = filters.status
       }
       if (filters.projectType) {
-        whereConditions.projectType = filters.projectType
+        whereConditions.type = filters.projectType
       }
       if (filters.minAmount) {
-        whereConditions.totalAmount = { gte: filters.minAmount }
+        whereConditions.actualCost = { gte: filters.minAmount }
       }
       if (filters.maxAmount) {
-        whereConditions.totalAmount = { 
-          ...whereConditions.totalAmount,
+        whereConditions.actualCost = { 
+          ...whereConditions.actualCost,
           lte: filters.maxAmount 
         }
       }
@@ -288,23 +278,21 @@ export async function POST(request: NextRequest) {
     }
 
     const [items, total] = await Promise.all([
-      prisma.project.findMany({
+      (prisma.project.findMany({
         where: whereConditions,
         select: {
           id: true,
           name: true,
           description: true,
           status: true,
-          projectType: true,
-          totalAmount: true,
-          systemSize: true,
-          address: true,
+          type: true,
+          actualCost: true,
+          capacity: true,
           createdAt: true,
           customer: {
             select: {
               firstName: true,
-              lastName: true,
-              email: true
+              lastName: true
             }
           },
           company: {
@@ -316,8 +304,8 @@ export async function POST(request: NextRequest) {
         skip,
         take: limit,
         orderBy
-      }),
-      prisma.project.count({ where: whereConditions })
+      }) as any),
+      (prisma.project.count({ where: whereConditions }) as any)
     ])
 
     return NextResponse.json({

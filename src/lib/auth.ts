@@ -12,7 +12,6 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/auth/signin",
-    signUp: "/auth/signup",
   },
   providers: [
     // Google OAuth - Only enabled if credentials are provided

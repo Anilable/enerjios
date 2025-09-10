@@ -366,19 +366,19 @@ export function PhotoRequestDetail({ photoRequest, currentUser }: PhotoRequestDe
                       </div>
                       <div>
                         {photo.approved === true && (
-                          <Badge size="sm" className="bg-green-100 text-green-800">
+                          <Badge className="bg-green-100 text-green-800">
                             <Check className="w-3 h-3 mr-1" />
                             Onaylı
                           </Badge>
                         )}
                         {photo.approved === false && (
-                          <Badge size="sm" variant="destructive">
+                          <Badge variant="destructive">
                             <X className="w-3 h-3 mr-1" />
                             Red
                           </Badge>
                         )}
                         {photo.approved === null && (
-                          <Badge size="sm" variant="outline">
+                          <Badge variant="outline">
                             <Clock className="w-3 h-3 mr-1" />
                             Bekliyor
                           </Badge>

@@ -93,7 +93,7 @@ export function DashboardLayout({
 
       crumbs.push({
         label: label.charAt(0).toUpperCase() + label.slice(1),
-        href: index === pathSegments.length - 1 ? undefined : currentPath
+        href: index === pathSegments.length - 1 ? '' : currentPath
       })
     })
 

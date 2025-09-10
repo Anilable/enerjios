@@ -92,7 +92,7 @@ export async function createSolarPayment(paymentData: SolarPaymentRequest): Prom
       shippingAddress: paymentData.address,
       billingAddress: paymentData.address,
       basketItems: paymentData.basketItems
-    }, (err, result) => {
+    }, (err: any, result: any) => {
       if (err) {
         reject(err)
       } else {
@@ -121,7 +121,7 @@ export async function create3DPayment(paymentData: SolarPaymentRequest): Promise
       shippingAddress: paymentData.address,
       billingAddress: paymentData.address,
       basketItems: paymentData.basketItems
-    }, (err, result) => {
+    }, (err: any, result: any) => {
       if (err) {
         reject(err)
       } else {
@@ -134,7 +134,7 @@ export async function create3DPayment(paymentData: SolarPaymentRequest): Promise
 // Complete 3D Secure payment
 export async function complete3DPayment(request: any): Promise<any> {
   return new Promise((resolve, reject) => {
-    iyzipay.threedsPayment.create(request, (err, result) => {
+    iyzipay.threedsPayment.create(request, (err: any, result: any) => {
       if (err) {
         reject(err)
       } else {
@@ -152,7 +152,7 @@ export async function getInstallmentInfo(binNumber: string, price: string): Prom
       conversationId: `installment-${Date.now()}`,
       binNumber,
       price
-    }, (err, result) => {
+    }, (err: any, result: any) => {
       if (err) {
         reject(err)
       } else {
@@ -184,7 +184,7 @@ export async function refundPayment(paymentId: string, price: string, reason: st
       price,
       ip: '127.0.0.1', // This should be the admin's IP
       reason
-    }, (err, result) => {
+    }, (err: any, result: any) => {
       if (err) {
         reject(err)
       } else {
@@ -203,7 +203,7 @@ export async function cancelPayment(paymentId: string, reason: string): Promise<
       paymentId,
       ip: '127.0.0.1',
       reason
-    }, (err, result) => {
+    }, (err: any, result: any) => {
       if (err) {
         reject(err)
       } else {

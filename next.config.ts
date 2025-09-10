@@ -66,7 +66,7 @@ const nextConfig: NextConfig = {
       '@radix-ui/react-dropdown-menu'
     ],
     scrollRestoration: true,
-    optimizeCss: true,
+    optimizeCss: false,
     webVitalsAttribution: ['CLS', 'LCP'],
   },
 

@@ -78,10 +78,10 @@ interface ProjectOverview {
 
 const PROJECT_STATUS_CONFIG = {
   DESIGN: { label: 'Tasarım', color: 'bg-blue-500', variant: 'default' as const },
-  QUOTE_SENT: { label: 'Teklif Gönderildi', color: 'bg-yellow-500', variant: 'warning' as const },
-  APPROVED: { label: 'Onaylandı', color: 'bg-green-500', variant: 'success' as const },
+  QUOTE_SENT: { label: 'Teklif Gönderildi', color: 'bg-yellow-500', variant: 'outline' as const },
+  APPROVED: { label: 'Onaylandı', color: 'bg-green-500', variant: 'secondary' as const },
   IN_PROGRESS: { label: 'Kurulum Devam Ediyor', color: 'bg-purple-500', variant: 'default' as const },
-  COMPLETED: { label: 'Tamamlandı', color: 'bg-green-600', variant: 'success' as const },
+  COMPLETED: { label: 'Tamamlandı', color: 'bg-green-600', variant: 'secondary' as const },
   CANCELLED: { label: 'İptal Edildi', color: 'bg-red-500', variant: 'destructive' as const }
 }
 

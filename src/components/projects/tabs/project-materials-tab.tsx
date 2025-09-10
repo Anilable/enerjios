@@ -190,7 +190,7 @@ const materialStatusConfig = {
   ordered: { label: 'Sipariş Verildi', color: 'bg-blue-500', variant: 'default' as const },
   delivered: { label: 'Teslim Alındı', color: 'bg-green-500', variant: 'secondary' as const },
   installed: { label: 'Kuruldu', color: 'bg-green-600', variant: 'default' as const },
-  pending: { label: 'Beklemede', color: 'bg-yellow-500', variant: 'warning' as const },
+  pending: { label: 'Beklemede', color: 'bg-yellow-500', variant: 'outline' as const },
   cancelled: { label: 'İptal Edildi', color: 'bg-red-500', variant: 'destructive' as const }
 }
 

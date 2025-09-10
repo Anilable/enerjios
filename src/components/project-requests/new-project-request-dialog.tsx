@@ -44,6 +44,7 @@ export function NewProjectRequestDialog({ isOpen, onClose, onSubmit }: NewProjec
 
     const newRequest: ProjectRequest = {
       id: Date.now().toString(),
+      requestNumber: `REQ-${Date.now().toString().slice(-8)}`,
       customerName: formData.customerName,
       customerEmail: formData.customerEmail,
       customerPhone: formData.customerPhone,

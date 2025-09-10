@@ -13,6 +13,7 @@ import {
   Home,
   Droplets,
   Beef,
+  Warehouse,
   Sprout,
   Sun,
   Zap,
@@ -95,7 +96,7 @@ export function SpecializedCalculators({ project, cropDatabase }: SpecializedCal
   const [irrigationConfig, setIrrigationConfig] = useState<IrrigationConfig>({
     irrigatedArea: project.availableArea,
     cropType: project.primaryCrop,
-    irrigationType: project.irrigationType,
+    irrigationType: project.irrigationType === 'NONE' ? 'DRIP' : project.irrigationType,
     pumpPower: 5,
     pumpingHours: 6,
     waterSource: 'WELL',
@@ -467,7 +468,7 @@ export function SpecializedCalculators({ project, cropDatabase }: SpecializedCal
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Cow className="w-5 h-5 mr-2" />
+                <Warehouse className="w-5 h-5 mr-2" />
                 Ahır Çatısı Solar Sistem Hesaplayıcı
               </CardTitle>
             </CardHeader>

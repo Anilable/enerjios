@@ -44,7 +44,7 @@ export function PWAInitializer() {
 
           // Set up periodic background sync if supported
           if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
-            registration.sync.register('background-sync').catch(console.error)
+            (registration as any).sync?.register('background-sync').catch(console.error)
           }
         })
         .catch((error) => {

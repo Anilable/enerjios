@@ -515,13 +515,13 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
         {/* Specifications Tab */}
         <TabsContent value="specifications" className="space-y-6">
           {selectedCategory ? (
-            Object.entries(groupedSpecs).map(([group, specs]) => (
+            Object.entries(groupedSpecs || {}).map(([group, specs]) => (
               <Card key={group}>
                 <CardHeader>
                   <CardTitle className="text-lg">{group}</CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-4">
-                  {specs.map(spec => (
+                  {(specs as ProductSpecification[]).map((spec: ProductSpecification) => (
                     <div key={spec.id}>
                       <Label htmlFor={`spec-${spec.id}`}>
                         {spec.name} 

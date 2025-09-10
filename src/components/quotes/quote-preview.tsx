@@ -21,7 +21,71 @@ import {
   FileText,
   Sun
 } from 'lucide-react'
-import type { QuoteData } from '@/app/dashboard/quotes/page'
+// Define QuoteData interface locally since it's used in multiple components
+interface QuoteData {
+  id: string
+  quoteNumber: string
+  projectRequestId?: string
+  customerName: string
+  customerEmail: string
+  customerPhone?: string
+  customerId?: string
+  projectType?: string
+  projectTitle?: string
+  systemSize?: number
+  panelCount?: number
+  capacity?: number
+  subtotal: number
+  tax: number
+  discount: number
+  total: number
+  laborCost?: number
+  margin?: number
+  status: 'DRAFT' | 'SENT' | 'VIEWED' | 'APPROVED' | 'REJECTED' | 'EXPIRED'
+  createdAt: string | Date
+  validUntil: string | Date
+  version?: number
+  items?: QuoteItem[]
+  profitAmount?: number
+  financialAnalysis?: {
+    annualProduction: number
+    annualSavings: number
+    npv25: number
+    paybackPeriod: number
+    irr: number
+  }
+  updatedAt?: any
+  sentAt?: string
+  deliveryChannel?: string
+  deliveryEmail?: string
+  deliveryPhone?: string
+  viewedAt?: string
+  respondedAt?: string
+  approvedAt?: string
+  rejectedAt?: string
+  deliveryToken?: string
+  designData?: {
+    location: string
+    roofArea: number
+    tiltAngle: number
+    azimuth: number
+    irradiance: number
+  }
+}
+
+interface QuoteItem {
+  id: string
+  name: string
+  type: string
+  brand?: string
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+  specifications?: {
+    power?: number
+    efficiency?: number
+  }
+}
 
 interface QuotePreviewProps {
   quote: QuoteData
@@ -33,12 +97,13 @@ interface QuotePreviewProps {
 export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreviewProps) {
   const [isPrinting, setIsPrinting] = useState(false)
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: string | Date) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date
     return new Intl.DateTimeFormat('tr-TR', {
       day: '2-digit',
       month: 'long',
       year: 'numeric'
-    }).format(date)
+    }).format(dateObj)
   }
 
   const getStatusColor = (status: QuoteData['status']) => {
@@ -46,7 +111,7 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
       case 'DRAFT': return 'bg-gray-100 text-gray-800'
       case 'SENT': return 'bg-blue-100 text-blue-800'
       case 'VIEWED': return 'bg-yellow-100 text-yellow-800'
-      case 'ACCEPTED': return 'bg-green-100 text-green-800'
+      case 'APPROVED': return 'bg-green-100 text-green-800'
       case 'REJECTED': return 'bg-red-100 text-red-800'
       case 'EXPIRED': return 'bg-gray-100 text-gray-500'
       default: return 'bg-gray-100 text-gray-800'
@@ -58,7 +123,7 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
       case 'DRAFT': return 'Taslak'
       case 'SENT': return 'Gönderildi'
       case 'VIEWED': return 'Görüntülendi'
-      case 'ACCEPTED': return 'Kabul Edildi'
+      case 'APPROVED': return 'Kabul Edildi'
       case 'REJECTED': return 'Reddedildi'
       case 'EXPIRED': return 'Süresi Doldu'
       default: return 'Bilinmiyor'
@@ -173,13 +238,13 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
               </div>
               <div className="bg-white rounded-lg p-4">
                 <div className="text-2xl font-bold text-green-600">
-                  {quote.financialAnalysis.annualProduction.toLocaleString()} kWh
+                  {quote.financialAnalysis?.annualProduction?.toLocaleString() || '0'} kWh
                 </div>
                 <div className="text-sm text-gray-600">Yıllık Üretim</div>
               </div>
               <div className="bg-white rounded-lg p-4">
                 <div className="text-2xl font-bold text-orange-600">
-                  {quote.financialAnalysis.paybackPeriod} Yıl
+                  {quote.financialAnalysis?.paybackPeriod || '0'} Yıl
                 </div>
                 <div className="text-sm text-gray-600">Geri Ödeme Süresi</div>
               </div>
@@ -218,14 +283,14 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {quote.items.map((item) => (
+                  {quote.items?.map((item: QuoteItem) => (
                     <tr key={item.id}>
                       <td className="px-4 py-3">
                         <div className="font-medium">{item.name}</div>
                         {item.specifications && (
                           <div className="text-xs text-gray-500">
-                            {item.type === 'PANEL' && `${item.specifications.power}W - %${item.specifications.efficiency} verimlilik`}
-                            {item.type === 'INVERTER' && `${item.specifications.power/1000}kW - %${item.specifications.efficiency} verimlilik`}
+                            {item.type === 'PANEL' && `${item.specifications?.power || 0}W - %${item.specifications?.efficiency || 0} verimlilik`}
+                            {item.type === 'INVERTER' && `${(item.specifications?.power || 0)/1000}kW - %${item.specifications?.efficiency || 0} verimlilik`}
                           </div>
                         )}
                       </td>
@@ -246,8 +311,8 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
                     </td>
                     <td className="px-4 py-3 text-center">-</td>
                     <td className="px-4 py-3 text-center">1</td>
-                    <td className="px-4 py-3 text-right">₺{quote.laborCost.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right font-medium">₺{quote.laborCost.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right">₺{quote.laborCost?.toLocaleString() || '0'}</td>
+                    <td className="px-4 py-3 text-right font-medium">₺{quote.laborCost?.toLocaleString() || '0'}</td>
                   </tr>
                 </tbody>
               </table>
@@ -263,7 +328,7 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
               </div>
               <div className="flex justify-between">
                 <span>İşçilik:</span>
-                <span>₺{quote.laborCost.toLocaleString()}</span>
+                <span>₺{quote.laborCost?.toLocaleString() || '0'}</span>
               </div>
               <div className="flex justify-between">
                 <span>KDV (%18):</span>
@@ -288,14 +353,14 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
               <div className="space-y-4">
                 <div className="bg-green-50 rounded-lg p-4">
                   <div className="text-2xl font-bold text-green-600">
-                    ₺{quote.financialAnalysis.annualSavings.toLocaleString()}
+                    ₺{quote.financialAnalysis?.annualSavings?.toLocaleString() || '0'}
                   </div>
                   <div className="text-sm text-green-800">Yıllık Elektrik Tasarrufu</div>
                 </div>
                 
                 <div className="bg-blue-50 rounded-lg p-4">
                   <div className="text-2xl font-bold text-blue-600">
-                    ₺{quote.financialAnalysis.npv25.toLocaleString()}
+                    ₺{quote.financialAnalysis?.npv25?.toLocaleString() || '0'}
                   </div>
                   <div className="text-sm text-blue-800">25 Yıllık Net Bugünkü Değer</div>
                 </div>
@@ -304,14 +369,14 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
               <div className="space-y-4">
                 <div className="bg-orange-50 rounded-lg p-4">
                   <div className="text-2xl font-bold text-orange-600">
-                    {quote.financialAnalysis.paybackPeriod} Yıl
+                    {quote.financialAnalysis?.paybackPeriod || '0'} Yıl
                   </div>
                   <div className="text-sm text-orange-800">Yatırım Geri Ödeme Süresi</div>
                 </div>
                 
                 <div className="bg-purple-50 rounded-lg p-4">
                   <div className="text-2xl font-bold text-purple-600">
-                    %{quote.financialAnalysis.irr}
+                    %{quote.financialAnalysis?.irr || '0'}
                   </div>
                   <div className="text-sm text-purple-800">İç Karlılık Oranı (IRR)</div>
                 </div>

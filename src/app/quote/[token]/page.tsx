@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -511,10 +511,10 @@ export default function PublicQuotePage() {
                                 alert('Lütfen teklifi onaylamak için dijital imzanızı atın.')
                                 return
                               }
-                              const signature = signaturePadRef.current?.getSignatureData()
+                              const signature = signaturePadRef.current?.getSignatureData() ?? null
                               handleResponse('APPROVE', signature)
                             } else {
-                              handleResponse('REJECT')
+                              handleResponse('REJECT', null)
                             }
                           }}
                           disabled={responding}
