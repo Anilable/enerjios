@@ -19,7 +19,7 @@ import { ProjectDetailSkeleton } from '@/components/projects/project-detail-skel
 import {
   ArrowLeft, Settings, Share2, Download, MoreHorizontal,
   MapPin, Calendar, User, Zap, DollarSign, Activity,
-  AlertTriangle, CheckCircle, Clock, Pause, FileText
+  AlertTriangle, CheckCircle, Clock, Pause, FileText, Printer
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -163,6 +163,61 @@ export default function ProjectDetailPage() {
   const { data: session } = useSession()
   const [project, setProject] = useState<ProjectDetail | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const handleDownloadProjectPDF = async () => {
+    try {
+      const response = await fetch(`/api/projects/${project?.id}/pdf`)
+      
+      if (!response.ok) {
+        // Fallback to text file if PDF generation fails
+        const pdfContent = `
+          PROJE RAPORU
+          ============
+          
+          Proje: ${project?.title}
+          Kod: ${project?.code}
+          Durum: ${PROJECT_STATUS_CONFIG[project?.status || 'DESIGN'].label}
+          
+          Müşteri: ${project?.customer.name}
+          Lokasyon: ${project?.location.address}
+          
+          Teknik Detaylar:
+          - Sistem Gücü: ${project?.technical.systemSize} kW
+          - Panel Sayısı: ${project?.technical.panelCount}
+          - Yıllık Üretim: ${project?.technical.annualProduction} kWh
+          - Çatı Alanı: ${project?.technical.roofArea} m²
+          
+          Finansal Özet:
+          - Tahmini Maliyet: ₺${project?.financial.estimatedCost?.toLocaleString('tr-TR')}
+          - Onaylı Bütçe: ₺${project?.financial.approvedBudget?.toLocaleString('tr-TR')}
+          - İlerleme: %${project?.progress}
+        `
+        
+        const blob = new Blob([pdfContent], { type: 'text/plain;charset=utf-8' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `proje-raporu-${project?.code}.txt`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        return
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `proje-${project?.code}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('PDF indirme hatası:', error)
+    }
+  }
   
   // Tab state management with URL sync
   const [activeTab, setActiveTab] = useState(() => {
@@ -341,9 +396,13 @@ export default function ProjectDetailPage() {
                   <Share2 className="h-4 w-4 mr-2" />
                   Paylaş
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownloadProjectPDF}>
                   <Download className="h-4 w-4 mr-2" />
-                  Rapor İndir
+                  PDF İndir
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.print()}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Yazdır
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>

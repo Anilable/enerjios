@@ -153,7 +153,7 @@ export function ProjectRequestDetails({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl w-[98vw] max-h-[98vh] overflow-y-auto p-8 gap-8">
+      <DialogContent className="modal-content max-w-6xl w-[95vw] max-h-[90vh] overflow-y-auto p-6 gap-6 custom-scrollbar">
         <DialogHeader>
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-3">
@@ -188,7 +188,7 @@ export function ProjectRequestDetails({
           </div>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="modal-grid grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
           {/* Left Column - Main Details */}
           <div className="lg:col-span-2 space-y-6">
             {/* Customer Information */}
