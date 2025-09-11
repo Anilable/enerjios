@@ -64,8 +64,7 @@ export function getUserFilter(options: MultiTenantOptions): TenantFilter {
         OR: [
           { ownerId: userId },
           { companyId: userId }, // Company user ID as company ID
-          // If projects are assigned to this company
-          { company: { userId: userId } }
+          // Projects assigned to this company would need proper relation mapping
         ]
       }
 
@@ -74,8 +73,7 @@ export function getUserFilter(options: MultiTenantOptions): TenantFilter {
       return {
         OR: [
           { ownerId: userId },
-          { customerId: userId },
-          { customer: { userId: userId } }
+          { customerId: userId }
         ]
       }
 
@@ -84,8 +82,7 @@ export function getUserFilter(options: MultiTenantOptions): TenantFilter {
       return {
         OR: [
           { ownerId: userId },
-          { customer: { userId: userId } },
-          { type: 'AGRICULTURAL' } // If they can see all agricultural projects
+          { customerId: userId }
         ]
       }
 

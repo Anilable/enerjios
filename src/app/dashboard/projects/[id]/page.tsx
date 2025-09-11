@@ -164,6 +164,35 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<ProjectDetail | null>(null)
   const [loading, setLoading] = useState(true)
   
+  const handleDownloadReport = async () => {
+    if (!project) return
+    
+    try {
+      const response = await fetch(`/api/projects/${project.id}/report`)
+      
+      if (!response.ok) {
+        throw new Error('Rapor oluşturulamadı')
+      }
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      
+      const a = document.createElement('a')
+      a.style.display = 'none'
+      a.href = url
+      a.download = `proje-raporu-${project.code}.pdf`
+      
+      document.body.appendChild(a)
+      a.click()
+      
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Report download error:', error)
+      alert('Rapor indirme işlemi başarısız oldu. Lütfen tekrar deneyin.')
+    }
+  }
+  
   // Tab state management with URL sync
   const [activeTab, setActiveTab] = useState(() => {
     return searchParams.get('tab') || 'overview'
@@ -341,7 +370,7 @@ export default function ProjectDetailPage() {
                   <Share2 className="h-4 w-4 mr-2" />
                   Paylaş
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownloadReport}>
                   <Download className="h-4 w-4 mr-2" />
                   Rapor İndir
                 </DropdownMenuItem>
