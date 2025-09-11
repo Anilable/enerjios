@@ -55,7 +55,7 @@ export function Header({ onSidebarToggle }: HeaderProps) {
               </Button>
             )}
 
-            <Link href="/" className="flex items-center space-x-2">
+            <Link href={session ? "/dashboard" : "/"} className="flex items-center space-x-2">
               <div className="hidden sm:block">
                 <EnerjiOSLogo className="h-12 w-auto" />
               </div>
