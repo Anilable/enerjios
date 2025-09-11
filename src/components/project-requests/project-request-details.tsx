@@ -153,44 +153,46 @@ export function ProjectRequestDetails({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="modal-content max-w-6xl w-[95vw] max-h-[90vh] overflow-y-auto p-6 gap-6 custom-scrollbar">
-        <DialogHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex items-center space-x-3">
-              <Avatar className="w-12 h-12">
+      <DialogContent className="modal-content max-w-6xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0 pb-4 border-b">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center space-x-3 min-w-0 flex-1">
+              <Avatar className="w-12 h-12 flex-shrink-0">
                 <AvatarFallback className="text-lg font-bold bg-primary/10 text-primary">
                   {getInitials(request.customerName)}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <DialogTitle className="text-xl">{request.customerName}</DialogTitle>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-xl font-semibold truncate">{request.customerName}</DialogTitle>
                 <DialogDescription className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  {request.location}
+                  <MapPin className="w-4 h-4 flex-shrink-0" />
+                  <span className="truncate">{request.location}</span>
                 </DialogDescription>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <Badge 
                 variant="outline" 
-                className={`${getStatusColor(request.status)} flex items-center gap-1`}
+                className={`${getStatusColor(request.status)} flex items-center gap-1 text-xs`}
               >
                 {PROJECT_REQUEST_STATUS_LABELS[request.status]}
               </Badge>
               <Badge 
                 variant="outline" 
-                className={`${getPriorityColor(request.priority)} flex items-center gap-1`}
+                className={`${getPriorityColor(request.priority)} flex items-center gap-1 text-xs`}
               >
                 {getPriorityIcon(request.priority)}
-                {getPriorityLabel(request.priority)}
+                <span className="hidden sm:inline">{getPriorityLabel(request.priority)}</span>
               </Badge>
             </div>
           </div>
         </DialogHeader>
-
-        <div className="modal-grid grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-          {/* Left Column - Main Details */}
-          <div className="lg:col-span-2 space-y-6">
+        
+        <div className="modal-grid flex-1 overflow-hidden">
+          <div className="h-full overflow-y-auto custom-scrollbar p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+              {/* Left Column - Main Details */}
+              <div className="lg:col-span-2 space-y-4">
             {/* Customer Information */}
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
               <h3 className="font-semibold flex items-center gap-2">
@@ -491,6 +493,8 @@ export function ProjectRequestDetails({
                   Fiyat Teklifi Oluştur
                 </Button>
               </div>
+            </div>
+          </div>
             </div>
           </div>
         </div>

@@ -123,11 +123,46 @@
 /* Modal responsive fixes */
 @media (max-width: 768px) {
   .modal-content {
-    @apply w-full max-w-none mx-4 max-h-[95vh];
+    @apply w-full max-w-none mx-2 max-h-[95vh];
   }
   
   .modal-grid {
     @apply grid-cols-1 gap-4;
+  }
+}
+
+/* Project card responsive improvements */
+@media (max-width: 640px) {
+  .project-card {
+    @apply hover:scale-100;
+  }
+  
+  .project-card-content {
+    @apply text-xs;
+  }
+  
+  /* Improve mobile spacing */
+  .project-card .space-y-3 > * + * {
+    @apply mt-2;
+  }
+  
+  .project-card .space-y-2 > * + * {
+    @apply mt-1.5;
+  }
+}
+
+/* Text overflow fixes for small screens */
+@media (max-width: 480px) {
+  .project-card h3 {
+    @apply text-sm leading-tight;
+  }
+  
+  .truncate {
+    @apply max-w-[100px];
+  }
+  
+  .modal-content {
+    @apply mx-1 max-h-[98vh];
   }
 }
 

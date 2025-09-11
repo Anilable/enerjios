@@ -189,20 +189,29 @@ export default function CreateQuotePage() {
             customerPhone: existingDraft.customerPhone || '',
             projectType: existingDraft.projectType,
             capacity: existingDraft.capacity,
-            items: existingDraft.items?.map((item: any) => ({
-              id: item.id,
-              category: item.category,
-              productId: item.productId,
-              name: item.name,
-              description: item.description || '',
-              pricingType: 'UNIT', // Default, could be stored in DB
-              unitPrice: item.unitPrice,
-              quantity: item.quantity,
-              discount: item.discount,
-              tax: item.tax,
-              subtotal: item.unitPrice * item.quantity,
-              total: item.total
-            })) || [],
+            items: existingDraft.items?.map((item: any) => {
+              let parsedDescription: any = {}
+              try {
+                parsedDescription = JSON.parse(item.description || '{}')
+              } catch {
+                parsedDescription = { name: item.description || '', category: 'OTHER' }
+              }
+              
+              return {
+                id: item.id,
+                category: parsedDescription.category || 'OTHER',
+                productId: item.productId,
+                name: parsedDescription.name || '',
+                description: parsedDescription.description || '',
+                pricingType: parsedDescription.pricingType || 'UNIT',
+                unitPrice: item.unitPrice,
+                quantity: item.quantity,
+                discount: parsedDescription.discount || 0,
+                tax: parsedDescription.tax || 0,
+                subtotal: item.unitPrice * item.quantity,
+                total: item.total
+              }
+            }) || [],
             subtotal: existingDraft.subtotal,
             discount: existingDraft.discount,
             tax: existingDraft.tax,

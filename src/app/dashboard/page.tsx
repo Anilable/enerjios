@@ -57,7 +57,7 @@ export default async function DashboardPage() {
               </Button>
             </Link>
             
-            <Link href="/dashboard/project-requests">
+            <Link href="/dashboard/projects">
               <Button 
                 variant="default" 
                 className="w-full h-24 flex-col gap-2 bg-gradient-to-br from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"

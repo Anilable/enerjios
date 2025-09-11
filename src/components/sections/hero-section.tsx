@@ -136,7 +136,7 @@ export function HeroSection() {
                 <span className="text-primary">Güneşin Gücü,</span>
                 <br />
                 <span className="bg-gradient-to-r from-primary to-yellow-600 bg-clip-text text-transparent">
-                  Trakya'nın Vizyonu
+                  Türkiye'nin Vizyonu
                 </span>
               </h1>
               
@@ -196,18 +196,26 @@ export function HeroSection() {
             {/* Social Proof */}
             <div className="pt-8 border-t border-gray-200">
               <p className="text-sm text-gray-500 mb-4">Güvenilir partnerleri:</p>
-              <div className="flex items-center justify-center lg:justify-start space-x-6 opacity-60">
+              <div className="flex items-center justify-center lg:justify-start flex-wrap gap-3 opacity-60">
                 <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg shadow-sm">
                   <Sun className="w-5 h-5 text-primary" />
-                  <span className="font-semibold text-gray-700">Jinko Solar</span>
+                  <span className="font-semibold text-gray-700">Havensis</span>
                 </div>
                 <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg shadow-sm">
                   <Zap className="w-5 h-5 text-blue-600" />
-                  <span className="font-semibold text-gray-700">Huawei</span>
+                  <span className="font-semibold text-gray-700">Hagel</span>
                 </div>
                 <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg shadow-sm">
                   <Shield className="w-5 h-5 text-red-600" />
-                  <span className="font-semibold text-gray-700">SMA</span>
+                  <span className="font-semibold text-gray-700">DMRTech</span>
+                </div>
+                <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg shadow-sm">
+                  <Sun className="w-5 h-5 text-green-600" />
+                  <span className="font-semibold text-gray-700">Tommatech</span>
+                </div>
+                <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg shadow-sm">
+                  <Zap className="w-5 h-5 text-purple-600" />
+                  <span className="font-semibold text-gray-700">CW Enerji</span>
                 </div>
               </div>
             </div>

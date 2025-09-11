@@ -7,6 +7,8 @@ import {
   Building, 
   Tractor, 
   Store,
+  Truck,
+  Package,
   ArrowRight,
   Calculator,
   TrendingUp,
@@ -58,6 +60,26 @@ export function FeaturesSection() {
       iconColor: 'text-orange-600',
       href: '/ticari-ges',
       badge: 'KOBİ'
+    },
+    {
+      icon: Truck,
+      title: 'Karavan GES',
+      description: 'Mobil yaşam için taşınabilir güneş enerjisi çözümleri',
+      benefits: ['100W - 2kW', 'Akü entegreli', 'Plug & play'],
+      bgColor: 'bg-purple-50',
+      iconColor: 'text-purple-600',
+      href: '/karavan-ges',
+      badge: 'Mobil'
+    },
+    {
+      icon: Package,
+      title: 'Toptan Güneş Paneli',
+      description: 'Distribütörler ve kurulum firmaları için toptan satış',
+      benefits: ['Toptan fiyat', 'Stok garantisi', 'Teknik destek'],
+      bgColor: 'bg-indigo-50',
+      iconColor: 'text-indigo-600',
+      href: '/toptan-gunes-paneli',
+      badge: 'Toptan'
     },
   ]
 
@@ -117,7 +139,7 @@ export function FeaturesSection() {
         </div>
 
         {/* Feature Cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-20">
           {features.map((feature, index) => {
             const Icon = feature.icon
             return (
