@@ -2,15 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { requireAuth, getCustomersFilter } from '@/lib/multi-tenant'
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'COMPANY')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = requireAuth(await getServerSession(authOptions))
+    const isAdmin = session.user.role === 'ADMIN'
+    
+    // Multi-tenant filtering
+    const tenantOptions = {
+      session,
+      allowGlobalAccess: isAdmin
     }
 
     const customers = await prisma.customer.findMany({
+      where: getCustomersFilter(tenantOptions),
       include: {
         user: {
           select: {

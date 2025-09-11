@@ -3,6 +3,15 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { db as prisma } from '@/lib/db'
 import { rateLimit } from '@/lib/rate-limit'
+import { 
+  requireAuth, 
+  getProjectsFilter, 
+  getCustomersFilter, 
+  getQuotesFilter,
+  applyTenantFilter,
+  debugTenantFilter,
+  getUserSqlFilter
+} from '@/lib/multi-tenant'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,9 +25,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = requireAuth(await getServerSession(authOptions))
+    const isAdmin = session.user.role === 'ADMIN'
+    
+    // Multi-tenant filtering options
+    const tenantOptions = {
+      session,
+      allowGlobalAccess: isAdmin // Only admins can see all data
     }
 
     // Get query parameters
@@ -44,19 +57,27 @@ export async function GET(request: NextRequest) {
         break
     }
 
-    // Build where clause based on user role
-    let projectWhere: any = {
+    // Build secure where clauses with multi-tenant filtering
+    const baseTimeFilter = {
       createdAt: {
         gte: startDate,
         lte: endDate
       }
     }
 
-    // If user is not admin, filter by company
-    // TODO: Implement proper company filtering based on User-Company relation
-    // if (session.user.role !== 'ADMIN') {
-    //   projectWhere.companyId = session.user.companyId
-    // }
+    // Apply tenant filtering to all queries
+    const projectWhere = applyTenantFilter(baseTimeFilter, tenantOptions)
+    const customerWhere = applyTenantFilter(baseTimeFilter, tenantOptions)
+    const quoteWhere = applyTenantFilter(baseTimeFilter, tenantOptions)
+
+    // SQL filter for raw queries
+    const userSqlFilter = getUserSqlFilter(tenantOptions)
+    
+    // Debug logging in development
+    debugTenantFilter(projectWhere, 'Projects Filter')
+    debugTenantFilter(customerWhere, 'Customers Filter')
+    debugTenantFilter(quoteWhere, 'Quotes Filter')
+    debugTenantFilter({ sqlFilter: userSqlFilter }, 'SQL Filter')
 
     // Get all dashboard data in parallel
     const [
@@ -87,27 +108,15 @@ export async function GET(request: NextRequest) {
         _sum: { actualCost: true, capacity: true }
       }),
 
-      // Customer statistics
+      // Customer statistics - secure
       prisma.customer.aggregate({
-        where: {
-          createdAt: {
-            gte: startDate,
-            lte: endDate
-          },
-          // TODO: Implement proper company filtering
-        },
+        where: customerWhere,
         _count: { id: true }
       }),
 
-      // Quote statistics
+      // Quote statistics - secure
       prisma.quote.aggregate({
-        where: {
-          createdAt: {
-            gte: startDate,
-            lte: endDate
-          },
-          // TODO: Implement proper company filtering
-        },
+        where: quoteWhere,
         _count: { id: true },
         _sum: { total: true }
       }),
@@ -121,11 +130,9 @@ export async function GET(request: NextRequest) {
         _sum: { actualCost: true }
       }),
 
-      // Recent projects
+      // Recent projects - secure
       prisma.project.findMany({
-        where: {
-          // TODO: Implement proper company filtering
-        },
+        where: getProjectsFilter(tenantOptions),
         select: {
           id: true,
           name: true,
@@ -144,11 +151,9 @@ export async function GET(request: NextRequest) {
         take: 10
       }),
 
-      // Recent customers
+      // Recent customers - secure
       prisma.customer.findMany({
-        where: {
-          // TODO: Implement proper company filtering
-        },
+        where: getCustomersFilter(tenantOptions),
         select: {
           id: true,
           firstName: true,
@@ -165,11 +170,9 @@ export async function GET(request: NextRequest) {
         take: 10
       }),
 
-      // Recent quotes
+      // Recent quotes - secure
       prisma.quote.findMany({
-        where: {
-          // TODO: Implement proper company filtering
-        },
+        where: getQuotesFilter(tenantOptions),
         select: {
           id: true,
           quoteNumber: true,
@@ -182,46 +185,44 @@ export async function GET(request: NextRequest) {
         take: 10
       }),
 
-      // Monthly revenue trend
+      // Monthly revenue trend - secure
       prisma.$queryRaw`
         SELECT 
           TO_CHAR(created_at, 'YYYY-MM') as month,
-          SUM(total_amount) as revenue,
+          SUM(actual_cost) as revenue,
           COUNT(*) as project_count
         FROM "Project"
         WHERE created_at >= ${startDate}
           AND created_at <= ${endDate}
           AND status = 'COMPLETED'
-          -- Company filtering disabled: User model has no companyId field
+          AND (${userSqlFilter})
         GROUP BY TO_CHAR(created_at, 'YYYY-MM')
         ORDER BY month
       `,
 
-      // Projects by status
+      // Projects by status - secure
       prisma.project.groupBy({
         by: ['status'],
-        where: {
-          // TODO: Implement proper company filtering
-        },
+        where: getProjectsFilter(tenantOptions),
         _count: { id: true }
       }),
 
-      // Top customers by value
+      // Top customers by value - secure
       prisma.$queryRaw`
         SELECT 
           c.id,
           c.first_name,
           c.last_name,
-          c.customer_type,
-          SUM(p.total_amount) as total_value,
+          c.type as customer_type,
+          SUM(p.actual_cost) as total_value,
           COUNT(p.id) as project_count
         FROM "Customer" c
         LEFT JOIN "Project" p ON c.id = p.customer_id AND p.status = 'COMPLETED'
         WHERE c.created_at >= ${startDate}
           AND c.created_at <= ${endDate}
-          -- Company filtering disabled: User model has no companyId field
-        GROUP BY c.id, c.first_name, c.last_name, c.customer_type
-        HAVING SUM(p.total_amount) > 0
+          AND (c.user_id = ${session.user.id} OR ${userSqlFilter.replace('owner_id', 'p.owner_id')})
+        GROUP BY c.id, c.first_name, c.last_name, c.type
+        HAVING SUM(p.actual_cost) > 0
         ORDER BY total_value DESC
         LIMIT 10
       `,
@@ -236,19 +237,15 @@ export async function GET(request: NextRequest) {
         _avg: { capacity: true }
       }),
 
-      // Conversion metrics
+      // Conversion metrics - secure
       Promise.all([
         prisma.quote.count({
-          where: {
-            createdAt: { gte: startDate, lte: endDate },
-            // TODO: Implement proper company filtering
-          }
+          where: quoteWhere
         }),
         prisma.project.count({
           where: {
-            createdAt: { gte: startDate, lte: endDate },
-            status: { not: 'DRAFT' },
-            // TODO: Implement proper company filtering
+            ...projectWhere,
+            status: { not: 'DRAFT' }
           }
         })
       ])
@@ -263,19 +260,19 @@ export async function GET(request: NextRequest) {
     const prevPeriodStart = new Date(startDate)
     prevPeriodStart.setTime(startDate.getTime() - (endDate.getTime() - startDate.getTime()))
 
+    const prevTimeFilter = applyTenantFilter({
+      createdAt: { gte: prevPeriodStart, lte: startDate }
+    }, tenantOptions)
+
     const [prevProjectStats, prevRevenueStats] = await Promise.all([
       prisma.project.aggregate({
-        where: {
-          createdAt: { gte: prevPeriodStart, lte: startDate },
-          // TODO: Implement proper company filtering
-        },
+        where: prevTimeFilter,
         _count: { id: true }
       }),
       prisma.project.aggregate({
         where: {
-          createdAt: { gte: prevPeriodStart, lte: startDate },
-          status: 'COMPLETED',
-          // TODO: Implement proper company filtering
+          ...prevTimeFilter,
+          status: 'COMPLETED'
         },
         _sum: { actualCost: true }
       })
