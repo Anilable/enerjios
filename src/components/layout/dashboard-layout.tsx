@@ -70,7 +70,7 @@ export function DashboardLayout({
     if (breadcrumbs.length > 0) return breadcrumbs
 
     const pathSegments = pathname.split('/').filter(Boolean)
-    const crumbs = [{ label: 'Anasayfa', href: '/' }]
+    const crumbs = [{ label: 'Dashboard', href: '/dashboard' }]
 
     let currentPath = ''
     pathSegments.forEach((segment, index) => {
