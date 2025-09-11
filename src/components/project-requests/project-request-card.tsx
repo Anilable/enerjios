@@ -102,15 +102,15 @@ export function ProjectRequestCard({ request, onClick, isDragging = false }: Pro
           onClick()
         }
       }}
-      className={`relative bg-white border transition-all duration-200 cursor-pointer w-full min-w-0 ${
-        isDragging || sortableIsDragging ? 'rotate-2 shadow-lg z-50' : 'hover:shadow-md hover:scale-[1.02]'
+      className={`project-card relative bg-white border cursor-pointer w-full ${
+        isDragging || sortableIsDragging ? 'rotate-2 shadow-lg z-50' : ''
       }`}
     >
       {/* Drag Handle - TOP RIGHT CORNER - ONLY THIS HAS DRAG LISTENERS */}
       <div 
         ref={setActivatorNodeRef}
         {...listeners}
-        className="absolute top-1 right-1 p-1.5 rounded-md cursor-grab active:cursor-grabbing hover:bg-blue-50 hover:text-blue-600 transition-all z-10 border border-gray-200 bg-white shadow-sm"
+        className="drag-handle absolute top-2 right-2 p-1.5 rounded-md cursor-grab active:cursor-grabbing hover:bg-blue-50 hover:text-blue-600 transition-all border border-gray-200 bg-white shadow-sm"
         title="🔄 Kartı sürüklemek için buraya tıklayın"
         onClick={(e) => {
           e.stopPropagation()
@@ -121,23 +121,23 @@ export function ProjectRequestCard({ request, onClick, isDragging = false }: Pro
           <path d="M3,15H21V17H3V15M3,11H21V13H3V11M3,7H21V9H3V7Z" />
         </svg>
       </div>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3">
-            <Avatar className="w-8 h-8">
+      <CardHeader className="pb-3 pr-12">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center space-x-3 min-w-0 flex-1">
+            <Avatar className="w-8 h-8 flex-shrink-0">
               <AvatarFallback className="text-xs font-medium bg-primary/10 text-primary">
                 {getInitials(request.customerName)}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-sm truncate max-w-[120px]" title={request.customerName}>{request.customerName}</h3>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-sm truncate" title={request.customerName}>{request.customerName}</h3>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <MapPin className="w-3 h-3" />
-                <span className="truncate max-w-[100px]" title={request.location}>{request.location}</span>
+                <MapPin className="w-3 h-3 flex-shrink-0" />
+                <span className="truncate" title={request.location}>{request.location}</span>
               </div>
             </div>
           </div>
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-1 flex-shrink-0">
             {request.status !== 'LOST' && request.status !== 'CONVERTED_TO_PROJECT' && (
               <Button 
                 variant="ghost" 
@@ -171,15 +171,15 @@ export function ProjectRequestCard({ request, onClick, isDragging = false }: Pro
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0 space-y-3">
+      <CardContent className="project-card-content pt-0">
         {/* Project Type & Priority */}
-        <div className="flex items-center justify-between">
-          <Badge variant="outline" className="text-xs">
+        <div className="flex items-center justify-between gap-2">
+          <Badge variant="outline" className="text-xs truncate max-w-[100px]">
             {PROJECT_TYPE_LABELS[request.projectType]}
           </Badge>
           <Badge 
             variant="outline" 
-            className={`text-xs flex items-center gap-1 ${getPriorityColor(request.priority)}`}
+            className={`text-xs flex items-center gap-1 flex-shrink-0 ${getPriorityColor(request.priority)}`}
           >
             {getPriorityIcon(request.priority)}
             {getPriorityLabel(request.priority)}
@@ -207,12 +207,12 @@ export function ProjectRequestCard({ request, onClick, isDragging = false }: Pro
           )}
 
           {request.assignedEngineerName && (
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-1 text-muted-foreground">
+            <div className="flex items-center justify-between text-sm gap-2">
+              <div className="flex items-center gap-1 text-muted-foreground flex-shrink-0">
                 <User className="w-3 h-3" />
                 <span>Atanan:</span>
               </div>
-              <span className="font-medium text-xs truncate max-w-[80px]" title={request.assignedEngineerName}>
+              <span className="font-medium text-xs truncate" title={request.assignedEngineerName}>
                 {request.assignedEngineerName}
               </span>
             </div>
@@ -234,12 +234,12 @@ export function ProjectRequestCard({ request, onClick, isDragging = false }: Pro
         {/* Contact Info */}
         <div className="space-y-1">
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Phone className="w-3 h-3" />
-            <span className="truncate max-w-[120px]" title={request.customerPhone}>{request.customerPhone}</span>
+            <Phone className="w-3 h-3 flex-shrink-0" />
+            <span className="truncate" title={request.customerPhone}>{request.customerPhone}</span>
           </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Mail className="w-3 h-3" />
-            <span className="truncate max-w-[120px]" title={request.customerEmail}>{request.customerEmail}</span>
+            <Mail className="w-3 h-3 flex-shrink-0" />
+            <span className="truncate" title={request.customerEmail}>{request.customerEmail}</span>
           </div>
         </div>
 
@@ -251,19 +251,20 @@ export function ProjectRequestCard({ request, onClick, isDragging = false }: Pro
         </div>
 
         {/* Tags and Photos */}
-        <div className="flex items-center justify-between">
-          <div className="flex flex-wrap gap-1">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap gap-1 min-w-0">
             {request.tags.slice(0, 2).map((tag, index) => (
               <Badge 
                 key={index} 
                 variant="secondary" 
-                className="text-xs px-1 py-0 bg-primary/5 text-primary"
+                className="text-xs px-1 py-0 bg-primary/5 text-primary truncate max-w-[60px]"
+                title={tag}
               >
                 {tag}
               </Badge>
             ))}
             {request.tags.length > 2 && (
-              <Badge variant="secondary" className="text-xs px-1 py-0">
+              <Badge variant="secondary" className="text-xs px-1 py-0 flex-shrink-0">
                 +{request.tags.length - 2}
               </Badge>
             )}
@@ -278,9 +279,9 @@ export function ProjectRequestCard({ request, onClick, isDragging = false }: Pro
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground border-t pt-2">
-          <span className="font-mono">{request.requestNumber || `PR-${new Date(request.createdAt).getFullYear()}-${request.id.slice(-3)}`}</span>
-          <span>{formatDate(request.createdAt)}</span>
+        <div className="flex items-center justify-between text-xs text-muted-foreground border-t pt-2 gap-2">
+          <span className="font-mono truncate">{request.requestNumber || `PR-${new Date(request.createdAt).getFullYear()}-${request.id.slice(-3)}`}</span>
+          <span className="flex-shrink-0">{formatDate(request.createdAt)}</span>
         </div>
       </CardContent>
     </Card>

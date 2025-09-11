@@ -45,55 +45,47 @@ export async function GET(
     // PDF oluştur
     const doc = new PDFDocument({
       size: 'A4',
-      margin: 50
+      margin: 50,
+      bufferPages: true
     })
 
     // PDF başlığı
     doc.fontSize(20)
-       .font('Helvetica-Bold')
-       .text('GÜNEŞ ENERJİSİ SİSTEMİ TEKLİFİ', 50, 50)
+       .text('GUNES ENERJISI SISTEMI TEKLIFI', 50, 50)
 
     // Teklif numarası
     doc.fontSize(14)
-       .font('Helvetica')
        .text(`Teklif No: ${quote.quoteNumber}`, 50, 100)
        .text(`Tarih: ${new Date(quote.createdAt).toLocaleDateString('tr-TR')}`, 50, 120)
-       .text(`Geçerlilik: ${new Date(quote.validUntil).toLocaleDateString('tr-TR')}`, 50, 140)
+       .text(`Gecerlilik: ${new Date(quote.validUntil).toLocaleDateString('tr-TR')}`, 50, 140)
 
     // Müşteri bilgileri
     doc.fontSize(16)
-       .font('Helvetica-Bold')
-       .text('MÜŞTERİ BİLGİLERİ', 50, 180)
+       .text('MUSTERI BILGILERI', 50, 180)
 
     doc.fontSize(12)
-       .font('Helvetica')
        .text(`Ad Soyad: ${quote.customer?.firstName || ''} ${quote.customer?.lastName || ''}`, 50, 210)
-       .text(`Email: N/A`, 50, 230)
+       .text(`Email: ${quote.customer?.email || 'N/A'}`, 50, 230)
        .text(`Telefon: ${quote.customer?.phone || 'N/A'}`, 50, 250)
 
     // Proje detayları
     doc.fontSize(16)
-       .font('Helvetica-Bold')
        .text('PROJE DETAYLARI', 50, 290)
 
     doc.fontSize(12)
-       .font('Helvetica')
        .text(`Proje Tipi: ${quote.project?.type || 'N/A'}`, 50, 320)
-       .text(`Sistem Gücü: ${quote.project?.capacity || 0} kW`, 50, 340)
+       .text(`Sistem Gucu: ${quote.project?.capacity || 0} kW`, 50, 340)
 
     // Teklif kalemleri
     doc.fontSize(16)
-       .font('Helvetica-Bold')
-       .text('TEKLİF KALEMLERİ', 50, 380)
+       .text('TEKLIF KALEMLERI', 50, 380)
 
     let yPos = 410
     const items = quote.items || []
     
     for (const item of items) {
       doc.fontSize(12)
-         .font('Helvetica-Bold')
          .text(item.product.name, 50, yPos)
-         .font('Helvetica')
          .text(item.description || '', 50, yPos + 15)
          .text(`Miktar: ${item.quantity} - Birim Fiyat: ${item.unitPrice.toLocaleString('tr-TR')} TL`, 50, yPos + 30)
          .text(`Toplam: ${item.total.toLocaleString('tr-TR')} TL`, 400, yPos + 30)
@@ -104,18 +96,15 @@ export async function GET(
     // Fiyat özeti
     yPos += 30
     doc.fontSize(16)
-       .font('Helvetica-Bold')
-       .text('FİYAT ÖZETİ', 50, yPos)
+       .text('FIYAT OZETI', 50, yPos)
 
     yPos += 30
     doc.fontSize(12)
-       .font('Helvetica')
        .text(`Ara Toplam: ${quote.subtotal.toLocaleString('tr-TR')} TL`, 50, yPos)
-       .text(`İndirim: -${quote.discount.toLocaleString('tr-TR')} TL`, 50, yPos + 20)
+       .text(`Indirim: -${quote.discount.toLocaleString('tr-TR')} TL`, 50, yPos + 20)
        .text(`KDV (18%): ${quote.tax.toLocaleString('tr-TR')} TL`, 50, yPos + 40)
        
     doc.fontSize(16)
-       .font('Helvetica-Bold')
        .text(`TOPLAM: ${quote.total.toLocaleString('tr-TR')} TL`, 50, yPos + 70)
 
     // PDF'i stream'e dönüştür

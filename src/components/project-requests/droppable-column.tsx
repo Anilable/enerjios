@@ -25,26 +25,26 @@ export function DroppableColumn({ column, onCardClick }: DroppableColumnProps) {
   })
 
   return (
-    <Card className="flex flex-col h-full">
+    <Card className="flex flex-col h-full overflow-hidden">
       <CardHeader className="pb-3 flex-shrink-0">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${column.color}`} />
-            <CardTitle className="text-sm font-medium">
+          <div className="flex items-center space-x-2 min-w-0">
+            <div className={`w-3 h-3 rounded-full flex-shrink-0 ${column.color}`} />
+            <CardTitle className="text-sm font-medium truncate">
               {column.title}
             </CardTitle>
           </div>
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className="text-xs flex-shrink-0">
             {column.count}
           </Badge>
         </div>
       </CardHeader>
       
-      <CardContent className="flex-1 pt-0 pb-0">
+      <CardContent className="flex-1 pt-0 pb-0 overflow-hidden">
         <div
           ref={setNodeRef}
           className={`
-            space-y-3 min-h-[400px] p-3 rounded-lg border-2 border-dashed transition-all duration-200
+            custom-scrollbar space-y-3 min-h-[400px] max-h-[calc(100vh-300px)] p-3 rounded-lg border-2 border-dashed transition-all duration-200 overflow-y-auto
             ${isOver 
               ? 'border-blue-400 bg-blue-50/50 shadow-inner' 
               : 'border-gray-200 hover:border-blue-300/50 hover:bg-gray-50/30'

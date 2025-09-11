@@ -78,6 +78,59 @@
   --sidebar-ring: oklch(0.75 0.18 55);
 }
 
+/* Custom scrollbar styles */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: oklch(0.95 0.01 85);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: oklch(0.75 0.18 55);
+  border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.7 0.2 55);
+}
+
+/* Project card specific fixes */
+.project-card {
+  @apply transition-all duration-200 ease-in-out;
+  @apply hover:shadow-md hover:scale-[1.02];
+  @apply min-w-0 overflow-hidden;
+}
+
+.project-card-content {
+  @apply space-y-3 overflow-hidden;
+}
+
+.project-card-text {
+  @apply truncate;
+}
+
+/* Drag and drop z-index fixes */
+.drag-overlay {
+  z-index: 9999 !important;
+}
+
+.drag-handle {
+  z-index: 10 !important;
+}
+
+/* Modal responsive fixes */
+@media (max-width: 768px) {
+  .modal-content {
+    @apply w-full max-w-none mx-4 max-h-[95vh];
+  }
+  
+  .modal-grid {
+    @apply grid-cols-1 gap-4;
+  }
+}
+
 .dark {
   --background: oklch(0.12 0 0);
   --foreground: oklch(0.98 0 0);

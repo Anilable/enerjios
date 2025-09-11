@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import { 
   Sun, 
   Mail, 
@@ -15,6 +18,7 @@ import { Input } from '@/components/ui/input'
 import { EnerjiOSLogo } from '@/components/ui/energyos-logo'
 
 export function Footer() {
+  const { data: session } = useSession()
   const currentYear = new Date().getFullYear()
 
   const companyLinks = [
@@ -55,7 +59,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Company Info */}
           <div className="lg:col-span-2">
-            <Link href="/" className="flex items-center space-x-2 mb-6">
+            <Link href={session ? "/dashboard" : "/"} className="flex items-center space-x-2 mb-6">
               <EnerjiOSLogo className="h-14 w-auto" />
             </Link>
             

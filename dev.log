@@ -1,0 +1,211 @@
+
+> enerjios@0.1.0 dev
+> next dev
+
+ ⚠ Port 3000 is in use by process 7980, using available port 3004 instead.
+   ▲ Next.js 15.5.2
+   - Local:        http://localhost:3004
+   - Network:      http://192.168.1.17:3004
+   - Environments: .env.local, .env
+   - Experiments (use with caution):
+     ✓ scrollRestoration
+     · optimizePackageImports
+
+ ✓ Starting...
+ ✓ Ready in 8.6s
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+   Reload env: .env.local
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 955ms (261 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 23.8s (2881 modules)
+ ⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3004". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata viewport is configured in metadata export in /. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ GET / 200 in 26852ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 1509ms (1320 modules)
+ ✓ Compiled in 1192ms (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+   Reload env: .env.local
+ ✓ Compiled in 3.2s (1581 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 1759ms (1581 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 3.7s (1320 modules)
+ ✓ Compiled in 1579ms (1320 modules)
+ ✓ Compiled in 1325ms (1320 modules)
+ ✓ Compiled in 1308ms (1320 modules)
+ ✓ Compiled in 1581ms (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 1275ms (1320 modules)
+ ✓ Compiled in 4.4s (1581 modules)
+ ✓ Compiled in 3.2s (1320 modules)
+ ✓ Compiled in 2.3s (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 2.5s (1567 modules)
+ ✓ Compiled in 3.2s (1581 modules)
+ ✓ Compiled in 1293ms (1320 modules)
+ ✓ Compiled in 1558ms (1320 modules)
+ ✓ Compiled in 1574ms (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 5.8s (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 1281ms (1320 modules)
+ ✓ Compiled in 1374ms (1320 modules)
+ ✓ Compiled in 1130ms (1320 modules)
+ ✓ Compiled in 1136ms (1320 modules)
+ ✓ Compiled in 1209ms (1320 modules)
+ ✓ Compiled in 1246ms (1320 modules)
+ ✓ Compiled in 1363ms (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 1392ms (1320 modules)
+ ✓ Compiled in 1298ms (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 2.3s (1320 modules)
+ ✓ Compiled in 1086ms (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 1283ms (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 1092ms (1320 modules)
+ ✓ Compiled in 1820ms (1567 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 2.8s (1581 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 1116ms (1320 modules)
+ ✓ Compiled in 1369ms (1320 modules)
+ ⚠ Failed to reload dynamic routes: [Error: You cannot use different slug names for the same dynamic path ('token' !== 'id').]
+ ✓ Compiled in 1059ms (1320 modules)
+ ✓ Compiled in 1378ms (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ⚠ Failed to reload dynamic routes: [Error: You cannot use different slug names for the same dynamic path ('token' !== 'id').]
+ ✓ Compiled in 1221ms (1320 modules)
+ ✓ Compiled in 1154ms (1320 modules)
+ ✓ Compiled in 1209ms (1320 modules)
+ ✓ Compiled in 1014ms (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 1187ms (1320 modules)
+ ✓ Compiled in 1063ms (1320 modules)
+ ✓ Compiled in 1482ms (1320 modules)
+ ✓ Compiled in 1381ms (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 1170ms (1320 modules)
+ ✓ Compiled in 1267ms (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 1283ms (1320 modules)
+ ✓ Compiled in 1151ms (1320 modules)
+ ✓ Compiled in 1384ms (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ⚠ Failed to reload dynamic routes: [Error: You cannot use different slug names for the same dynamic path ('token' !== 'id').]
+ ✓ Compiled in 1892ms (1567 modules)
+ ✓ Compiled in 1065ms (1320 modules)
+ ✓ Compiled in 1100ms (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 1177ms (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 2.6s (1320 modules)
+ ✓ Compiled in 3.5s (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 2.4s (1320 modules)
+ ✓ Compiled in 1978ms (1320 modules)
+ ✓ Compiled in 1945ms (1320 modules)
+ ✓ Compiled in 1833ms (1320 modules)
+ ✓ Compiled in 2.3s (1320 modules)
+ ✓ Compiled in 2.6s (1320 modules)
+ ✓ Compiled in 2.4s (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 2.3s (1320 modules)
+ ✓ Compiled in 5.5s (1581 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 2.7s (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 2.4s (1320 modules)
+ ✓ Compiled in 1861ms (1320 modules)
+ ✓ Compiled in 1973ms (1320 modules)
+ ✓ Compiled in 1860ms (1320 modules)
+ ✓ Compiled in 2.1s (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 2.6s (1320 modules)
+ ✓ Compiled in 1934ms (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 2.2s (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 1897ms (1320 modules)
+ ✓ Compiled in 2.3s (1320 modules)
+ ✓ Compiled in 1931ms (1320 modules)
+ ✓ Compiled in 2.2s (1320 modules)
+ ✓ Compiled in 2.3s (1320 modules)
+ ✓ Compiled in 4s (1581 modules)
+ ✓ Compiled in 1434ms (1320 modules)
+ ✓ Compiled in 1392ms (1320 modules)
+ ✓ Compiled in 1649ms (1320 modules)
+ ✓ Compiled in 2.4s (1320 modules)
+ ✓ Compiled in 3.5s (1320 modules)
+ ✓ Compiled in 2.7s (1320 modules)
+ ✓ Compiled in 3.7s (1320 modules)
+ ✓ Compiled in 3.1s (1320 modules)
+ ✓ Compiled in 2.7s (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 7.2s (1320 modules)
+ ✓ Compiled in 2.1s (1320 modules)
+ ✓ Compiled in 2.9s (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 1756ms (1320 modules)
+ ✓ Compiled in 2.1s (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 4.2s (1320 modules)
+ ✓ Compiled in 3.8s (1320 modules)
+ ✓ Compiled in 3s (1320 modules)
+ ✓ Compiled in 3s (1320 modules)
+ ✓ Compiled in 4.2s (1320 modules)
+ ✓ Compiled in 3.8s (1320 modules)
+ ✓ Compiled in 3.1s (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: EPERM: operation not permitted, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+   Reload env: .env.local
+ ✓ Compiled in 5.9s (1581 modules)
+   Reload env: .env.local
+ ✓ Compiled in 4.8s (1581 modules)
+ ✓ Compiled in 4.1s (1320 modules)
+ ✓ Compiled in 2.3s (1320 modules)
+ ✓ Compiled in 2s (1320 modules)
+ ✓ Compiled in 7.1s (1581 modules)
+ ✓ Compiled in 4.8s (1320 modules)
+ ✓ Compiled in 3.5s (1320 modules)
+ ✓ Compiled in 2.8s (1320 modules)
+ ✓ Compiled in 3.3s (1320 modules)
+ ✓ Compiled in 3.3s (1320 modules)
+ ✓ Compiled in 2.9s (1320 modules)
+ ✓ Compiled in 3s (1320 modules)
+ ✓ Compiled in 2.7s (1320 modules)
+ ✓ Compiled in 2.6s (1320 modules)
+ ✓ Compiled in 3s (1320 modules)
+ ✓ Compiled in 1869ms (1320 modules)
+ ✓ Compiled in 3.5s (1320 modules)
+ ✓ Compiled in 3.5s (1320 modules)
+ ✓ Compiled in 2.4s (1320 modules)
+ ✓ Compiled in 2.9s (1320 modules)
+ ✓ Compiled in 3.1s (1320 modules)
+ ✓ Compiled in 3.2s (1320 modules)
+ ✓ Compiled in 3.4s (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 3.1s (1320 modules)
+ ✓ Compiled in 4.6s (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 3.4s (1320 modules)
+ ✓ Compiled in 3.4s (1320 modules)
+ ✓ Compiled in 3.3s (1320 modules)
+ ✓ Compiled in 2.4s (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 2.8s (1320 modules)
+ ✓ Compiled in 2.8s (1320 modules)
+ ✓ Compiled in 2.2s (1320 modules)
+ ✓ Compiled in 2.5s (1320 modules)
+ ✓ Compiled in 2s (1320 modules)
+ ✓ Compiled in 2.4s (1320 modules)
+ ✓ Compiled in 2.3s (1320 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz_' -> 'C:\Users\AniLC\Desktop\trakya-solar\.next\cache\webpack\client-development\0.pack.gz'
+ ✓ Compiled in 3.6s (1320 modules)
+ ✓ Compiled in 2.3s (1320 modules)
+ ✓ Compiled in 2.2s (1320 modules)
