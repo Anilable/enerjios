@@ -192,13 +192,41 @@ export default function QuoteDetailPage() {
     })
   }
 
-  const handleDownloadPDF = () => {
-    // PDF download işlemi
-    toast({
-      title: "PDF İndiriliyor",
-      description: "Teklif PDF'i hazırlanıyor...",
-    })
-    // Gerçek uygulamada PDF generate edip download edilecek
+  const handleDownloadPDF = async () => {
+    try {
+      toast({
+        title: "PDF İndiriliyor",
+        description: "Teklif PDF'i hazırlanıyor...",
+      })
+
+      const response = await fetch(`/api/quotes/${quote?.id}/pdf`)
+      
+      if (!response.ok) {
+        throw new Error('PDF oluşturulamadı')
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `teklif-${quote?.quoteNumber}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast({
+        title: "Başarılı",
+        description: "PDF başarıyla indirildi.",
+      })
+    } catch (error) {
+      console.error('PDF indirme hatası:', error)
+      toast({
+        title: "Hata",
+        description: "PDF indirilemedi. Lütfen tekrar deneyin.",
+        variant: "destructive"
+      })
+    }
   }
 
   const handleCopyLink = () => {
@@ -272,6 +300,10 @@ export default function QuoteDetailPage() {
             <Button variant="outline" onClick={handleDownloadPDF}>
               <Download className="w-4 h-4 mr-2" />
               PDF İndir
+            </Button>
+            <Button variant="outline" onClick={() => window.print()}>
+              <FileText className="w-4 h-4 mr-2" />
+              Yazdır
             </Button>
             <Button variant="outline" onClick={handleCopyLink}>
               <Copy className="w-4 h-4 mr-2" />
