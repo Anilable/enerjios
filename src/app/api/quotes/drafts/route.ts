@@ -12,7 +12,7 @@ async function ensureDefaultProduct() {
   if (!defaultProduct) {
     defaultProduct = await prisma.product.create({
       data: {
-        type: 'OTHER',
+        type: 'ACCESSORY',
         brand: 'Custom',
         model: 'Generic',
         name: 'Custom Quote Item',
@@ -22,9 +22,8 @@ async function ensureDefaultProduct() {
         currency: 'TRY',
         unitType: 'piece',
         stock: 999999,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        isAvailable: true,
+        images: '[]'
       }
     })
   }
