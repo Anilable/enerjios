@@ -107,13 +107,52 @@ const mockQuotes: Quote[] = [
 export default function QuotesPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const [quotes, setQuotes] = useState<Quote[]>(mockQuotes)
-  const [loading, setLoading] = useState(false)
+  const [quotes, setQuotes] = useState<Quote[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Load quotes from API
+  useEffect(() => {
+    const loadQuotes = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/quotes')
+        
+        if (response.ok) {
+          const data = await response.json()
+          setQuotes(data)
+        } else {
+          // Fallback to mock data if API fails
+          setQuotes(mockQuotes)
+        }
+      } catch (error) {
+        console.error('Error loading quotes:', error)
+        // Fallback to mock data
+        setQuotes(mockQuotes)
+        toast({
+          title: 'Uyarı',
+          description: 'Teklifler yüklenirken sorun oluştu, demo veriler gösteriliyor',
+          variant: 'destructive'
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadQuotes()
+  }, [])
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState('createdAt')
 
   // Button handlers
+  const handleEditDraft = (quote: Quote) => {
+    if (quote.status === 'DRAFT') {
+      router.push(`/dashboard/quotes/create/${quote.projectRequestId}`)
+    } else {
+      router.push(`/dashboard/quotes/${quote.id}`)
+    }
+  }
+
   const handleDownloadPDF = async (quote: Quote) => {
     try {
       toast({
@@ -537,7 +576,7 @@ export default function QuotesPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => router.push(`/dashboard/quotes/edit/${quote.id}`)}
+                            onClick={() => handleEditDraft(quote)}
                           >
                             <Edit className="w-3 h-3 mr-1" />
                             Düzenle

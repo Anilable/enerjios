@@ -159,7 +159,7 @@ export default function CreateQuotePage() {
     status: 'DRAFT'
   })
 
-  // Load project request data
+  // Load project request data and existing drafts
   useEffect(() => {
     const loadProjectData = async () => {
       try {
@@ -167,18 +167,72 @@ export default function CreateQuotePage() {
         const request = await ProjectRequestAPI.getById(projectId)
         setProjectRequest(request)
         
-        // Pre-fill quote data with project info
-        setQuoteData(prev => ({
-          ...prev,
-          customerName: request.customerName,
-          customerEmail: request.customerEmail,
-          customerPhone: request.customerPhone || '',
-          projectType: request.projectType,
-          capacity: request.estimatedCapacity || 0
-        }))
+        // Check for existing drafts for this project
+        const draftsResponse = await fetch(`/api/quotes/drafts?projectRequestId=${projectId}`)
+        let existingDraft = null
+        
+        if (draftsResponse.ok) {
+          const drafts = await draftsResponse.json()
+          if (drafts.length > 0) {
+            existingDraft = drafts[0] // Use the most recent draft
+          }
+        }
 
-        // Auto-generate initial items based on capacity
-        generateInitialItems(request.estimatedCapacity || 0, request.projectType)
+        if (existingDraft) {
+          // Load existing draft data
+          setQuoteData({
+            id: existingDraft.id,
+            quoteNumber: existingDraft.quoteNumber,
+            projectRequestId: existingDraft.projectRequestId,
+            customerName: existingDraft.customerName,
+            customerEmail: existingDraft.customerEmail,
+            customerPhone: existingDraft.customerPhone || '',
+            projectType: existingDraft.projectType,
+            capacity: existingDraft.capacity,
+            items: existingDraft.items?.map((item: any) => ({
+              id: item.id,
+              category: item.category,
+              productId: item.productId,
+              name: item.name,
+              description: item.description || '',
+              pricingType: 'UNIT', // Default, could be stored in DB
+              unitPrice: item.unitPrice,
+              quantity: item.quantity,
+              discount: item.discount,
+              tax: item.tax,
+              subtotal: item.unitPrice * item.quantity,
+              total: item.total
+            })) || [],
+            subtotal: existingDraft.subtotal,
+            discount: existingDraft.discount,
+            tax: existingDraft.tax,
+            total: existingDraft.total,
+            validity: Math.ceil((new Date(existingDraft.validUntil).getTime() - Date.now()) / (24 * 60 * 60 * 1000)),
+            notes: existingDraft.notes || '',
+            terms: existingDraft.terms || '',
+            status: existingDraft.status,
+            createdAt: new Date(existingDraft.createdAt),
+            validUntil: new Date(existingDraft.validUntil)
+          })
+
+          toast({
+            title: 'Taslak Yüklendi',
+            description: 'Bu proje için daha önce kaydedilen taslak yüklendi'
+          })
+        } else {
+          // Pre-fill quote data with project info
+          setQuoteData(prev => ({
+            ...prev,
+            customerName: request.customerName,
+            customerEmail: request.customerEmail,
+            customerPhone: request.customerPhone || '',
+            projectType: request.projectType,
+            capacity: request.estimatedCapacity || 0
+          }))
+
+          // Auto-generate initial items based on capacity
+          generateInitialItems(request.estimatedCapacity || 0, request.projectType)
+        }
       } catch (error) {
         console.error('Error loading project:', error)
         toast({
@@ -415,19 +469,53 @@ export default function CreateQuotePage() {
       const quotePayload = {
         ...quoteData,
         status: status,
-        quoteNumber: `Q-${Date.now().toString().slice(-8)}`,
+        quoteNumber: quoteData.quoteNumber || `Q-${Date.now().toString().slice(-8)}`,
         createdAt: new Date().toISOString()
       }
 
-      // Here you would call your quote API
-      // await QuoteAPI.create(quotePayload)
+      let response
+      if (status === 'DRAFT') {
+        // Save as draft
+        response = await fetch('/api/quotes/drafts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(quotePayload)
+        })
+      } else {
+        // Send quote
+        response = await fetch('/api/quotes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(quotePayload)
+        })
+      }
+
+      if (!response.ok) {
+        throw new Error('Failed to save quote')
+      }
+
+      const savedQuote = await response.json()
+
+      // Update local state with saved quote data
+      setQuoteData(prev => ({
+        ...prev,
+        id: savedQuote.id,
+        quoteNumber: savedQuote.quoteNumber
+      }))
 
       toast({
         title: 'Başarılı',
         description: status === 'SENT' ? 'Teklif müşteriye gönderildi' : 'Teklif taslağı kaydedildi'
       })
 
-      router.push('/dashboard/quotes')
+      // Only redirect to quotes page when sending, stay on page for drafts
+      if (status === 'SENT') {
+        router.push('/dashboard/quotes')
+      }
     } catch (error) {
       console.error('Error saving quote:', error)
       toast({
@@ -616,8 +704,17 @@ export default function CreateQuotePage() {
               onClick={() => saveQuote('DRAFT')}
               disabled={saving}
             >
-              <Save className="w-4 h-4 mr-2" />
-              Taslak Kaydet
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Kaydediliyor...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  {quoteData.id ? 'Taslağı Güncelle' : 'Taslak Kaydet'}
+                </>
+              )}
             </Button>
             <Button
               variant="outline"
