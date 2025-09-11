@@ -3,6 +3,35 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+// Ensure we have a default product for custom quote items
+async function ensureDefaultProduct() {
+  let defaultProduct = await prisma.product.findFirst({
+    where: { name: 'Custom Quote Item' }
+  })
+  
+  if (!defaultProduct) {
+    defaultProduct = await prisma.product.create({
+      data: {
+        type: 'OTHER',
+        brand: 'Custom',
+        model: 'Generic',
+        name: 'Custom Quote Item',
+        description: 'Generic product for custom quote items',
+        specifications: {},
+        price: 0,
+        currency: 'TRY',
+        unitType: 'piece',
+        stock: 999999,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    })
+  }
+  
+  return defaultProduct.id
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -15,6 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    const defaultProductId = await ensureDefaultProduct()
     
     const {
       projectRequestId,
@@ -56,8 +86,15 @@ export async function POST(request: NextRequest) {
           terms: terms || '',
           items: {
             create: items?.map((item: any) => ({
-              productId: item.productId || null,
-              description: item.description || '',
+              productId: item.productId || defaultProductId,
+              description: JSON.stringify({
+                name: item.name || '',
+                category: item.category || 'OTHER',
+                description: item.description || '',
+                pricingType: item.pricingType || 'UNIT',
+                discount: parseFloat(item.discount) || 0,
+                tax: parseFloat(item.tax) || 0
+              }),
               quantity: parseFloat(item.quantity) || 0,
               unitPrice: parseFloat(item.unitPrice) || 0,
               total: parseFloat(item.total) || 0
@@ -89,8 +126,15 @@ export async function POST(request: NextRequest) {
           createdById: session.user.id,
           items: {
             create: items?.map((item: any) => ({
-              productId: item.productId || null,
-              description: item.description || '',
+              productId: item.productId || defaultProductId,
+              description: JSON.stringify({
+                name: item.name || '',
+                category: item.category || 'OTHER',
+                description: item.description || '',
+                pricingType: item.pricingType || 'UNIT',
+                discount: parseFloat(item.discount) || 0,
+                tax: parseFloat(item.tax) || 0
+              }),
               quantity: parseFloat(item.quantity) || 0,
               unitPrice: parseFloat(item.unitPrice) || 0,
               total: parseFloat(item.total) || 0
@@ -136,7 +180,7 @@ export async function GET(request: NextRequest) {
     }
     
     if (projectRequestId) {
-      where.projectRequestId = projectRequestId
+      where.projectId = projectRequestId
     }
 
     const drafts = await prisma.quote.findMany({
