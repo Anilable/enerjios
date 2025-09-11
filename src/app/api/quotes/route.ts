@@ -39,13 +39,8 @@ export async function POST(request: NextRequest) {
     const quote = await prisma.quote.create({
       data: {
         quoteNumber: quoteNumber || `Q-${Date.now().toString().slice(-8)}`,
-        projectRequestId,
+        projectId: projectRequestId,
         status,
-        customerName,
-        customerEmail,
-        customerPhone,
-        projectType,
-        capacity: parseFloat(capacity) || 0,
         subtotal: parseFloat(subtotal) || 0,
         discount: parseFloat(discount) || 0,
         tax: parseFloat(tax) || 0,
@@ -53,17 +48,13 @@ export async function POST(request: NextRequest) {
         validUntil: new Date(Date.now() + (validity || 30) * 24 * 60 * 60 * 1000),
         notes: notes || '',
         terms: terms || '',
-        createdBy: session.user.id,
+        createdById: session.user.id,
         items: {
           create: items?.map((item: any) => ({
             productId: item.productId || null,
-            name: item.name,
             description: item.description || '',
-            category: item.category,
             quantity: parseFloat(item.quantity) || 0,
             unitPrice: parseFloat(item.unitPrice) || 0,
-            discount: parseFloat(item.discount) || 0,
-            tax: parseFloat(item.tax) || 0,
             total: parseFloat(item.total) || 0
           })) || []
         }
