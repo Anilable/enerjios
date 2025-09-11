@@ -97,6 +97,79 @@ interface QuotePreviewProps {
 export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreviewProps) {
   const [isPrinting, setIsPrinting] = useState(false)
 
+  const handlePrint = () => {
+    setIsPrinting(true)
+    
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      setIsPrinting(false)
+      return
+    }
+
+    // Get the quote content to print
+    const quoteElement = document.querySelector('[data-quote-content]')
+    if (!quoteElement) {
+      printWindow.close()
+      setIsPrinting(false)
+      return
+    }
+
+    // Create print-optimized HTML
+    const printHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Teklif - ${quote.quoteNumber}</title>
+          <style>
+            @media print {
+              body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+              .no-print { display: none !important; }
+              .print-break { page-break-after: always; }
+              table { width: 100%; border-collapse: collapse; }
+              th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+              th { background-color: #f5f5f5; }
+              .text-primary { color: #0066cc; }
+              .bg-primary { background-color: #0066cc; color: white; }
+              .font-bold { font-weight: bold; }
+              .text-center { text-align: center; }
+              .text-right { text-align: right; }
+              .mb-4 { margin-bottom: 16px; }
+              .mb-8 { margin-bottom: 32px; }
+              .p-4 { padding: 16px; }
+              .border { border: 1px solid #ccc; }
+              .rounded { border-radius: 4px; }
+              .grid { display: grid; }
+              .grid-cols-2 { grid-template-columns: 1fr 1fr; }
+              .grid-cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+              .gap-4 { gap: 16px; }
+              .space-y-2 > * + * { margin-top: 8px; }
+              .space-y-4 > * + * { margin-top: 16px; }
+            }
+            @page {
+              margin: 2cm;
+            }
+          </style>
+        </head>
+        <body>
+          ${quoteElement.innerHTML}
+        </body>
+      </html>
+    `
+
+    printWindow.document.write(printHTML)
+    printWindow.document.close()
+
+    // Wait for content to load then print
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print()
+        printWindow.close()
+        setIsPrinting(false)
+      }, 100)
+    }
+  }
+
   const formatDate = (date: string | Date) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date
     return new Intl.DateTimeFormat('tr-TR', {
@@ -133,7 +206,7 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
   return (
     <div className="space-y-6">
       {/* Header Actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between no-print">
         <div className="flex items-center space-x-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Teklif Önizlemesi</h2>
@@ -146,9 +219,9 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
         </div>
         
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={() => setIsPrinting(true)}>
+          <Button variant="outline" size="sm" onClick={handlePrint} disabled={isPrinting}>
             <Printer className="w-4 h-4 mr-2" />
-            Yazdır
+            {isPrinting ? 'Yazdırılıyor...' : 'Yazdır'}
           </Button>
           <Button variant="outline" size="sm" onClick={onDownload}>
             <Download className="w-4 h-4 mr-2" />
@@ -169,7 +242,7 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
 
       {/* Quote Preview Card */}
       <Card className="shadow-lg">
-        <CardContent className="p-8">
+        <CardContent className="p-8" data-quote-content>
           {/* Company Header */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center space-x-2 mb-4">

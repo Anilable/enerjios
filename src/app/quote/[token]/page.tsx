@@ -213,9 +213,32 @@ export default function PublicQuotePage() {
     }
   }
 
-  const downloadPDF = () => {
-    if (quote?.pdfUrl) {
-      window.open(quote.pdfUrl, '_blank')
+  const downloadPDF = async () => {
+    if (!quote) return
+    
+    try {
+      const response = await fetch(`/api/quotes/public/${token}/pdf`)
+      
+      if (!response.ok) {
+        throw new Error('PDF oluşturulamadı')
+      }
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      
+      const a = document.createElement('a')
+      a.style.display = 'none'
+      a.href = url
+      a.download = `teklif-${quote.quoteNumber}.pdf`
+      
+      document.body.appendChild(a)
+      a.click()
+      
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('PDF download error:', error)
+      alert('PDF indirme işlemi başarısız oldu. Lütfen tekrar deneyin.')
     }
   }
 

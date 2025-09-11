@@ -192,13 +192,47 @@ export default function QuoteDetailPage() {
     })
   }
 
-  const handleDownloadPDF = () => {
-    // PDF download işlemi
-    toast({
-      title: "PDF İndiriliyor",
-      description: "Teklif PDF'i hazırlanıyor...",
-    })
-    // Gerçek uygulamada PDF generate edip download edilecek
+  const handleDownloadPDF = async () => {
+    if (!quote) return
+    
+    try {
+      toast({
+        title: "PDF İndiriliyor",
+        description: "Teklif PDF'i hazırlanıyor...",
+      })
+
+      const response = await fetch(`/api/quotes/${quote.id}/pdf`)
+      
+      if (!response.ok) {
+        throw new Error('PDF oluşturulamadı')
+      }
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      
+      const a = document.createElement('a')
+      a.style.display = 'none'
+      a.href = url
+      a.download = `teklif-${quote.quoteNumber}.pdf`
+      
+      document.body.appendChild(a)
+      a.click()
+      
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      
+      toast({
+        title: "PDF İndirildi",
+        description: "Teklif PDF'i başarıyla indirildi.",
+      })
+    } catch (error) {
+      console.error('PDF download error:', error)
+      toast({
+        title: "Hata",
+        description: "PDF indirme işlemi başarısız oldu.",
+        variant: "destructive"
+      })
+    }
   }
 
   const handleCopyLink = () => {
