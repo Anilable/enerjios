@@ -3,7 +3,7 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Sun, Building, Users, TrendingUp, CloudSun, DollarSign, Compass, Calculator, FileText, BarChart3 } from 'lucide-react'
+import { Sun, Building, Users, TrendingUp, CloudSun, DollarSign, Compass, Calculator, FileText, BarChart3, FolderPlus } from 'lucide-react'
 import { getRoleName } from '@/lib/auth-utils'
 import { Suspense } from 'react'
 import { FinancialOverview } from '@/components/dashboard/financial-overview'
@@ -43,7 +43,7 @@ export default async function DashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             <Link href="/dashboard/designer">
               <Button 
                 variant="default" 
@@ -53,6 +53,19 @@ export default async function DashboardPage() {
                 <div>
                   <div className="font-semibold">Proje Tasarımcısı</div>
                   <div className="text-xs opacity-90">3D Çatı Analizi</div>
+                </div>
+              </Button>
+            </Link>
+            
+            <Link href="/dashboard/project-requests">
+              <Button 
+                variant="default" 
+                className="w-full h-24 flex-col gap-2 bg-gradient-to-br from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+              >
+                <FolderPlus className="h-8 w-8" />
+                <div>
+                  <div className="font-semibold">Proje Talepleri</div>
+                  <div className="text-xs opacity-90">Yeni Talep</div>
                 </div>
               </Button>
             </Link>
