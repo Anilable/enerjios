@@ -92,11 +92,6 @@ export async function PUT(
       where: { id },
       data: {
         status,
-        customerName,
-        customerEmail,
-        customerPhone,
-        projectType,
-        capacity: parseFloat(capacity) || 0,
         subtotal: parseFloat(subtotal) || 0,
         discount: parseFloat(discount) || 0,
         tax: parseFloat(tax) || 0,

@@ -26,7 +26,8 @@ export async function GET(
       where: { id: projectId },
       include: {
         customer: true,
-        projectRequest: true
+        company: true,
+        location: true
       }
     })
 
@@ -48,60 +49,62 @@ export async function GET(
     doc.fontSize(20)
        .text('PROJE RAPORU', 50, 50)
 
-    // Proje kodu ve tarih
+    // Proje bilgileri ve tarih
     doc.fontSize(14)
-       .text(`Proje Kodu: ${project.code || projectId}`, 50, 100)
-       .text(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`, 50, 120)
+       .text(`Proje ID: ${projectId}`, 50, 100)
+       .text(`Proje Adı: ${project.name}`, 50, 120)
+       .text(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`, 50, 140)
 
     // Müşteri bilgileri
     doc.fontSize(16)
-       .text('MUSTERI BILGILERI', 50, 160)
+       .text('MUSTERI BILGILERI', 50, 180)
+
+    const customerName = project.customer?.companyName || 
+      `${project.customer?.firstName || ''} ${project.customer?.lastName || ''}`.trim() || 
+      'N/A'
 
     doc.fontSize(12)
-       .text(`Ad Soyad: ${project.customer?.firstName || ''} ${project.customer?.lastName || ''}`, 50, 190)
-       .text(`Email: ${project.customer?.email || 'N/A'}`, 50, 210)
+       .text(`Müşteri: ${customerName}`, 50, 210)
        .text(`Telefon: ${project.customer?.phone || 'N/A'}`, 50, 230)
-       .text(`Adres: ${project.customer?.address || 'N/A'}`, 50, 250)
 
-    // Proje detayları
+    // Proje detayları  
     doc.fontSize(16)
-       .text('PROJE DETAYLARI', 50, 290)
+       .text('PROJE DETAYLARI', 50, 270)
 
     doc.fontSize(12)
-       .text(`Proje Tipi: ${project.type || 'N/A'}`, 50, 320)
-       .text(`Durum: ${project.status || 'N/A'}`, 50, 340)
-       .text(`Sistem Gucu: ${project.capacity || 0} kW`, 50, 360)
-       .text(`Panel Sayisi: ${project.panelCount || 0}`, 50, 380)
-       .text(`Yillik Uretim: ${project.annualProduction || 0} kWh`, 50, 400)
+       .text(`Proje Tipi: ${project.type || 'N/A'}`, 50, 300)
+       .text(`Durum: ${project.status || 'N/A'}`, 50, 320)
+       .text(`Sistem Gücü: ${project.capacity || 0} kW`, 50, 340)
 
-    // Teknik özellikler
-    doc.fontSize(16)
-       .text('TEKNIK OZELLIKLER', 50, 440)
+    // Konum bilgileri
+    if (project.location) {
+      doc.fontSize(16)
+         .text('KONUM BILGILERI', 50, 380)
 
-    doc.fontSize(12)
-       .text(`Panel Tipi: ${project.panelType || 'N/A'}`, 50, 470)
-       .text(`Panel Markasi: ${project.panelBrand || 'N/A'}`, 50, 490)
-       .text(`Inverter Tipi: ${project.inverterType || 'N/A'}`, 50, 510)
-       .text(`Inverter Markasi: ${project.inverterBrand || 'N/A'}`, 50, 530)
-       .text(`Montaj Tipi: ${project.mountingType || 'N/A'}`, 50, 550)
+      doc.fontSize(12)
+         .text(`Adres: ${project.location.address || 'N/A'}`, 50, 410)
+         .text(`Şehir: ${project.location.city || 'N/A'}`, 50, 430)
+         .text(`İlçe: ${project.location.district || 'N/A'}`, 50, 450)
+    }
 
     // Finansal özet
+    let yPos = project.location ? 490 : 380
     doc.fontSize(16)
-       .text('FINANSAL OZET', 50, 590)
+       .text('FINANSAL ÖZET', 50, yPos)
 
+    yPos += 30
     doc.fontSize(12)
-       .text(`Tahmini Maliyet: ${(project.estimatedCost || 0).toLocaleString('tr-TR')} TL`, 50, 620)
-       .text(`Onaylanan Butce: ${(project.approvedBudget || 0).toLocaleString('tr-TR')} TL`, 50, 640)
-       .text(`Geri Odenme Suresi: ${project.paybackPeriod || 'N/A'} yil`, 50, 660)
+       .text(`Tahmini Maliyet: ${(project.estimatedCost || 0).toLocaleString('tr-TR')} TL`, 50, yPos)
+       .text(`Gerçek Maliyet: ${(project.actualCost || 0).toLocaleString('tr-TR')} TL`, 50, yPos + 20)
 
-    // Notlar
-    if (project.notes) {
-      doc.addPage()
+    // Açıklama
+    if (project.description) {
+      yPos += 70
       doc.fontSize(16)
-         .text('NOTLAR', 50, 50)
+         .text('AÇIKLAMA', 50, yPos)
       
       doc.fontSize(12)
-         .text(project.notes, 50, 80, { width: 500 })
+         .text(project.description, 50, yPos + 30, { width: 500 })
     }
 
     // PDF'i stream'e dönüştür
@@ -120,7 +123,7 @@ export async function GET(
     // Response headers
     const headers = new Headers()
     headers.set('Content-Type', 'application/pdf')
-    headers.set('Content-Disposition', `attachment; filename="proje-${project.code || projectId}.pdf"`)
+    headers.set('Content-Disposition', `attachment; filename="proje-${projectId}.pdf"`)
     headers.set('Content-Length', buffer.length.toString())
 
     return new NextResponse(buffer, { headers })

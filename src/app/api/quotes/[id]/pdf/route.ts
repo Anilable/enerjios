@@ -65,22 +65,21 @@ export async function GET(
 
     doc.fontSize(12)
        .text(`Ad Soyad: ${quote.customer?.firstName || ''} ${quote.customer?.lastName || ''}`, 50, 210)
-       .text(`Email: ${quote.customer?.email || 'N/A'}`, 50, 230)
-       .text(`Telefon: ${quote.customer?.phone || 'N/A'}`, 50, 250)
+       .text(`Telefon: ${quote.customer?.phone || 'N/A'}`, 50, 230)
 
     // Proje detayları
     doc.fontSize(16)
-       .text('PROJE DETAYLARI', 50, 290)
+       .text('PROJE DETAYLARI', 50, 270)
 
     doc.fontSize(12)
-       .text(`Proje Tipi: ${quote.project?.type || 'N/A'}`, 50, 320)
-       .text(`Sistem Gucu: ${quote.project?.capacity || 0} kW`, 50, 340)
+       .text(`Proje Tipi: ${quote.project?.type || 'N/A'}`, 50, 300)
+       .text(`Sistem Gücü: ${quote.project?.capacity || 0} kW`, 50, 320)
 
     // Teklif kalemleri
     doc.fontSize(16)
-       .text('TEKLIF KALEMLERI', 50, 380)
+       .text('TEKLIF KALEMLERI', 50, 360)
 
-    let yPos = 410
+    let yPos = 390
     const items = quote.items || []
     
     for (const item of items) {
