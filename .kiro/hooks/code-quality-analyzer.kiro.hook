@@ -1,0 +1,23 @@
+{
+  "enabled": true,
+  "name": "Code Quality Analyzer",
+  "description": "Analyzes code for warnings/errors, fixes issues, organizes imports alphabetically and by groups (external then internal), ensures code standards compliance, and improves readability while preserving functionality",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "src/**/*.js",
+      "src/**/*.jsx",
+      "*.ts",
+      "*.tsx",
+      "*.js",
+      "*.jsx"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Kod analizini çalıştır ve mevcut uyarı/hataları tespit et. Tespit edilen sorunları çöz ve kod kalitesini arttır. Import ifadelerini düzenle: gereksiz importları sil, importları alfabetik sıraya göre düzenle, grup halinde organize et (önce external kütüphaneler, sonra internal modüller). Kod standartlarına uygunluğu kontrol et. Yapılan değişiklikleri özetle ve bildir. Değişiklikler sonrasında mevcut işlevselliği bozmamaya dikkat et ve kod okunabilirliğini arttır."
+  }
+}

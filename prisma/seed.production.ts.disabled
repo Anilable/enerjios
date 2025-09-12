@@ -1,0 +1,270 @@
+import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
+
+const prisma = new PrismaClient()
+
+async function main() {
+  console.log('🌱 Starting production database seeding...')
+
+  // Create admin user
+  const hashedPassword = await bcrypt.hash('TrakySolar2024!', 12)
+  
+  const adminUser = await prisma.user.upsert({
+    where: { email: 'admin@trakyasolar.com' },
+    update: {},
+    create: {
+      name: 'Trakya Solar Admin',
+      email: 'admin@trakyasolar.com',
+      password: hashedPassword,
+      role: 'ADMIN',
+      emailVerified: new Date(),
+    },
+  })
+
+  // Create demo company user
+  const companyPassword = await bcrypt.hash('CompanyDemo2024', 12)
+  
+  const companyUser = await prisma.user.upsert({
+    where: { email: 'demo@solarpanel.com.tr' },
+    update: {},
+    create: {
+      name: 'Demo Solar Şirketi',
+      email: 'demo@solarpanel.com.tr',
+      password: companyPassword,
+      role: 'COMPANY',
+      emailVerified: new Date(),
+    },
+  })
+
+  // Create demo farmer user
+  const farmerPassword = await bcrypt.hash('FarmerDemo2024', 12)
+  
+  const farmerUser = await prisma.user.upsert({
+    where: { email: 'demo@ciftci.com.tr' },
+    update: {},
+    create: {
+      name: 'Demo Çiftçi',
+      email: 'demo@ciftci.com.tr',
+      password: farmerPassword,
+      role: 'FARMER',
+      emailVerified: new Date(),
+    },
+  })
+
+  // Create demo customer user
+  const customerPassword = await bcrypt.hash('CustomerDemo2024', 12)
+  
+  const customerUser = await prisma.user.upsert({
+    where: { email: 'demo@musteri.com.tr' },
+    update: {},
+    create: {
+      name: 'Demo Müşteri',
+      email: 'demo@musteri.com.tr',
+      password: customerPassword,
+      role: 'CUSTOMER',
+      emailVerified: new Date(),
+    },
+  })
+
+  // Create system configurations
+  // TODO: Temporarily commented out - systemConfig model does not exist in schema
+  // Enable these when systemConfig model is added to schema.prisma
+  /*
+  await prisma.systemConfig.upsert({
+    where: { key: 'maintenance_mode' },
+    update: { value: 'false' },
+    create: {
+      key: 'maintenance_mode',
+      value: 'false',
+      description: 'Enable/disable maintenance mode'
+    }
+  })
+
+  await prisma.systemConfig.upsert({
+    where: { key: 'max_file_upload_size' },
+    update: { value: '10485760' },
+    create: {
+      key: 'max_file_upload_size',
+      value: '10485760', // 10MB
+      description: 'Maximum file upload size in bytes'
+    }
+  })
+
+  await prisma.systemConfig.upsert({
+    where: { key: 'default_currency' },
+    update: { value: 'TRY' },
+    create: {
+      key: 'default_currency',
+      value: 'TRY',
+      description: 'Default currency for the platform'
+    }
+  })
+
+  await prisma.systemConfig.upsert({
+    where: { key: 'platform_version' },
+    update: { value: '1.0.0' },
+    create: {
+      key: 'platform_version',
+      value: '1.0.0',
+      description: 'Current platform version'
+    }
+  })
+  */
+
+  // Create sample product categories
+  // TODO: Temporarily commented out - productCategory and product models do not exist in schema
+  // Enable these when productCategory and product models are added to schema.prisma
+  /*
+  const panelCategory = await prisma.productCategory.upsert({
+    where: { slug: 'solar-panels' },
+    update: {},
+    create: {
+      name: 'Güneş Panelleri',
+      slug: 'solar-panels',
+      description: 'Monokristal ve polikristal güneş panelleri'
+    }
+  })
+
+  const inverterCategory = await prisma.productCategory.upsert({
+    where: { slug: 'inverters' },
+    update: {},
+    create: {
+      name: 'İnvertörler',
+      slug: 'inverters',
+      description: 'String ve mikroinvertörler'
+    }
+  })
+
+  const batteryCategory = await prisma.productCategory.upsert({
+    where: { slug: 'batteries' },
+    update: {},
+    create: {
+      name: 'Bataryalar',
+      slug: 'batteries',
+      description: 'Enerji depolama sistemleri'
+    }
+  })
+
+  // Create sample products
+  await prisma.product.upsert({
+    where: { sku: 'PANEL-MONO-550W' },
+    update: {},
+    create: {
+      name: 'Monokristal Panel 550W',
+      sku: 'PANEL-MONO-550W',
+      description: 'Yüksek verimli monokristal güneş paneli',
+      price: 1250.00,
+      costPrice: 850.00,
+      power: 550,
+      voltage: 41.2,
+      current: 13.35,
+      efficiency: 22.1,
+      warranty: 25,
+      dimensions: '2274x1134x35',
+      weight: 28.5,
+      categoryId: panelCategory.id,
+      inStock: true,
+      stockQuantity: 1000,
+      manufacturer: 'Turkish Solar Co.',
+      certifications: ['IEC 61215', 'IEC 61730', 'CE']
+    }
+  })
+
+  await prisma.product.upsert({
+    where: { sku: 'INV-STRING-15KW' },
+    update: {},
+    create: {
+      name: 'String İnvertör 15kW',
+      sku: 'INV-STRING-15KW',
+      description: '3 faz string invertör, MPPT izleyici',
+      price: 8500.00,
+      costPrice: 6200.00,
+      power: 15000,
+      voltage: 400,
+      efficiency: 98.2,
+      warranty: 10,
+      categoryId: inverterCategory.id,
+      inStock: true,
+      stockQuantity: 50,
+      manufacturer: 'Inverter Tech Turkey',
+      certifications: ['CE', 'VDE', 'G59']
+    }
+  })
+  */
+
+  // Create sample quotes and projects (minimal for production)
+  const sampleProject = await prisma.project.create({
+    data: {
+      name: 'Demo Konut Projesi',
+      description: 'Örnek konut güneş enerjisi projesi',
+      status: 'COMPLETED',
+      systemSize: 10.0,
+      estimatedCost: 125000.00,
+      // location: 'İstanbul, Türkiye', // TODO: Fix location field schema
+      customerId: customerUser.id,
+      companyId: companyUser.id,
+      createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+    }
+  })
+
+  // Create regional data for Turkish provinces
+  const regions = [
+    {
+      name: 'İstanbul',
+      solarRadiation: 1380, // kWh/m²/year
+      averageTemperature: 14.6,
+      incentiveMultiplier: 1.0
+    },
+    {
+      name: 'Ankara',
+      solarRadiation: 1450,
+      averageTemperature: 12.0,
+      incentiveMultiplier: 1.1
+    },
+    {
+      name: 'İzmir',
+      solarRadiation: 1550,
+      averageTemperature: 17.9,
+      incentiveMultiplier: 1.0
+    },
+    {
+      name: 'Antalya',
+      solarRadiation: 1650,
+      averageTemperature: 18.7,
+      incentiveMultiplier: 0.9
+    },
+    {
+      name: 'Konya',
+      solarRadiation: 1580,
+      averageTemperature: 11.5,
+      incentiveMultiplier: 1.2
+    }
+  ]
+
+  // TODO: Temporarily commented out - regionData model does not exist in schema
+  // Enable when regionData model is added to schema.prisma
+  /*
+  for (const region of regions) {
+    await prisma.regionData.upsert({
+      where: { name: region.name },
+      update: region,
+      create: region
+    })
+  }
+  */
+
+  console.log('✅ Production database seeded successfully!')
+  console.log(`👨‍💼 Admin user: admin@trakyasolar.com`)
+  console.log(`🏢 Company user: demo@solarpanel.com.tr`)
+  console.log(`🚜 Farmer user: demo@ciftci.com.tr`)
+  console.log(`👤 Customer user: demo@musteri.com.tr`)
+}
+
+main()
+  .catch((e) => {
+    console.error('❌ Error seeding database:', e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })
