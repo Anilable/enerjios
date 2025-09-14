@@ -212,7 +212,7 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
   const [laborHours, setLaborHours] = useState(24)
   const [laborRate, setLaborRate] = useState(150)
   const [marginPercent, setMarginPercent] = useState(25)
-  const [taxPercent] = useState(18)
+  const [taxPercent] = useState(20)
   
   const [calculations, setCalculations] = useState({
     subtotal: 0,

@@ -280,15 +280,51 @@ export default function CustomersPage() {
             <TabsContent value="form" className="h-full">
               <CustomerForm 
                 customer={isCreating ? selectedCustomer : null}
-                onSave={(customer) => {
-                  if (isCreating && selectedCustomer) {
-                    setCustomers(prev => prev.map(c => c.id === customer.id ? customer : c))
-                  } else {
-                    setCustomers(prev => [...prev, { ...customer, id: Date.now().toString() }])
+                onSave={async (customer) => {
+                  try {
+                    if (isCreating && selectedCustomer) {
+                      // Update existing customer (TODO: implement PUT endpoint)
+                      setCustomers(prev => prev.map(c => c.id === customer.id ? customer : c))
+                    } else {
+                      // Create new customer via API
+                      const response = await fetch('/api/customers', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          firstName: customer.firstName,
+                          lastName: customer.lastName,
+                          email: customer.email,
+                          phone: customer.phone,
+                          address: customer.address,
+                          city: customer.city,
+                          district: customer.district,
+                          customerType: customer.customerType,
+                          companyName: customer.companyName,
+                          taxNumber: customer.taxNumber
+                        })
+                      })
+
+                      if (!response.ok) {
+                        const errorData = await response.json()
+                        throw new Error(errorData.error || 'Failed to create customer')
+                      }
+
+                      const savedCustomer = await response.json()
+                      // Update local state with the saved customer from database
+                      setCustomers(prev => [...prev, savedCustomer])
+                    }
+                    
+                    setIsCreating(false)
+                    setSelectedCustomer(null)
+                    setActiveTab('list')
+                  } catch (error) {
+                    console.error('Error saving customer:', error)
+                    // TODO: Show error toast to user
+                    const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata'
+                    alert('Müşteri kaydedilemedi: ' + errorMessage)
                   }
-                  setIsCreating(false)
-                  setSelectedCustomer(null)
-                  setActiveTab('list')
                 }}
                 onCancel={() => {
                   setIsCreating(false)

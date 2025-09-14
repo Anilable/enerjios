@@ -20,7 +20,8 @@ import {
   AlertTriangle,
   CheckCircle,
   MoreHorizontal,
-  FileText
+  FileText,
+  Trash2
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
@@ -28,10 +29,12 @@ import { formatCurrency } from '@/lib/utils'
 interface ProjectRequestCardProps {
   request: ProjectRequest
   onClick: () => void
+  onDelete?: (id: string) => void
   isDragging?: boolean
+  canDelete?: boolean
 }
 
-export function ProjectRequestCard({ request, onClick, isDragging = false }: ProjectRequestCardProps) {
+export function ProjectRequestCard({ request, onClick, onDelete, isDragging = false, canDelete = false }: ProjectRequestCardProps) {
   const router = useRouter()
   const {
     attributes,
@@ -106,23 +109,43 @@ export function ProjectRequestCard({ request, onClick, isDragging = false }: Pro
         isDragging || sortableIsDragging ? 'rotate-2 shadow-lg z-50' : 'hover:border-primary/30'
       }`}
     >
-      {/* Drag Handle - TOP RIGHT CORNER - ONLY THIS HAS DRAG LISTENERS */}
-      <div 
-        ref={setActivatorNodeRef}
-        {...listeners}
-        className="drag-handle absolute top-2 right-2 z-20 p-1.5 rounded-md cursor-grab active:cursor-grabbing hover:bg-blue-50 hover:text-blue-600 transition-all border border-gray-200 bg-white shadow-sm"
-        style={{ touchAction: 'none' }}
-        title="🔄 Kartı sürüklemek için buraya tıklayın"
-        onClick={(e) => {
-          e.stopPropagation()
-          e.preventDefault()
-        }}
-      >
-        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M3,15H21V17H3V15M3,11H21V13H3V11M3,7H21V9H3V7Z" />
-        </svg>
+      {/* Action Buttons - TOP RIGHT CORNER */}
+      <div className="absolute top-2 right-2 z-20 flex items-center gap-1">
+        {/* Delete Button */}
+        {canDelete && onDelete && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600 transition-all border border-gray-200 bg-white shadow-sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              onDelete(request.id)
+            }}
+            title="Proje talebini sil"
+          >
+            <Trash2 className="w-3 h-3" />
+          </Button>
+        )}
+        
+        {/* Drag Handle */}
+        <div 
+          ref={setActivatorNodeRef}
+          {...listeners}
+          className="drag-handle p-1.5 rounded-md cursor-grab active:cursor-grabbing hover:bg-blue-50 hover:text-blue-600 transition-all border border-gray-200 bg-white shadow-sm"
+          style={{ touchAction: 'none' }}
+          title="🔄 Kartı sürüklemek için buraya tıklayın"
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+          }}
+        >
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M3,15H21V17H3V15M3,11H21V13H3V11M3,7H21V9H3V7Z" />
+          </svg>
+        </div>
       </div>
-      <CardHeader className="pb-3 pr-14">
+      <CardHeader className="pb-3 pr-20">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center space-x-3 min-w-0 flex-1">
             <Avatar className="w-8 h-8 flex-shrink-0">

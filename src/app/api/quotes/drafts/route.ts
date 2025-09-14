@@ -1,39 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
+import { getServerSession } from '@/lib/get-session'
 import { prisma } from '@/lib/prisma'
 
-// Ensure we have a default product for custom quote items
-async function ensureDefaultProduct() {
-  let defaultProduct = await prisma.product.findFirst({
-    where: { name: 'Custom Quote Item' }
-  })
-  
-  if (!defaultProduct) {
-    defaultProduct = await prisma.product.create({
-      data: {
-        type: 'ACCESSORY',
-        brand: 'Custom',
-        model: 'Generic',
-        name: 'Custom Quote Item',
-        description: 'Generic product for custom quote items',
-        specifications: {},
-        price: 0,
-        currency: 'TRY',
-        unitType: 'piece',
-        stock: 999999,
-        isAvailable: true,
-        images: '[]'
-      }
-    })
+// Function to validate that all quote items have valid product IDs
+function validateQuoteItems(items: any[]) {
+  for (const item of items) {
+    if (!item.productId) {
+      throw new Error(`Quote item "${item.name || item.description}" requires a valid productId. Please select a product from the catalog.`)
+    }
   }
-  
-  return defaultProduct.id
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession()
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -43,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const defaultProductId = await ensureDefaultProduct()
+    console.log('Draft API - Received body:', JSON.stringify(body, null, 2))
     
     const {
       projectRequestId,
@@ -63,6 +43,11 @@ export async function POST(request: NextRequest) {
       quoteNumber,
       id
     } = body
+
+    // Validate that all items have product IDs
+    if (items && items.length > 0) {
+      validateQuoteItems(items)
+    }
 
     let quote
 
@@ -85,7 +70,7 @@ export async function POST(request: NextRequest) {
           terms: terms || '',
           items: {
             create: items?.map((item: any) => ({
-              productId: item.productId || defaultProductId,
+              productId: item.productId,
               description: JSON.stringify({
                 name: item.name || '',
                 category: item.category || 'OTHER',
@@ -125,7 +110,7 @@ export async function POST(request: NextRequest) {
           createdById: session.user.id,
           items: {
             create: items?.map((item: any) => ({
-              productId: item.productId || defaultProductId,
+              productId: item.productId,
               description: JSON.stringify({
                 name: item.name || '',
                 category: item.category || 'OTHER',
@@ -153,8 +138,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(quote)
   } catch (error) {
     console.error('Error saving draft:', error)
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace'
+    })
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
@@ -162,7 +151,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession()
     
     if (!session?.user?.id) {
       return NextResponse.json(

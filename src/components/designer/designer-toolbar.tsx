@@ -20,7 +20,8 @@ import {
   Eye,
   ZoomIn,
   ZoomOut,
-  RotateCcw
+  RotateCcw,
+  Calculator
 } from 'lucide-react'
 import type { DesignerState } from '@/app/dashboard/designer/page'
 
@@ -28,6 +29,9 @@ interface DesignerToolbarProps {
   designerState: DesignerState
   updateDesignerState: (updates: Partial<DesignerState>) => void
   onToggleSidebar: () => void
+  sidebarOpen?: boolean
+  rightPanelOpen?: boolean
+  onToggleRightPanel?: () => void
 }
 
 const tools = [
@@ -46,16 +50,23 @@ const viewModes = [
   { id: 'SHADOWS', name: 'Gölgeler', color: 'bg-purple-500' },
 ]
 
-export function DesignerToolbar({ designerState, updateDesignerState, onToggleSidebar }: DesignerToolbarProps) {
+export function DesignerToolbar({ 
+  designerState, 
+  updateDesignerState, 
+  onToggleSidebar, 
+  sidebarOpen, 
+  rightPanelOpen, 
+  onToggleRightPanel 
+}: DesignerToolbarProps) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center space-x-4">
-        {/* Sidebar Toggle */}
-        <Button variant="ghost" size="sm" onClick={onToggleSidebar}>
+    <div className="flex items-center justify-between overflow-x-auto">
+      <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
+        {/* Desktop Sidebar Toggle */}
+        <Button variant="ghost" size="sm" onClick={onToggleSidebar} className="hidden sm:flex">
           <Menu className="w-4 h-4" />
         </Button>
 
-        <Separator orientation="vertical" className="h-6" />
+        <Separator orientation="vertical" className="h-6 hidden sm:block" />
 
         {/* Mode Switch */}
         <div className="flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
@@ -63,6 +74,7 @@ export function DesignerToolbar({ designerState, updateDesignerState, onToggleSi
             variant={designerState.mode === '3D' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => updateDesignerState({ mode: '3D' })}
+            className="text-xs sm:text-sm"
           >
             <Box className="w-3 h-3 mr-1" />
             3D
@@ -71,17 +83,18 @@ export function DesignerToolbar({ designerState, updateDesignerState, onToggleSi
             variant={designerState.mode === 'MAP' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => updateDesignerState({ mode: 'MAP' })}
+            className="text-xs sm:text-sm"
           >
             <Map className="w-3 h-3 mr-1" />
             Harita
           </Button>
         </div>
 
-        <Separator orientation="vertical" className="h-6" />
+        <Separator orientation="vertical" className="h-6 hidden md:block" />
 
-        {/* Drawing Tools */}
-        <div className="flex items-center space-x-1">
-          {tools.map(tool => {
+        {/* Drawing Tools - Hidden on mobile, show only essential ones */}
+        <div className="hidden md:flex items-center space-x-1">
+          {tools.slice(0, 4).map(tool => {
             const Icon = tool.icon
             return (
               <Button
@@ -97,14 +110,14 @@ export function DesignerToolbar({ designerState, updateDesignerState, onToggleSi
           })}
         </div>
 
-        <Separator orientation="vertical" className="h-6" />
+        <Separator orientation="vertical" className="h-6 hidden lg:block" />
 
-        {/* View Controls */}
+        {/* View Controls - Essential only on mobile */}
         <div className="flex items-center space-x-1">
-          <Button variant="ghost" size="sm" title="Yakınlaştır">
+          <Button variant="ghost" size="sm" title="Yakınlaştır" className="hidden sm:flex">
             <ZoomIn className="w-3 h-3" />
           </Button>
-          <Button variant="ghost" size="sm" title="Uzaklaştır">
+          <Button variant="ghost" size="sm" title="Uzaklaştır" className="hidden sm:flex">
             <ZoomOut className="w-3 h-3" />
           </Button>
           <Button variant="ghost" size="sm" title="Görünümü Sıfırla">
@@ -113,9 +126,9 @@ export function DesignerToolbar({ designerState, updateDesignerState, onToggleSi
         </div>
       </div>
 
-      <div className="flex items-center space-x-4">
-        {/* View Mode Indicator */}
-        <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+        {/* View Mode Indicator - Simplified on mobile */}
+        <div className="hidden lg:flex items-center space-x-2">
           <Layers className="w-4 h-4 text-gray-500" />
           {viewModes.map(mode => (
             <Badge
@@ -134,10 +147,32 @@ export function DesignerToolbar({ designerState, updateDesignerState, onToggleSi
           ))}
         </div>
 
-        <Separator orientation="vertical" className="h-6" />
+        {/* Mobile Panel Toggles */}
+        <div className="flex sm:hidden items-center space-x-1">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onToggleSidebar}
+            className={sidebarOpen ? 'bg-primary text-white' : ''}
+          >
+            <Menu className="w-4 h-4" />
+          </Button>
+          {onToggleRightPanel && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onToggleRightPanel}
+              className={rightPanelOpen ? 'bg-primary text-white' : ''}
+            >
+              <Calculator className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center space-x-1">
+        <Separator orientation="vertical" className="h-6 hidden lg:block" />
+
+        {/* Action Buttons - Desktop only */}
+        <div className="hidden lg:flex items-center space-x-1">
           <Button variant="ghost" size="sm" title="Kopyala">
             <Copy className="w-3 h-3" />
           </Button>
@@ -149,10 +184,10 @@ export function DesignerToolbar({ designerState, updateDesignerState, onToggleSi
           </Button>
         </div>
 
-        <Separator orientation="vertical" className="h-6" />
+        <Separator orientation="vertical" className="h-6 hidden lg:block" />
 
-        {/* Solar Analysis */}
-        <Button variant="outline" size="sm">
+        {/* Solar Analysis - Desktop only */}
+        <Button variant="outline" size="sm" className="hidden lg:flex">
           <Sun className="w-3 h-3 mr-2 text-yellow-500" />
           Güneş Analizi
         </Button>

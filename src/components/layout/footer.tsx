@@ -71,11 +71,11 @@ export function Footer() {
             <div className="space-y-3">
               <div className="flex items-center space-x-3 text-sm text-gray-400">
                 <MapPin className="h-4 w-4" />
-                <span>Tekirdağ, Türkiye</span>
+                <span>8 Kasım Mah Tekcan Cad 52/A 39750 Lüleburgaz / Kırklareli</span>
               </div>
               <div className="flex items-center space-x-3 text-sm text-gray-400">
                 <Phone className="h-4 w-4" />
-                <span>+90 (282) 123 45 67</span>
+                <span>+90 (288) 415 20 05</span>
               </div>
               <div className="flex items-center space-x-3 text-sm text-gray-400">
                 <Mail className="h-4 w-4" />

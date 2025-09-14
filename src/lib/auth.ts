@@ -20,6 +20,13 @@ export const authOptions: NextAuthOptions = {
           GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            authorization: {
+              params: {
+                prompt: "consent",
+                access_type: "offline",
+                response_type: "code"
+              }
+            }
           }),
         ]
       : []),
@@ -81,10 +88,59 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
+    async signIn({ user, account, profile }) {
+      // Always allow credentials login
+      if (account?.provider === "credentials") {
+        return true
+      }
+
+      // Google OAuth sign in
+      if (account?.provider === "google") {
+        try {
+          // Check if user exists
+          const existingUser = await db.user.findUnique({
+            where: { email: user.email! },
+          })
+
+          if (existingUser) {
+            // Update existing user with Google info if needed
+            await db.user.update({
+              where: { id: existingUser.id },
+              data: {
+                name: user.name || existingUser.name,
+                image: user.image || existingUser.image,
+              }
+            })
+          }
+          return true
+        } catch (error) {
+          console.error("Google sign-in error:", error)
+          return false
+        }
+      }
+
+      return true
+    },
+    async jwt({ token, user, trigger, session, account }) {
       if (user) {
         token.role = user.role
         token.status = user.status
+      }
+
+      // Handle Google OAuth
+      if (account?.provider === "google") {
+        try {
+          const dbUser = await db.user.findUnique({
+            where: { email: token.email! },
+          })
+
+          if (dbUser) {
+            token.role = dbUser.role
+            token.status = dbUser.status
+          }
+        } catch (error) {
+          console.error("JWT callback error:", error)
+        }
       }
 
       // Update token from session if needed
@@ -105,13 +161,27 @@ export const authOptions: NextAuthOptions = {
       return session
     },
     async redirect({ url, baseUrl }) {
+      // Debug logging
+      console.log('Redirect callback:', { url, baseUrl })
+
+      // Use the correct port based on environment
+      const correctBaseUrl = process.env.NODE_ENV === 'development'
+        ? 'http://localhost:3001'
+        : baseUrl
+
       // Allows relative callback URLs
-      if (url.startsWith("/")) return `${baseUrl}${url}`
-      
-      // Allows callback URLs on the same origin
-      else if (new URL(url).origin === baseUrl) return url
-      
-      return baseUrl
+      if (url.startsWith("/")) return `${correctBaseUrl}${url}`
+
+      // Allows callback URLs on the same origin or localhost with correct port
+      const urlObj = new URL(url, correctBaseUrl)
+      const baseUrlObj = new URL(correctBaseUrl)
+
+      if (urlObj.origin === baseUrlObj.origin ||
+          (urlObj.hostname === 'localhost' && baseUrlObj.hostname === 'localhost')) {
+        return url.startsWith('http') ? url : `${correctBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`
+      }
+
+      return correctBaseUrl
     },
   },
   events: {

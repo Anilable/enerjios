@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { db as prisma } from '@/lib/db'
-import { rateLimit } from '@/lib/rate-limit'
+import { generalRateLimit } from '@/lib/rate-limit'
 
 export async function GET(request: NextRequest) {
   try {
     // Rate limiting
-    const result = await rateLimit(request, 'api')
-    
-    if (result && !result.success) {
+    const ip = request.headers.get('x-forwarded-for') || 'unknown'
+    try {
+      await generalRateLimit.check(10, ip)
+    } catch (error) {
       return NextResponse.json(
         { error: 'Too many requests' },
         { status: 429 }
@@ -208,9 +209,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Rate limiting
-    const result = await rateLimit(request, 'api')
-    
-    if (result && !result.success) {
+    const ip = request.headers.get('x-forwarded-for') || 'unknown'
+    try {
+      await generalRateLimit.check(10, ip)
+    } catch (error) {
       return NextResponse.json(
         { error: 'Too many requests' },
         { status: 429 }

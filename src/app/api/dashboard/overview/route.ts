@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { db as prisma } from '@/lib/db'
-import { rateLimit } from '@/lib/rate-limit'
+import { withDatabase } from '@/lib/db-wrapper'
+import { generalRateLimit } from '@/lib/rate-limit'
 import { 
   requireAuth, 
   getProjectsFilter, 
@@ -16,9 +17,10 @@ import {
 export async function GET(request: NextRequest) {
   try {
     // Rate limiting
-    const result = await rateLimit(request, 'api')
-    
-    if (result && !result.success) {
+    const ip = request.headers.get('x-forwarded-for') || 'unknown'
+    try {
+      await generalRateLimit.check(10, ip)
+    } catch (error) {
       return NextResponse.json(
         { error: 'Too many requests' },
         { status: 429 }
@@ -79,28 +81,9 @@ export async function GET(request: NextRequest) {
     debugTenantFilter(quoteWhere, 'Quotes Filter')
     debugTenantFilter({ sqlFilter: userSqlFilter }, 'SQL Filter')
 
-    // Get all dashboard data in parallel
-    const [
-      // Key metrics
-      projectStats,
-      customerStats,
-      quoteStats,
-      revenueStats,
-      
-      // Recent activities
-      recentProjects,
-      recentCustomers,
-      recentQuotes,
-      
-      // Charts data
-      monthlyRevenue,
-      projectsByStatus,
-      topCustomers,
-      
-      // Performance metrics
-      systemCapacityStats,
-      conversionMetrics
-    ] = await Promise.all([
+    // Get all dashboard data in parallel with database wrapper
+    const dashboardData = await withDatabase(async () => {
+      return Promise.all([
       // Project statistics
       prisma.project.aggregate({
         where: projectWhere,
@@ -250,6 +233,33 @@ export async function GET(request: NextRequest) {
         })
       ])
     ])
+    }, {
+      timeout: 45000, // 45 seconds for complex dashboard queries
+      retries: 2
+    })
+
+    // Destructure dashboard data results
+    const [
+      // Key metrics
+      projectStats,
+      customerStats,
+      quoteStats,
+      revenueStats,
+
+      // Recent activities
+      recentProjects,
+      recentCustomers,
+      recentQuotes,
+
+      // Charts data
+      monthlyRevenue,
+      projectsByStatus,
+      topCustomers,
+
+      // Performance metrics
+      systemCapacityStats,
+      conversionMetrics
+    ] = dashboardData
 
     // Calculate derived metrics
     const conversionRate = conversionMetrics[0] > 0 
@@ -264,19 +274,24 @@ export async function GET(request: NextRequest) {
       createdAt: { gte: prevPeriodStart, lte: startDate }
     }, tenantOptions)
 
-    const [prevProjectStats, prevRevenueStats] = await Promise.all([
-      prisma.project.aggregate({
-        where: prevTimeFilter,
-        _count: { id: true }
-      }),
-      prisma.project.aggregate({
-        where: {
-          ...prevTimeFilter,
-          status: 'COMPLETED'
-        },
-        _sum: { actualCost: true }
-      })
-    ])
+    const [prevProjectStats, prevRevenueStats] = await withDatabase(async () => {
+      return Promise.all([
+        prisma.project.aggregate({
+          where: prevTimeFilter,
+          _count: { id: true }
+        }),
+        prisma.project.aggregate({
+          where: {
+            ...prevTimeFilter,
+            status: 'COMPLETED'
+          },
+          _sum: { actualCost: true }
+        })
+      ])
+    }, {
+      timeout: 15000, // 15 seconds for growth calculation
+      retries: 2
+    })
 
     // Calculate growth percentages
     const projectGrowth = prevProjectStats._count.id > 0 

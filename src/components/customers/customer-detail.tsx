@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -32,7 +33,7 @@ import {
 import type { CustomerData } from '@/app/dashboard/customers/page'
 import { ProjectRequestAPI } from '@/lib/api/project-requests'
 import { ProjectRequest, PROJECT_REQUEST_STATUS_LABELS } from '@/types/project-request'
-import { ProjectRequestButton } from '@/components/admin/project-request-button'
+import { EnhancedProjectRequestDialog } from '@/components/project-requests/enhanced-project-request-dialog'
 
 interface CustomerDetailProps {
   customer: CustomerData
@@ -41,9 +42,11 @@ interface CustomerDetailProps {
 }
 
 export function CustomerDetail({ customer, onEdit, onClose }: CustomerDetailProps) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState('overview')
   const [projectRequests, setProjectRequests] = useState<ProjectRequest[]>([])
   const [loadingRequests, setLoadingRequests] = useState(false)
+  const [isProjectRequestModalOpen, setIsProjectRequestModalOpen] = useState(false)
   const [newInteraction, setNewInteraction] = useState({
     type: 'NOTE' as const,
     subject: '',
@@ -72,14 +75,30 @@ export function CustomerDetail({ customer, onEdit, onClose }: CustomerDetailProp
     fetchProjectRequests()
   }, [customer.email, customer.id])
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('tr-TR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date)
+  const formatDate = (date: Date | string | null | undefined) => {
+    try {
+      if (!date) {
+        return 'Tarih belirtilmemiş'
+      }
+
+      const dateObj = typeof date === 'string' ? new Date(date) : date
+
+      // Check if date is valid
+      if (!dateObj || isNaN(dateObj.getTime()) || !isFinite(dateObj.getTime())) {
+        return 'Tarih belirtilmemiş'
+      }
+
+      return new Intl.DateTimeFormat('tr-TR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(dateObj)
+    } catch (error) {
+      console.warn('Date formatting error:', error)
+      return 'Tarih belirtilmemiş'
+    }
   }
 
   const getStatusColor = (status: CustomerData['status']) => {
@@ -130,12 +149,26 @@ export function CustomerDetail({ customer, onEdit, onClose }: CustomerDetailProp
     }
   }
 
-  const getDaysSinceContact = (date: Date) => {
-    const today = new Date()
-    const contactDate = new Date(date)
-    const diffTime = Math.abs(today.getTime() - contactDate.getTime())
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays
+  const getDaysSinceContact = (date: Date | string | null | undefined) => {
+    try {
+      if (!date) {
+        return 0
+      }
+
+      const contactDate = typeof date === 'string' ? new Date(date) : date
+
+      if (!contactDate || isNaN(contactDate.getTime()) || !isFinite(contactDate.getTime())) {
+        return 0
+      }
+
+      const today = new Date()
+      const diffTime = Math.abs(today.getTime() - contactDate.getTime())
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      return diffDays
+    } catch (error) {
+      console.warn('Date calculation error:', error)
+      return 0
+    }
   }
 
   const handleAddInteraction = () => {
@@ -150,6 +183,60 @@ export function CustomerDetail({ customer, onEdit, onClose }: CustomerDetailProp
       subject: '',
       description: ''
     })
+  }
+
+  const handleProjectRequestSubmit = async (request: ProjectRequest) => {
+    try {
+      await ProjectRequestAPI.create(request)
+
+      // Refresh project requests list
+      const allRequests = await ProjectRequestAPI.getAll()
+      const customerRequests = allRequests.filter(
+        req => req.customerEmail === customer.email || req.customerId === customer.id
+      )
+      setProjectRequests(customerRequests)
+
+      // Close modal
+      setIsProjectRequestModalOpen(false)
+    } catch (error) {
+      console.error('Error creating project request:', error)
+      throw error // Let the modal handle the error display
+    }
+  }
+
+  const handleCreateQuote = async () => {
+    try {
+      // Check if we already have project requests loaded for this customer
+      if (projectRequests.length > 0) {
+        // Customer has existing project requests, route to quote creation with most recent project
+        const mostRecentProject = projectRequests[0] // Already sorted by createdAt desc
+        router.push(`/dashboard/quotes/create/${mostRecentProject.id}`)
+      } else {
+        // Double-check with fresh API call in case the data is stale
+        const response = await fetch(`/api/project-requests?customerId=${customer.id}`)
+
+        if (response.ok) {
+          const freshProjectRequests = await response.json()
+
+          if (freshProjectRequests.length > 0) {
+            // Customer has existing project requests, route to quote creation with most recent project
+            const mostRecentProject = freshProjectRequests[0] // API returns sorted by createdAt desc
+            router.push(`/dashboard/quotes/create/${mostRecentProject.id}`)
+          } else {
+            // No existing project requests, route to project request creation first
+            router.push(`/dashboard/project-requests/new?customerId=${customer.id}`)
+          }
+        } else {
+          // API error, fallback to project request creation
+          console.warn('Failed to fetch project requests, falling back to project request creation')
+          router.push(`/dashboard/project-requests/new?customerId=${customer.id}`)
+        }
+      }
+    } catch (error) {
+      console.error('Error checking customer projects:', error)
+      // Error occurred, fallback to project request creation
+      router.push(`/dashboard/project-requests/new?customerId=${customer.id}`)
+    }
   }
 
   const daysSinceContact = getDaysSinceContact(customer.lastContact)
@@ -198,7 +285,7 @@ export function CustomerDetail({ customer, onEdit, onClose }: CustomerDetailProp
             <Mail className="w-4 h-4 mr-2" />
             Email Gönder
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleCreateQuote}>
             <FileText className="w-4 h-4 mr-2" />
             Teklif Oluştur
           </Button>
@@ -499,7 +586,7 @@ export function CustomerDetail({ customer, onEdit, onClose }: CustomerDetailProp
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>Teklifler</span>
-                <Button size="sm">
+                <Button size="sm" onClick={handleCreateQuote}>
                   <Plus className="w-4 h-4 mr-2" />
                   Yeni Teklif
                 </Button>
@@ -545,20 +632,13 @@ export function CustomerDetail({ customer, onEdit, onClose }: CustomerDetailProp
                   <FolderKanban className="w-5 h-5 mr-2" />
                   Proje Talepleri
                 </span>
-                <ProjectRequestButton
-                  customerId={customer.id}
-                  customerName={customer.fullName}
-                  customerEmail={customer.email}
-                  customerPhone={customer.phone}
-                  customerAddress={customer.address}
-                  customerCity={customer.city}
-                  trigger={
-                    <Button size="sm">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Yeni Talep
-                    </Button>
-                  }
-                />
+                <Button 
+                  size="sm"
+                  onClick={() => setIsProjectRequestModalOpen(true)}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Yeni Talep
+                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -663,20 +743,14 @@ export function CustomerDetail({ customer, onEdit, onClose }: CustomerDetailProp
                   <p className="text-sm text-gray-500 mb-4">
                     Bu müşteri için henüz proje talebi oluşturulmamış
                   </p>
-                  <ProjectRequestButton
-                    customerId={customer.id}
-                    customerName={customer.fullName}
-                    customerEmail={customer.email}
-                    customerPhone={customer.phone}
-                    customerAddress={customer.address}
-                    customerCity={customer.city}
-                    trigger={
-                      <Button size="sm" variant="outline">
-                        <Plus className="w-4 h-4 mr-2" />
-                        İlk Talebi Oluştur
-                      </Button>
-                    }
-                  />
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => setIsProjectRequestModalOpen(true)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    İlk Talebi Oluştur
+                  </Button>
                 </div>
               )}
             </CardContent>
@@ -717,6 +791,21 @@ export function CustomerDetail({ customer, onEdit, onClose }: CustomerDetailProp
           </Card>
         </TabsContent>
       </Tabs>
+      
+      {/* Enhanced Project Request Modal */}
+      <EnhancedProjectRequestDialog
+        isOpen={isProjectRequestModalOpen}
+        onClose={() => setIsProjectRequestModalOpen(false)}
+        onSubmit={handleProjectRequestSubmit}
+        prefilledCustomer={{
+          id: customer.id,
+          name: customer.fullName,
+          email: customer.email,
+          phone: customer.phone,
+          address: customer.address,
+          city: customer.city
+        }}
+      />
     </div>
   )
 }

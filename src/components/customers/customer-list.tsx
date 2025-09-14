@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,6 +45,7 @@ export function CustomerList({
   getStatusLabel,
   getPriorityColor 
 }: CustomerListProps) {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [priorityFilter, setPriorityFilter] = useState<string>('all')
@@ -78,12 +80,28 @@ export function CustomerList({
     }
   })
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('tr-TR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).format(date)
+  const formatDate = (date: Date | string | null | undefined) => {
+    try {
+      if (!date) {
+        return 'Tarih belirtilmemiş'
+      }
+
+      const dateObj = typeof date === 'string' ? new Date(date) : date
+
+      // Check if date is valid
+      if (!dateObj || isNaN(dateObj.getTime()) || !isFinite(dateObj.getTime())) {
+        return 'Tarih belirtilmemiş'
+      }
+
+      return new Intl.DateTimeFormat('tr-TR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).format(dateObj)
+    } catch (error) {
+      console.warn('Date formatting error:', error)
+      return 'Tarih belirtilmemiş'
+    }
   }
 
   const getCustomerTypeLabel = (type: CustomerData['customerType']) => {
@@ -104,12 +122,54 @@ export function CustomerList({
     }
   }
 
-  const getDaysSinceContact = (date: Date) => {
-    const today = new Date()
-    const contactDate = new Date(date)
-    const diffTime = Math.abs(today.getTime() - contactDate.getTime())
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays
+  const getDaysSinceContact = (date: Date | string | null | undefined) => {
+    try {
+      if (!date) {
+        return 0
+      }
+
+      const contactDate = typeof date === 'string' ? new Date(date) : date
+
+      if (!contactDate || isNaN(contactDate.getTime()) || !isFinite(contactDate.getTime())) {
+        return 0
+      }
+
+      const today = new Date()
+      const diffTime = Math.abs(today.getTime() - contactDate.getTime())
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      return diffDays
+    } catch (error) {
+      console.warn('Date calculation error:', error)
+      return 0
+    }
+  }
+
+  const handleCreateQuote = async (customer: CustomerData) => {
+    try {
+      // First, check if customer has existing project requests
+      const response = await fetch(`/api/project-requests?customerId=${customer.id}`)
+
+      if (response.ok) {
+        const projectRequests = await response.json()
+
+        if (projectRequests.length > 0) {
+          // Customer has existing project requests, route to quote creation with most recent project
+          const mostRecentProject = projectRequests[0] // API returns sorted by createdAt desc
+          router.push(`/dashboard/quotes/create/${mostRecentProject.id}`)
+        } else {
+          // No existing project requests, route to project request creation first
+          router.push(`/dashboard/project-requests/new?customerId=${customer.id}`)
+        }
+      } else {
+        // API error, fallback to project request creation
+        console.warn('Failed to fetch project requests, falling back to project request creation')
+        router.push(`/dashboard/project-requests/new?customerId=${customer.id}`)
+      }
+    } catch (error) {
+      console.error('Error checking customer projects:', error)
+      // Error occurred, fallback to project request creation
+      router.push(`/dashboard/project-requests/new?customerId=${customer.id}`)
+    }
   }
 
   return (
@@ -382,7 +442,7 @@ export function CustomerList({
                       Mail
                     </Button>
 
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" onClick={() => handleCreateQuote(customer)}>
                       <FileText className="w-3 h-3 mr-1" />
                       Teklif
                     </Button>

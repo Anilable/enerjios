@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { PublicLayout } from '@/components/layout/dashboard-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -88,8 +88,18 @@ export default function CalculatorPage() {
   }
 
   return (
-    <DashboardLayout title="GES Hesaplayıcı">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <PublicLayout>
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            GES Hesaplayıcı
+          </h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Aylık elektrik faturanız ve çatı alanınızı girerek size özel güneş enerjisi sistemi hesaplayın
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calculator Form */}
         <div className="lg:col-span-2 space-y-6">
           <Card>
@@ -386,7 +396,8 @@ export default function CalculatorPage() {
             </Card>
           )}
         </div>
+        </div>
       </div>
-    </DashboardLayout>
+    </PublicLayout>
   )
 }

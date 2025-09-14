@@ -316,27 +316,28 @@ async function main() {
   }
   console.log('✅ Incentives seeded!')
 
-  // 3. Test kullanıcılarını ekle
-  console.log('👥 Adding test users...')
-  for (const userData of testUsers) {
-    const hashedPassword = await bcrypt.hash(userData.password, 12)
-    
-    const user = await prisma.user.upsert({
-      where: { email: userData.email },
-      update: {
-        name: userData.name,
-        role: userData.role as any,
-        password: hashedPassword,
-        status: 'ACTIVE'
-      },
-      create: {
-        email: userData.email,
-        name: userData.name,
-        role: userData.role as any,
-        password: hashedPassword,
-        status: 'ACTIVE'
-      }
-    })
+  // 3. Test kullanıcılarını ekle (sadece development ortamında)
+  if (process.env.NODE_ENV !== 'production' && process.env.SHOW_TEST_ACCOUNTS === 'true') {
+    console.log('👥 Adding test users (development only)...')
+    for (const userData of testUsers) {
+      const hashedPassword = await bcrypt.hash(userData.password, 12)
+      
+      const user = await prisma.user.upsert({
+        where: { email: userData.email },
+        update: {
+          name: userData.name,
+          role: userData.role as any,
+          password: hashedPassword,
+          status: 'ACTIVE'
+        },
+        create: {
+          email: userData.email,
+          name: userData.name,
+          role: userData.role as any,
+          password: hashedPassword,
+          status: 'ACTIVE'
+        }
+      })
 
     // Rol bazlı ek veriler
     if (userData.role === 'COMPANY') {
@@ -435,6 +436,9 @@ async function main() {
     }
   }
   console.log('✅ Test users seeded!')
+  } else {
+    console.log('⚠️ Skipping test users (production mode or SHOW_TEST_ACCOUNTS=false)')
+  }
 
   // 4. Ürün kataloğunu ekle
   console.log('📦 Adding product catalog...')

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -17,13 +17,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: '#f59e0b',
+}
+
 export const metadata: Metadata = {
   title: "EnerjiOS | Güneş Enerjisi Yönetim Platformu",
   description: "Türkiye'nin en kapsamlı güneş enerjisi sistemi (GES) satış ve yönetim platformu. Çiftçiler, ev sahipleri ve işletmeler için özel çözümler.",
   keywords: "güneş enerjisi, GES, solar panel, çiftçi, tarımsal ges, çatı ges, enerji yönetimi",
   manifest: "/manifest.json",
-  themeColor: "#f59e0b",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=5",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
+import { getServerSession } from '@/lib/get-session'
 import { prisma } from '@/lib/prisma'
-import PDFDocument from 'pdfkit'
-import { PassThrough } from 'stream'
+import { renderToStream } from '@react-pdf/renderer'
+import PDFTemplates from '@/lib/pdf-template'
+import React from 'react'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id: projectId } = await params
+  
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession()
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -19,13 +21,19 @@ export async function GET(
       )
     }
 
-    const { id: projectId } = await params
-
     // Proje bilgilerini veritabanından çek
     const project = await prisma.project.findUnique({
       where: { id: projectId },
       include: {
-        customer: true,
+        customer: {
+          include: {
+            user: {
+              select: {
+                email: true
+              }
+            }
+          }
+        },
         company: true,
         location: true
       }
@@ -38,83 +46,39 @@ export async function GET(
       )
     }
 
-    // PDF oluştur
-    const doc = new PDFDocument({
-      size: 'A4',
-      margin: 50,
-      bufferPages: true
-    })
-
-    // PDF başlığı
-    doc.fontSize(20)
-       .text('PROJE RAPORU', 50, 50)
-
-    // Proje bilgileri ve tarih
-    doc.fontSize(14)
-       .text(`Proje ID: ${projectId}`, 50, 100)
-       .text(`Proje Adı: ${project.name}`, 50, 120)
-       .text(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`, 50, 140)
-
-    // Müşteri bilgileri
-    doc.fontSize(16)
-       .text('MUSTERI BILGILERI', 50, 180)
-
-    const customerName = project.customer?.companyName || 
-      `${project.customer?.firstName || ''} ${project.customer?.lastName || ''}`.trim() || 
-      'N/A'
-
-    doc.fontSize(12)
-       .text(`Müşteri: ${customerName}`, 50, 210)
-       .text(`Telefon: ${project.customer?.phone || 'N/A'}`, 50, 230)
-
-    // Proje detayları  
-    doc.fontSize(16)
-       .text('PROJE DETAYLARI', 50, 270)
-
-    doc.fontSize(12)
-       .text(`Proje Tipi: ${project.type || 'N/A'}`, 50, 300)
-       .text(`Durum: ${project.status || 'N/A'}`, 50, 320)
-       .text(`Sistem Gücü: ${project.capacity || 0} kW`, 50, 340)
-
-    // Konum bilgileri
-    if (project.location) {
-      doc.fontSize(16)
-         .text('KONUM BILGILERI', 50, 380)
-
-      doc.fontSize(12)
-         .text(`Adres: ${project.location.address || 'N/A'}`, 50, 410)
-         .text(`Şehir: ${project.location.city || 'N/A'}`, 50, 430)
-         .text(`İlçe: ${project.location.district || 'N/A'}`, 50, 450)
+    // Transform data to match PDF template interface
+    const projectData = {
+      id: project.id,
+      name: project.name,
+      type: project.type,
+      status: project.status,
+      capacity: project.capacity,
+      estimatedCost: project.estimatedCost,
+      actualCost: project.actualCost,
+      description: project.description,
+      createdAt: project.createdAt,
+      customer: {
+        firstName: project.customer?.firstName,
+        lastName: project.customer?.lastName,
+        companyName: project.customer?.companyName,
+        email: project.customer?.user?.email,
+        phone: project.customer?.phone
+      },
+      location: project.location ? {
+        address: project.location.address,
+        city: project.location.city,
+        district: project.location.district
+      } : undefined,
+      company: project.company ? {
+        name: project.company.name
+      } : undefined
     }
 
-    // Finansal özet
-    let yPos = project.location ? 490 : 380
-    doc.fontSize(16)
-       .text('FINANSAL ÖZET', 50, yPos)
-
-    yPos += 30
-    doc.fontSize(12)
-       .text(`Tahmini Maliyet: ${(project.estimatedCost || 0).toLocaleString('tr-TR')} TL`, 50, yPos)
-       .text(`Gerçek Maliyet: ${(project.actualCost || 0).toLocaleString('tr-TR')} TL`, 50, yPos + 20)
-
-    // Açıklama
-    if (project.description) {
-      yPos += 70
-      doc.fontSize(16)
-         .text('AÇIKLAMA', 50, yPos)
-      
-      doc.fontSize(12)
-         .text(project.description, 50, yPos + 30, { width: 500 })
-    }
-
-    // PDF'i stream'e dönüştür
-    const stream = new PassThrough()
-
-    doc.pipe(stream)
-    doc.end()
-
-    // Stream'i buffer'a çevir
-    const chunks: Buffer[] = []
+    // Generate PDF using react-pdf
+    const stream = await renderToStream(React.createElement(PDFTemplates.ProjectPDF as any, { project: projectData }) as any)
+    
+    // Convert stream to buffer
+    const chunks: any[] = []
     for await (const chunk of stream) {
       chunks.push(chunk)
     }
@@ -130,8 +94,16 @@ export async function GET(
 
   } catch (error) {
     console.error('Error generating project PDF:', error)
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      projectId: projectId || 'undefined'
+    })
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'PDF generation failed', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      },
       { status: 500 }
     )
   }

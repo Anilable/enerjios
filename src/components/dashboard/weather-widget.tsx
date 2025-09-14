@@ -59,9 +59,9 @@ export function WeatherWidget() {
             <p className="text-sm text-muted-foreground mb-4">
               {error || 'Hava durumu bilgisi alınamadı'}
             </p>
-            <Button variant="outline" size="sm" onClick={refetch}>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Tekrar Dene
+            <Button variant="outline" size="sm" onClick={refetch} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Deneniyor...' : 'Tekrar Dene'}
             </Button>
           </div>
         </CardContent>
@@ -297,9 +297,9 @@ export function WeatherWidget() {
 
         {/* Refresh Button */}
         <div className="flex justify-center pt-2">
-          <Button variant="outline" size="sm" onClick={refetch}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Güncelle
+          <Button variant="outline" size="sm" onClick={refetch} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Güncelleniyor...' : 'Güncelle'}
           </Button>
         </div>
       </CardContent>

@@ -128,7 +128,7 @@ export function TestimonialsSection() {
   ]
 
   return (
-    <section className="py-16 lg:py-24 bg-white">
+    <section className="py-20 lg:py-32 bg-white relative z-0">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}

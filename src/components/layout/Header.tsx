@@ -20,7 +20,7 @@ import {
   Users,
   HelpCircle
 } from 'lucide-react'
-import { getRoleName, getRoleColor } from '@/lib/auth-utils'
+import { getRoleName, getRoleColor } from '@/lib/role-utils'
 
 interface HeaderProps {
   onSidebarToggle?: () => void

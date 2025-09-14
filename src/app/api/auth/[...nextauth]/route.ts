@@ -3,4 +3,16 @@ import { authOptions } from "@/lib/auth"
 
 const handler = NextAuth(authOptions)
 
-export { handler as GET, handler as POST }
+async function authHandler(req: Request, context: { params: Promise<{ nextauth: string[] }> }) {
+  // Await params first to fix async API error
+  const params = await context.params
+
+  // Create a new context with resolved params
+  const newContext = {
+    params
+  }
+
+  return handler(req, newContext)
+}
+
+export { authHandler as GET, authHandler as POST }

@@ -109,11 +109,11 @@ export function useWeather(
 
 // Specialized hook for dashboard weather widget
 export function useDashboardWeather() {
-  // Default to Istanbul coordinates if no location is available
-  const defaultLat = 41.0082
-  const defaultLng = 28.9784
-  
-  return useWeather(defaultLat, defaultLng, undefined, {
+  // Use Lüleburgaz, Kırklareli coordinates (company location)
+  const LULEBURGAZ_LAT = 41.4023
+  const LULEBURGAZ_LNG = 27.3564
+
+  return useWeather(LULEBURGAZ_LAT, LULEBURGAZ_LNG, undefined, {
     autoFetch: true,
     refreshInterval: 10 * 60 * 1000, // 10 minutes
   })

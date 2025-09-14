@@ -37,7 +37,6 @@ import { ProjectRequest } from '@/types/project-request'
 import { formatCurrency } from '@/lib/utils'
 import { QuotePreview } from '@/components/quotes/quote-preview'
 import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
 
 // Quote item categories
 const QUOTE_CATEGORIES = {
@@ -49,6 +48,43 @@ const QUOTE_CATEGORIES = {
   LABOR: 'İşçilik',
   TRANSPORT: 'Nakliye',
   OTHER: 'Diğer'
+}
+
+// Ready-made solar packages
+const SOLAR_PACKAGES = {
+  RESIDENTIAL_5KW: {
+    name: '5kW Konut Paketi',
+    description: 'Standart konut için 5kW solar sistem',
+    capacity: 5,
+    items: [
+      { category: 'PANEL', name: 'Monokristalin Panel 540W', quantity: 10, unitPrice: 950, description: 'Jinko Tiger Neo 540W' },
+      { category: 'INVERTER', name: 'Huawei İnverter 5kW', quantity: 1, unitPrice: 4500, description: 'SUN2000-5KTL-M1' },
+      { category: 'MOUNTING', name: 'Çatı Montaj Sistemi', quantity: 1, unitPrice: 2500, description: 'Alüminyum ray ve bağlantı elemanları' },
+      { category: 'LABOR', name: 'Kurulum İşçiliği', quantity: 24, unitPrice: 150, description: '3 günlük profesyonel kurulum' }
+    ]
+  },
+  RESIDENTIAL_10KW: {
+    name: '10kW Konut Paketi',
+    description: 'Büyük konut için 10kW solar sistem',
+    capacity: 10,
+    items: [
+      { category: 'PANEL', name: 'Monokristalin Panel 540W', quantity: 19, unitPrice: 950, description: 'Jinko Tiger Neo 540W' },
+      { category: 'INVERTER', name: 'Huawei İnverter 10kW', quantity: 1, unitPrice: 6500, description: 'SUN2000-10KTL-M1' },
+      { category: 'MOUNTING', name: 'Çatı Montaj Sistemi', quantity: 1, unitPrice: 4500, description: 'Alüminyum ray ve bağlantı elemanları' },
+      { category: 'LABOR', name: 'Kurulum İşçiliği', quantity: 40, unitPrice: 150, description: '5 günlük profesyonel kurulum' }
+    ]
+  },
+  COMMERCIAL_20KW: {
+    name: '20kW Ticari Paket',
+    description: 'Küçük işletme için 20kW solar sistem',
+    capacity: 20,
+    items: [
+      { category: 'PANEL', name: 'Monokristalin Panel 540W', quantity: 37, unitPrice: 950, description: 'Jinko Tiger Neo 540W' },
+      { category: 'INVERTER', name: 'Huawei İnverter 20kW', quantity: 1, unitPrice: 12000, description: 'SUN2000-20KTL-M0' },
+      { category: 'MOUNTING', name: 'Çatı/Zemin Montaj Sistemi', quantity: 1, unitPrice: 8000, description: 'Endüstriyel montaj sistemi' },
+      { category: 'LABOR', name: 'Kurulum İşçiliği', quantity: 80, unitPrice: 150, description: '10 günlük profesyonel kurulum' }
+    ]
+  }
 }
 
 // Pricing types
@@ -138,7 +174,7 @@ export default function CreateQuotePage() {
   const [saving, setSaving] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [projectRequest, setProjectRequest] = useState<ProjectRequest | null>(null)
-  const [activeStep, setActiveStep] = useState(1)
+  // Removed activeStep for single page layout
   const [products, setProducts] = useState<any[]>([])
   
   const [quoteData, setQuoteData] = useState<QuoteData>({
@@ -421,7 +457,7 @@ export default function CreateQuotePage() {
       unitPrice: 0,
       quantity: 1,
       discount: 0,
-      tax: 18,
+      tax: 20,
       subtotal: 0,
       total: 0
     }
@@ -431,6 +467,35 @@ export default function CreateQuotePage() {
       ...prev,
       items: updatedItems
     }))
+  }
+
+  // Apply ready-made package
+  const applyPackage = (packageKey: keyof typeof SOLAR_PACKAGES) => {
+    const selectedPackage = SOLAR_PACKAGES[packageKey]
+    const packageItems: QuoteItem[] = selectedPackage.items.map((item, index) => ({
+      id: `package-${Date.now()}-${index}`,
+      category: item.category as keyof typeof QUOTE_CATEGORIES,
+      name: item.name,
+      description: item.description,
+      pricingType: 'UNIT',
+      unitPrice: item.unitPrice,
+      quantity: item.quantity,
+      discount: 0,
+      tax: 20,
+      subtotal: item.unitPrice * item.quantity,
+      total: item.unitPrice * item.quantity * 1.2
+    }))
+
+    setQuoteData(prev => ({ 
+      ...prev, 
+      items: packageItems,
+      capacity: selectedPackage.capacity 
+    }))
+
+    toast({
+      title: 'Paket Uygulandı',
+      description: `${selectedPackage.name} başarıyla eklendi`
+    })
   }
 
   // Update item
@@ -588,79 +653,79 @@ export default function CreateQuotePage() {
     }
   }
 
-  // PDF Generation
-  const generatePDF = async () => {
+  // Professional PDF Generation
+  const generateProfessionalPDF = async () => {
     try {
-      const previewElement = document.getElementById('quote-preview-content')
-      if (!previewElement) {
-        toast({
-          title: 'Hata',
-          description: 'PDF oluşturulurken hata oluştu',
-          variant: 'destructive'
-        })
-        return
+      // Save quote as draft first using existing working logic
+      setSaving(true)
+      
+      const quotePayload = {
+        ...quoteData,
+        status: 'DRAFT',
+        quoteNumber: quoteData.quoteNumber || `Q-${Date.now().toString().slice(-8)}`,
+        createdAt: new Date().toISOString()
       }
 
-      const canvas = await html2canvas(previewElement, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true
+      const response = await fetch('/api/quotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(quotePayload)
       })
 
-      const imgData = canvas.toDataURL('image/png')
-      const pdf = new jsPDF('p', 'mm', 'a4')
-      const imgWidth = 210
-      const pageHeight = 295
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-      let heightLeft = imgHeight
-
-      let position = 0
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight
-        pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
+      if (!response.ok) {
+        const errorData = await response.text()
+        console.error('Failed to save quote:', errorData)
+        throw new Error(`Failed to save quote: ${response.status}`)
       }
 
-      const quoteNumber = quoteData.quoteNumber || `Q-${Date.now().toString().slice(-8)}`
-      pdf.save(`Teklif-${quoteNumber}.pdf`)
+      const savedQuote = await response.json()
+      console.log('Quote saved successfully:', savedQuote.id)
+      
+      // Now download PDF using the new API route
+      const pdfResponse = await fetch(`/api/quotes/${savedQuote.id}/pdf`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/pdf'
+        }
+      })
 
+      if (!pdfResponse.ok) {
+        const errorData = await pdfResponse.text()
+        console.error('Failed to generate PDF:', errorData)
+        throw new Error(`Failed to generate PDF: ${pdfResponse.status}`)
+      }
+
+      // Download the PDF
+      const blob = await pdfResponse.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `teklif-${quotePayload.quoteNumber}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      
       toast({
         title: 'Başarılı',
-        description: 'PDF başarıyla indirildi'
+        description: 'Profesyonel PDF raporu başarıyla indirildi'
       })
+      
+      setSaving(false)
     } catch (error) {
-      console.error('Error generating PDF:', error)
+      console.error('Error generating professional PDF:', error)
       toast({
         title: 'Hata',
         description: 'PDF oluşturulurken hata oluştu',
         variant: 'destructive'
       })
+      setSaving(false)
     }
   }
 
-  // Handle step navigation
-  const nextStep = () => {
-    if (activeStep < 4) {
-      setActiveStep(activeStep + 1)
-      if (activeStep === 3) {
-        setShowPreview(true)
-      }
-    }
-  }
-
-  const prevStep = () => {
-    if (activeStep > 1) {
-      setActiveStep(activeStep - 1)
-      if (activeStep === 4) {
-        setShowPreview(false)
-      }
-    }
-  }
+  // Removed step navigation for single page layout
 
   const getCategoryIcon = (category: keyof typeof QUOTE_CATEGORIES) => {
     switch (category) {
@@ -751,50 +816,6 @@ export default function CreateQuotePage() {
           </div>
         </div>
 
-        {/* Progress Steps */}
-        <div className="flex items-center justify-center space-x-4">
-          {[1, 2, 3, 4].map((step) => (
-            <div
-              key={step}
-              className={`flex items-center ${step < 4 ? 'flex-1' : ''}`}
-            >
-              <div
-                className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                  activeStep >= step
-                    ? 'bg-primary text-white border-primary'
-                    : 'bg-white text-gray-400 border-gray-300'
-                }`}
-              >
-                {activeStep > step ? (
-                  <Check className="w-5 h-5" />
-                ) : (
-                  <span>{step}</span>
-                )}
-              </div>
-              {step < 4 && (
-                <div
-                  className={`flex-1 h-1 mx-2 ${
-                    activeStep > step ? 'bg-primary' : 'bg-gray-200'
-                  }`}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="flex justify-center space-x-8 text-sm">
-          <span className={activeStep >= 1 ? 'text-primary font-medium' : 'text-gray-400'}>
-            Proje Bilgileri
-          </span>
-          <span className={activeStep >= 2 ? 'text-primary font-medium' : 'text-gray-400'}>
-            Malzeme Seçimi
-          </span>
-          <span className={activeStep >= 3 ? 'text-primary font-medium' : 'text-gray-400'}>
-            Fiyatlandırma
-          </span>
-          <span className={activeStep >= 4 ? 'text-primary font-medium' : 'text-gray-400'}>
-            Önizleme
-          </span>
-        </div>
 
         {/* Main Content */}
         {showPreview ? (
@@ -803,17 +824,153 @@ export default function CreateQuotePage() {
               quote={generatePreviewData()}
               onEdit={() => setShowPreview(false)}
               onSend={() => saveQuote('SENT')}
-              onDownload={generatePDF}
+              onDownload={generateProfessionalPDF}
             />
           </div>
         ) : (
           <>
+            {/* Project Information */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Proje Bilgileri</CardTitle>
+                <CardDescription>
+                  Teklif için proje detaylarını girin
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="customerName">Müşteri Adı</Label>
+                    <Input
+                      id="customerName"
+                      value={quoteData.customerName}
+                      onChange={(e) => setQuoteData(prev => ({ ...prev, customerName: e.target.value }))}
+                      placeholder="Müşteri adını girin"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="customerEmail">E-posta</Label>
+                    <Input
+                      id="customerEmail"
+                      type="email"
+                      value={quoteData.customerEmail}
+                      onChange={(e) => setQuoteData(prev => ({ ...prev, customerEmail: e.target.value }))}
+                      placeholder="E-posta adresini girin"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="customerPhone">Telefon</Label>
+                    <Input
+                      id="customerPhone"
+                      value={quoteData.customerPhone || ''}
+                      onChange={(e) => setQuoteData(prev => ({ ...prev, customerPhone: e.target.value }))}
+                      placeholder="Telefon numarasını girin"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="projectType">Proje Türü</Label>
+                    <Select
+                      value={quoteData.projectType || ''}
+                      onValueChange={(value) => setQuoteData(prev => ({ ...prev, projectType: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Proje türü seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="RESIDENTIAL">Konut</SelectItem>
+                        <SelectItem value="COMMERCIAL">Ticari</SelectItem>
+                        <SelectItem value="INDUSTRIAL">Endüstriyel</SelectItem>
+                        <SelectItem value="AGRICULTURAL">Tarımsal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="capacity">Sistem Kapasitesi (kW)</Label>
+                    <Input
+                      id="capacity"
+                      type="number"
+                      value={quoteData.capacity || ''}
+                      onChange={(e) => setQuoteData(prev => ({ ...prev, capacity: parseFloat(e.target.value) || 0 }))}
+                      placeholder="Kapasite girin"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="quoteNumber">Teklif Numarası</Label>
+                    <Input
+                      id="quoteNumber"
+                      value={quoteData.quoteNumber || ''}
+                      onChange={(e) => setQuoteData(prev => ({ ...prev, quoteNumber: e.target.value }))}
+                      placeholder="Otomatik oluşturulacak"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Ready-made Packages */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Hazır Paketler</CardTitle>
+                <CardDescription>
+                  Hızlı teklif için hazır paketlerden birini seçin
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {Object.entries(SOLAR_PACKAGES).map(([key, pkg]) => (
+                    <Card 
+                      key={key}
+                      className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50"
+                      onClick={() => applyPackage(key as keyof typeof SOLAR_PACKAGES)}
+                    >
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Package className="w-5 h-5 text-primary" />
+                          {pkg.name}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-gray-600 mb-3">{pkg.description}</p>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span>Kapasite:</span>
+                            <span className="font-medium">{pkg.capacity} kW</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Ürün Sayısı:</span>
+                            <span className="font-medium">{pkg.items.length} adet</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Tahmini Fiyat:</span>
+                            <span className="font-medium text-primary">
+                              ₺{pkg.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full mt-3"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            applyPackage(key as keyof typeof SOLAR_PACKAGES)
+                          }}
+                        >
+                          Bu Paketi Seç
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Quote Builder Table */}
             <Card>
               <CardHeader>
                 <CardTitle>Malzeme Listesi</CardTitle>
                 <CardDescription>
-                  Teklif için gerekli malzemeleri ekleyin ve fiyatlandırın
+                  Teklif için gerekli malzemeleri ekleyin ve fiyatlandırın veya yukarıdan hazır paket seçin
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -858,12 +1015,40 @@ export default function CreateQuotePage() {
                             </div>
                           </td>
                           <td className="py-3 px-4">
-                            <Input
-                              value={item.name}
-                              onChange={(e) => updateItem(item.id, 'name', e.target.value)}
-                              placeholder="Malzeme adı"
-                              className="w-full"
-                            />
+                            <Select
+                              value={item.productId || ''}
+                              onValueChange={(value) => {
+                                const selectedProduct = products.find(p => p.id === value)
+                                if (selectedProduct) {
+                                  updateItem(item.id, 'productId', value)
+                                  updateItem(item.id, 'name', selectedProduct.name)
+                                  updateItem(item.id, 'unitPrice', selectedProduct.price || 0)
+                                  updateItem(item.id, 'description', `${selectedProduct.brand} ${selectedProduct.model} - ${selectedProduct.power}`)
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Malzeme seçin" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {products.map((product) => (
+                                  <SelectItem 
+                                    key={product.id} 
+                                    value={product.id}
+                                    disabled={product.stock <= 0}
+                                  >
+                                    <div className="flex justify-between items-center w-full">
+                                      <span className={product.stock <= 0 ? 'text-gray-400' : ''}>
+                                        {product.name} - {product.brand}
+                                      </span>
+                                      <span className={`ml-2 text-xs ${product.stock <= 0 ? 'text-red-500' : product.stock < 10 ? 'text-orange-500' : 'text-green-600'}`}>
+                                        Stok: {product.stock}
+                                      </span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </td>
                           <td className="py-3 px-4">
                             <Input
@@ -1030,22 +1215,29 @@ export default function CreateQuotePage() {
               </Card>
             </div>
 
-            {/* Step Navigation */}
-            <div className="flex justify-between mt-8">
+            {/* Action Buttons */}
+            <div className="flex justify-end mt-8 space-x-4">
               <Button
                 variant="outline"
-                onClick={prevStep}
-                disabled={activeStep <= 1}
+                onClick={() => setShowPreview(!showPreview)}
               >
-                <ChevronLeft className="w-4 h-4 mr-2" />
-                Önceki
+                <Eye className="w-4 h-4 mr-2" />
+                {showPreview ? 'Düzenle' : 'Önizleme'}
               </Button>
               <Button
-                onClick={nextStep}
-                disabled={activeStep >= 4}
+                variant="outline"
+                onClick={generateProfessionalPDF}
               >
-                {activeStep === 3 ? 'Önizlemeye Geç' : 'Sonraki'}
-                <ChevronRight className="w-4 h-4 ml-2" />
+                <Download className="w-4 h-4 mr-2" />
+                PDF Raporu İndir
+              </Button>
+              <Button onClick={() => saveQuote('DRAFT')}>
+                <Save className="w-4 h-4 mr-2" />
+                Taslak Kaydet
+              </Button>
+              <Button onClick={() => saveQuote('SENT')}>
+                <Send className="w-4 h-4 mr-2" />
+                Teklifi Gönder
               </Button>
             </div>
           </>

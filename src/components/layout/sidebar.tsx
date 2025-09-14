@@ -40,7 +40,7 @@ import {
   FolderKanban
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getRoleName } from '@/lib/auth-utils'
+import { getRoleName } from '@/lib/role-utils'
 
 interface SidebarProps {
   isOpen: boolean

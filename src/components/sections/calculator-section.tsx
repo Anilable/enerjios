@@ -103,7 +103,7 @@ export function CalculatorSection() {
   }
 
   return (
-    <section id="calculator-section" className="py-16 lg:py-24 bg-gradient-to-br from-primary/5 to-yellow-50">
+    <section id="calculator-section" className="py-20 lg:py-32 bg-gradient-to-br from-primary/5 to-yellow-50 relative z-0 mb-16">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
@@ -125,7 +125,7 @@ export function CalculatorSection() {
         </div>
 
         <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
             
             {/* Calculator Form */}
             <Card className="shadow-xl border-0">
@@ -271,15 +271,6 @@ export function CalculatorSection() {
                         </div>
                       </div>
 
-                      <Link href="/auth/signup" className="w-full">
-                        <Button 
-                          variant="secondary" 
-                          className="w-full bg-white text-primary hover:bg-white/90 font-medium py-3"
-                        >
-                          Detaylı Analiz Al
-                          <ArrowRight className="w-4 h-4 ml-2" />
-                        </Button>
-                      </Link>
                     </CardContent>
                   </Card>
                 </>
@@ -299,26 +290,32 @@ export function CalculatorSection() {
                 </Card>
               )}
 
-              {/* CTA Card */}
-              <Card className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0">
-                <CardContent className="p-6 text-center">
-                  <h3 className="font-bold text-lg mb-2">
-                    Profesyonel Keşif İstiyorum
-                  </h3>
-                  <p className="text-sm mb-4 opacity-90">
-                    Uzmanlarımız evinizi ziyaret ederek detaylı analiz yapar
-                  </p>
-                  <LeadCaptureDialog>
-                    <Button 
-                      variant="secondary" 
-                      className="bg-white text-orange-600 hover:bg-white/90"
-                    >
-                      Ücretsiz Keşif Talep Et
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </LeadCaptureDialog>
-                </CardContent>
-              </Card>
+              {/* CTA Card - Positioned with proper spacing and z-index */}
+              <div className="mt-12 relative z-10">
+                <Card className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-0 shadow-xl relative">
+                  <CardContent className="p-8 text-center">
+                    <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <Home className="w-8 h-8" />
+                    </div>
+                    <h3 className="font-bold text-xl mb-3">
+                      Profesyonel Keşif İstiyorum
+                    </h3>
+                    <p className="text-base mb-6 opacity-90 max-w-sm mx-auto">
+                      Uzmanlarımız evinizi ziyaret ederek detaylı analiz yapar ve size özel çözüm önerir
+                    </p>
+                    <LeadCaptureDialog>
+                      <Button 
+                        variant="secondary" 
+                        size="lg"
+                        className="bg-white text-orange-600 hover:bg-white/90 font-semibold px-8 py-3 shadow-lg"
+                      >
+                        Ücretsiz Keşif Talep Et
+                        <ArrowRight className="w-5 h-5 ml-2" />
+                      </Button>
+                    </LeadCaptureDialog>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         </div>

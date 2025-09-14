@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 }
 
 export default function SignInPage() {
-  const showTestAccounts = process.env.SHOW_TEST_ACCOUNTS === 'true'
+  const showTestAccounts = process.env.NODE_ENV !== 'production' && process.env.SHOW_TEST_ACCOUNTS === 'true'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 flex items-center justify-center p-4">
@@ -16,7 +16,10 @@ export default function SignInPage() {
         
         {/* Test Accounts Info - Only shown in development */}
         {showTestAccounts && (
-          <div className="mt-8 p-4 bg-white/50 rounded-lg text-sm text-gray-600">
+          <div className="mt-8 p-4 bg-white/50 rounded-lg border-l-4 border-orange-500 text-sm text-gray-600">
+            <div className="flex items-center mb-2">
+              <span className="text-orange-600 font-semibold">🔧 Development Mode</span>
+            </div>
             <h3 className="font-semibold mb-2">Test Hesapları:</h3>
             <div className="space-y-1 text-xs">
               <div><strong>Admin:</strong> admin@enerjios.com</div>
@@ -24,11 +27,11 @@ export default function SignInPage() {
               <div><strong>Müşteri:</strong> ahmet@gmail.com</div>
               <div><strong>Çiftçi:</strong> mehmet@ciftci.com</div>
               <div className="mt-2 text-xs text-gray-500">
-                *Şifreler için sistem yöneticisine başvurun
+                *Tüm test hesaplarının şifresi: admin123, company123, customer123, farmer123
               </div>
             </div>
-            <div className="mt-2 text-xs text-orange-600 font-medium">
-              ⚠️ Development Environment Only
+            <div className="mt-2 text-xs text-red-600 font-medium bg-red-50 p-2 rounded">
+              ⚠️ Bu hesaplar sadece development ortamında görünür
             </div>
           </div>
         )}

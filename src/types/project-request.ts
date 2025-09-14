@@ -15,6 +15,10 @@ export type ProjectType =
   | 'LAND'
   | 'AGRISOLAR'
   | 'CARPARK'
+  | 'ONGRID'
+  | 'OFFGRID'
+  | 'STORAGE'
+  | 'HYBRID'
 
 export type Priority = 
   | 'LOW' 
@@ -27,6 +31,13 @@ export type RequestSource =
   | 'EMAIL' 
   | 'REFERRAL' 
   | 'SOCIAL_MEDIA'
+  | 'INSTAGRAM'
+  | 'FACEBOOK'
+  | 'LINKEDIN'
+  | 'TWITTER'
+  | 'WHATSAPP'
+  | 'GOOGLE_ADS'
+  | 'YOUTUBE'
 
 export interface ProjectRequest {
   id: string
@@ -103,5 +114,24 @@ export const PROJECT_TYPE_LABELS: Record<ProjectType, string> = {
   ROOFTOP: 'Çatı GES',
   LAND: 'Arazi GES',
   AGRISOLAR: 'Tarımsal GES',
-  CARPARK: 'Otopark GES'
+  CARPARK: 'Otopark GES',
+  ONGRID: 'Şebeke Bağlantılı (On-Grid)',
+  OFFGRID: 'Şebekeden Bağımsız (Off-Grid)',
+  STORAGE: 'Enerji Depolama',
+  HYBRID: 'Hibrit Sistem'
+}
+
+export const REQUEST_SOURCE_LABELS: Record<RequestSource, string> = {
+  WEBSITE: 'Web Sitesi',
+  PHONE: 'Telefon',
+  EMAIL: 'E-posta',
+  REFERRAL: 'Referans',
+  SOCIAL_MEDIA: 'Sosyal Medya',
+  INSTAGRAM: 'Instagram',
+  FACEBOOK: 'Facebook',
+  LINKEDIN: 'LinkedIn',
+  TWITTER: 'Twitter',
+  WHATSAPP: 'WhatsApp',
+  GOOGLE_ADS: 'Google Ads',
+  YOUTUBE: 'YouTube'
 }

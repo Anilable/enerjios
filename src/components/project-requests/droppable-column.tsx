@@ -10,9 +10,11 @@ import { KanbanColumn, ProjectRequest } from '@/types/project-request'
 interface DroppableColumnProps {
   column: KanbanColumn
   onCardClick: (request: ProjectRequest) => void
+  onDelete?: (id: string) => void
+  canDelete?: boolean
 }
 
-export function DroppableColumn({ column, onCardClick }: DroppableColumnProps) {
+export function DroppableColumn({ column, onCardClick, onDelete, canDelete = false }: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   })
@@ -64,6 +66,8 @@ export function DroppableColumn({ column, onCardClick }: DroppableColumnProps) {
                   console.log('Card clicked:', request.id, request.customerName)
                   onCardClick(request)
                 }}
+                onDelete={onDelete}
+                canDelete={canDelete}
               />
             ))}
           </SortableContext>

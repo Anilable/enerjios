@@ -1,17 +1,63 @@
-import { requireAuth } from '@/lib/auth-utils'
+'use client'
+
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Sun, Building, Users, TrendingUp, CloudSun, DollarSign, Compass, Calculator, FileText, BarChart3, FolderPlus } from 'lucide-react'
-import { getRoleName } from '@/lib/auth-utils'
-import { Suspense } from 'react'
+import { getRoleName } from '@/lib/role-utils'
+import { Suspense, useEffect } from 'react'
 import { FinancialOverview } from '@/components/dashboard/financial-overview'
 import { WeatherWidgetClient } from '@/components/dashboard/weather-widget-client'
 import Link from 'next/link'
 
-export default async function DashboardPage() {
-  const user = await requireAuth()
+export default function DashboardPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin')
+    }
+  }, [status, router])
+
+  if (status === 'loading') {
+    return (
+      <DashboardLayout
+        title="Yükleniyor..."
+        breadcrumbs={[
+          { label: 'Anasayfa', href: '/' },
+          { label: 'Dashboard' }
+        ]}
+      >
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-4" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-16 mb-2" />
+                  <Skeleton className="h-3 w-24" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (status === 'unauthenticated' || !session?.user) {
+    return null
+  }
+
+  const user = session.user
 
   return (
     <DashboardLayout 
@@ -57,9 +103,9 @@ export default async function DashboardPage() {
               </Button>
             </Link>
             
-            <Link href="/dashboard/projects">
-              <Button 
-                variant="default" 
+            <Link href="/dashboard/project-requests">
+              <Button
+                variant="default"
                 className="w-full h-24 flex-col gap-2 bg-gradient-to-br from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
               >
                 <FolderPlus className="h-8 w-8" />

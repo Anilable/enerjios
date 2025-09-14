@@ -13,23 +13,43 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 export function FinancialOverview() {
-  const { 
-    majorRates, 
-    loading, 
-    error, 
-    refetch, 
-    getRateChange, 
+  const {
+    majorRates,
+    loading,
+    error,
+    refetch,
+    getRateChange,
     formatCurrency,
     bulletinDate,
     lastUpdated
   } = useFinancialRates()
-  
-  const { 
-    solarRates, 
-    calculateEquipmentCost, 
+
+  const {
+    solarRates,
+    calculateEquipmentCost,
     getImportCosts,
-    loading: solarLoading 
+    loading: solarLoading
   } = useSolarIndustryRates()
+
+  // Data validation - check if rates are reasonable
+  const isValidRate = (rate: number | null | undefined): boolean => {
+    if (!rate || rate === null) return false
+    return rate > 0 && rate < 1000 // Basic sanity check
+  }
+
+  // Fallback rates if data is invalid or unavailable
+  const fallbackRates = {
+    USD: { selling: 30.5, buying: 30.2 },
+    EUR: { selling: 33.2, buying: 32.9 }
+  }
+
+  const safeUSDRate = isValidRate(majorRates.USD?.selling)
+    ? majorRates.USD?.selling!
+    : fallbackRates.USD.selling
+
+  const safeEURRate = isValidRate(majorRates.EUR?.selling)
+    ? majorRates.EUR?.selling!
+    : fallbackRates.EUR.selling
 
   // Sample equipment costs for demonstration
   const sampleEquipmentCosts = {
@@ -113,16 +133,19 @@ export function FinancialOverview() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">USD/TRY</CardTitle>
+            <CardTitle className="text-sm font-medium">USD</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(majorRates.USD?.selling || 0)}
+              ₺{safeUSDRate.toFixed(2)}
+              {!isValidRate(majorRates.USD?.selling) && (
+                <span className="text-xs text-orange-600 ml-1">*</span>
+              )}
             </div>
             {usdChange && (
               <div className={`flex items-center text-xs ${
-                usdChange.direction === 'up' ? 'text-red-600' : 
+                usdChange.direction === 'up' ? 'text-red-600' :
                 usdChange.direction === 'down' ? 'text-green-600' : 'text-gray-600'
               }`}>
                 {usdChange.direction === 'up' ? (
@@ -138,16 +161,19 @@ export function FinancialOverview() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">EUR/TRY</CardTitle>
+            <CardTitle className="text-sm font-medium">EUR</CardTitle>
             <Euro className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(majorRates.EUR?.selling || 0)}
+              ₺{safeEURRate.toFixed(2)}
+              {!isValidRate(majorRates.EUR?.selling) && (
+                <span className="text-xs text-orange-600 ml-1">*</span>
+              )}
             </div>
             {eurChange && (
               <div className={`flex items-center text-xs ${
-                eurChange.direction === 'up' ? 'text-red-600' : 
+                eurChange.direction === 'up' ? 'text-red-600' :
                 eurChange.direction === 'down' ? 'text-green-600' : 'text-gray-600'
               }`}>
                 {eurChange.direction === 'up' ? (
@@ -220,7 +246,7 @@ export function FinancialOverview() {
                 </div>
                 
                 <div className="text-xl font-bold mb-1">
-                  {rate ? formatCurrency(rate.selling || rate.forexSelling || 0) : 'N/A'}
+                  {rate ? `₺${(rate.selling || rate.forexSelling || 0).toFixed(2)}` : 'N/A'}
                 </div>
                 
                 <div className="text-xs text-muted-foreground">
@@ -327,10 +353,16 @@ export function FinancialOverview() {
             <div className="space-y-1">
               <p>
                 Döviz kurları Türkiye Cumhuriyet Merkez Bankası'ndan alınmaktadır.
+                {(!isValidRate(majorRates.USD?.selling) || !isValidRate(majorRates.EUR?.selling)) && (
+                  <span className="text-orange-600"> *Bazı kurlar fallback veriler kullanıyor.</span>
+                )}
               </p>
-              <div className="flex gap-4">
-                <span>Bülten Tarihi: {bulletinDate}</span>
+              <div className="flex gap-4 flex-wrap">
+                <span>Bülten Tarihi: {bulletinDate || 'Bilinmiyor'}</span>
                 <span>Son Güncelleme: {lastUpdated ? new Date(lastUpdated).toLocaleString('tr-TR') : 'Bilinmiyor'}</span>
+                {error && (
+                  <span className="text-red-600">Hata: {error}</span>
+                )}
               </div>
             </div>
           </div>

@@ -80,7 +80,71 @@ export default function ProductManagementPage() {
 
   const fetchProducts = async () => {
     try {
-      // Mock data - replace with actual API
+      setLoading(true)
+
+      // Fetch products from API
+      const response = await fetch('/api/products')
+      if (!response.ok) {
+        throw new Error('Failed to fetch products')
+      }
+
+      const data = await response.json()
+
+      // Transform API data to match ProductWithStats interface
+      const transformedProducts: ProductWithStats[] = data.map((product: any) => ({
+        ...product,
+        // Add mock stats for now - these should come from a separate stats API
+        salesCount: Math.floor(Math.random() * 200),
+        revenue: Math.floor(Math.random() * 1000000),
+        lastSold: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+        profitMargin: 20 + Math.random() * 20,
+        stockValue: (product.price || 0) * (product.stock || 0),
+        monthlyTrend: ['up', 'down', 'stable'][Math.floor(Math.random() * 3)] as 'up' | 'down' | 'stable',
+        popularityScore: Math.floor(Math.random() * 100),
+        // Map from API structure to expected structure
+        categoryId: product.category?.toLowerCase() || 'other',
+        pricing: {
+          basePrice: product.price || 0,
+          currency: 'TRY',
+          costPrice: (product.price || 0) * 0.7,
+          margin: 30,
+          discountTiers: [],
+          priceHistory: [],
+          vatRate: 20,
+          isVatIncluded: true
+        },
+        inventory: {
+          sku: product.sku || product.id,
+          stockQuantity: product.stock || 0,
+          reservedQuantity: 0,
+          availableQuantity: product.stock || 0,
+          minimumStock: 10,
+          maximumStock: 100,
+          reorderPoint: 20,
+          location: 'A-01-01',
+          supplier: product.brand || 'Unknown',
+          leadTime: 14,
+          lastStockUpdate: product.updatedAt || new Date().toISOString(),
+          stockMovements: []
+        },
+        images: product.images || [],
+        documents: [],
+        certifications: [],
+        warranty: {
+          duration: parseInt(product.warranty) || 2,
+          unit: 'YEARS',
+          type: 'MANUFACTURER',
+          coverage: ['Product'],
+          conditions: 'Standard warranty conditions'
+        },
+        status: product.isAvailable ? 'ACTIVE' : 'INACTIVE',
+        createdAt: product.createdAt || new Date().toISOString(),
+        updatedAt: product.updatedAt || new Date().toISOString()
+      }))
+
+      setProducts(transformedProducts)
+
+      /* Comment out mock data - keeping for reference
       const mockProducts: ProductWithStats[] = [
         {
           id: '1',
@@ -277,8 +341,7 @@ export default function ProductManagementPage() {
           popularityScore: 94
         }
       ]
-
-      setProducts(mockProducts)
+      */
     } catch (error) {
       console.error('Error fetching products:', error)
     } finally {
@@ -375,24 +438,58 @@ export default function ProductManagementPage() {
 
   const handleCreateProduct = async (productData: Partial<Product>) => {
     try {
-      // API call to create product
-      console.log('Creating product:', productData)
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create product')
+      }
+
       setIsCreateModalOpen(false)
       await fetchProducts() // Refresh list
+
+      // Optional: Show success message
+      console.log('Product created successfully')
     } catch (error) {
       console.error('Error creating product:', error)
+      alert(`Hata: ${error instanceof Error ? error.message : 'Ürün oluşturulamadı'}`)
     }
   }
 
   const handleEditProduct = async (productData: Partial<Product>) => {
     try {
-      // API call to update product
-      console.log('Updating product:', productData)
+      if (!productData.id) {
+        throw new Error('Product ID is required for update')
+      }
+
+      const response = await fetch(`/api/products/${productData.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update product')
+      }
+
       setIsEditModalOpen(false)
       setSelectedProduct(null)
       await fetchProducts() // Refresh list
+
+      // Optional: Show success message
+      console.log('Product updated successfully')
     } catch (error) {
       console.error('Error updating product:', error)
+      alert(`Hata: ${error instanceof Error ? error.message : 'Ürün güncellenemedi'}`)
     }
   }
 
@@ -401,10 +498,24 @@ export default function ProductManagementPage() {
 
     try {
       // API call to delete product
-      console.log('Deleting product:', productId)
-      await fetchProducts() // Refresh list
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Ürün silinemedi')
+      }
+
+      // Remove product from local state immediately for better UX
+      setProducts(prev => prev.filter(p => p.id !== productId))
+      setFilteredProducts(prev => prev.filter(p => p.id !== productId))
+
+      // Optional: Show success message
+      console.log('Product deleted successfully')
     } catch (error) {
       console.error('Error deleting product:', error)
+      alert(`Hata: ${error instanceof Error ? error.message : 'Ürün silinemedi'}`)
     }
   }
 

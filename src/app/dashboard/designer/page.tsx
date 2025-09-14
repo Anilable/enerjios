@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Designer3D } from '@/components/designer/designer-3d'
 import { GoogleMapsDesigner } from '@/components/designer/google-maps-designer'
@@ -25,6 +25,7 @@ import {
   Send,
   Compass
 } from 'lucide-react'
+import { LicenseStatus } from '@/components/designer/license-status'
 
 export type DesignMode = '3D' | 'MAP'
 export type ViewMode = 'ROOF' | 'PANELS' | 'SHADOWS' | 'ALL'
@@ -45,6 +46,8 @@ export interface DesignerState {
     address: string
     coordinates: { lat: number; lng: number }
     irradiance: number
+    province?: string
+    district?: string
   } | null
   calculations: {
     totalPanels: number
@@ -78,7 +81,8 @@ export default function DesignerPage() {
     }
   })
 
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false) // Default closed on mobile
+  const [rightPanelOpen, setRightPanelOpen] = useState(false) // Default closed on mobile
   const [quoteModalOpen, setQuoteModalOpen] = useState(false)
   const [showLayers, setShowLayers] = useState({
     roof: true,
@@ -94,6 +98,24 @@ export default function DesignerPage() {
   const toggleLayer = (layer: keyof typeof showLayers) => {
     setShowLayers(prev => ({ ...prev, [layer]: !prev[layer] }))
   }
+
+  // Handle responsive defaults
+  useEffect(() => {
+    const handleResize = () => {
+      const isLarge = window.innerWidth >= 1024 // lg breakpoint
+      if (isLarge) {
+        setSidebarOpen(false) // Start with sidebar closed even on desktop for more space
+        setRightPanelOpen(true) // Show calculations panel on desktop
+      } else {
+        setSidebarOpen(false)
+        setRightPanelOpen(false)
+      }
+    }
+
+    handleResize() // Initial check
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const handleSave = () => {
     console.log('Saving design...', designerState)
@@ -111,90 +133,126 @@ export default function DesignerPage() {
         { label: 'Proje Tasarımcısı' }
       ]}
     >
-      <div className="flex flex-col h-screen bg-gray-50">
+      <div className="flex flex-col h-[calc(100vh-8rem)] bg-gray-50 overflow-hidden">
         {/* Header */}
-        <div className="bg-white border-b shadow-sm">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <Compass className="w-6 h-6 text-primary" />
-                  <h1 className="text-2xl font-bold text-gray-900">Proje Tasarımcısı - 3D Çatı Analizi</h1>
+        <div className="bg-white border-b shadow-sm flex-shrink-0">
+          <div className="px-4 lg:px-6 py-3">
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Compass className="w-5 h-5 text-primary flex-shrink-0" />
+                  <h1 className="text-base sm:text-lg lg:text-2xl font-bold text-gray-900 truncate">Proje Tasarımcısı</h1>
                 </div>
                 
-                <div className="flex items-center space-x-2">
+                <div className="hidden lg:flex items-center gap-2 ml-4">
                   <Badge variant={designerState.mode === '3D' ? 'default' : 'secondary'}>
                     <Box className="w-3 h-3 mr-1" />
-                    3D Tasarım
+                    3D
                   </Badge>
                   <Badge variant={designerState.mode === 'MAP' ? 'default' : 'secondary'}>
                     <Map className="w-3 h-3 mr-1" />
-                    Harita Görünümü
+                    Harita
                   </Badge>
+                  <LicenseStatus compact={true} />
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm" onClick={() => toggleLayer('roof')}>
-                  {showLayers.roof ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                  Çatı
+              <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                {/* Mobile Menu Buttons */}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="sm:hidden"
+                >
+                  <Settings className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => toggleLayer('panels')}>
-                  {showLayers.panels ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                  Paneller
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => toggleLayer('shadows')}>
-                  {showLayers.shadows ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                  Gölgeler
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setRightPanelOpen(!rightPanelOpen)}
+                  className="sm:hidden"
+                >
+                  <Calculator className="w-4 h-4" />
                 </Button>
                 
-                <div className="h-6 border-l border-gray-300 mx-2" />
+                {/* Desktop Layer Controls */}
+                <div className="hidden lg:flex items-center gap-1">
+                  <Button variant="outline" size="sm" onClick={() => toggleLayer('roof')}>
+                    {showLayers.roof ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    <span className="ml-1">Çatı</span>
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => toggleLayer('panels')}>
+                    {showLayers.panels ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    <span className="ml-1">Panel</span>
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => toggleLayer('shadows')}>
+                    {showLayers.shadows ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    <span className="ml-1">Gölge</span>
+                  </Button>
+                </div>
                 
-                <Button variant="outline" size="sm">
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Sıfırla
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleSave}>
-                  <Save className="w-4 h-4 mr-2" />
-                  Kaydet
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleExport}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Dışa Aktar
-                </Button>
-                <Button size="sm">
-                  <Share className="w-4 h-4 mr-2" />
-                  Paylaş
-                </Button>
+                {/* Action Buttons */}
+                <div className="hidden sm:flex items-center gap-1">
+                  <Button variant="outline" size="sm" onClick={handleSave}>
+                    <Save className="w-4 h-4" />
+                    <span className="hidden md:inline ml-1">Kaydet</span>
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleExport} className="hidden md:inline-flex">
+                    <Download className="w-4 h-4" />
+                    <span className="ml-1">Dışa Aktar</span>
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left Sidebar */}
-          {sidebarOpen && (
-            <div className="w-80 bg-white border-r shadow-sm overflow-y-auto">
-              <DesignerSidebar 
-                designerState={designerState}
-                updateDesignerState={updateDesignerState}
-              />
-            </div>
+        <div className="flex flex-1 min-h-0 overflow-hidden relative">
+          {/* Mobile Overlay */}
+          {(sidebarOpen || rightPanelOpen) && (
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-50 z-10 sm:hidden"
+              onClick={() => {
+                setSidebarOpen(false)
+                setRightPanelOpen(false)
+              }}
+            />
           )}
+          {/* Left Sidebar */}
+          <div className={`
+            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+            fixed sm:relative z-30 sm:z-0
+            w-64 sm:w-72 lg:w-80 
+            h-full sm:h-auto
+            bg-white border-r shadow-lg sm:shadow-sm 
+            transition-transform duration-300 ease-in-out
+            sm:translate-x-0 sm:flex-shrink-0
+            ${sidebarOpen ? 'sm:block' : 'sm:hidden lg:block'}
+            overflow-y-auto
+          `}>
+            <DesignerSidebar 
+              designerState={designerState}
+              updateDesignerState={updateDesignerState}
+            />
+          </div>
 
           {/* Main Content */}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col min-w-0">
             {/* Toolbar */}
-            <div className="bg-white border-b px-4 py-2">
+            <div className="bg-white border-b px-2 sm:px-4 py-2 flex-shrink-0">
               <DesignerToolbar 
                 designerState={designerState}
                 updateDesignerState={updateDesignerState}
                 onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+                sidebarOpen={sidebarOpen}
+                rightPanelOpen={rightPanelOpen}
+                onToggleRightPanel={() => setRightPanelOpen(!rightPanelOpen)}
               />
             </div>
 
             {/* 3D/Map Viewport */}
-            <div className="flex-1 relative bg-gray-100">
+            <div className="flex-1 relative bg-gray-100 min-h-0">
               {designerState.mode === '3D' ? (
                 <Designer3D 
                   designerState={designerState}
@@ -212,8 +270,19 @@ export default function DesignerPage() {
           </div>
 
           {/* Right Panel - Calculations */}
-          <div className="w-80 bg-white border-l shadow-sm overflow-y-auto">
-            <div className="p-6">
+          <div className={`
+            ${rightPanelOpen ? 'translate-x-0' : 'translate-x-full'}
+            fixed sm:relative z-20 sm:z-0
+            w-64 sm:w-72 lg:w-80 
+            h-full sm:h-auto
+            bg-white border-l shadow-lg sm:shadow-sm 
+            transition-transform duration-300 ease-in-out
+            sm:translate-x-0 sm:flex-shrink-0
+            ${rightPanelOpen ? 'sm:block' : 'sm:hidden lg:block'}
+            overflow-y-auto
+            right-0 sm:right-auto
+          `}>
+            <div className="p-4 sm:p-6">
               <div className="flex items-center space-x-2 mb-6">
                 <Calculator className="w-5 h-5 text-primary" />
                 <h3 className="text-lg font-semibold">Hesaplamalar</h3>
@@ -234,6 +303,9 @@ export default function DesignerPage() {
                     <span className="text-xs text-blue-700">
                       {designerState.location.irradiance} kWh/m² yıllık
                     </span>
+                  </div>
+                  <div className="text-xs text-blue-600 mt-1 opacity-75">
+                    * NREL PVWatts verisi kullanılarak hesaplanmıştır
                   </div>
                 </Card>
               )}
@@ -293,6 +365,9 @@ export default function DesignerPage() {
                   <span className="font-medium text-primary">
                     {designerState.calculations.payback} yıl
                   </span>
+                </div>
+                <div className="text-xs text-gray-500 mt-3 p-2 bg-gray-50 rounded">
+                  📊 Profesyonel NREL PVWatts API kullanılarak hesaplanmıştır
                 </div>
               </div>
 

@@ -25,7 +25,7 @@ import {
   CreditCard,
   HelpCircle,
 } from 'lucide-react'
-import { getRoleName, getRoleColor } from '@/lib/auth-utils'
+import { getRoleName, getRoleColor } from '@/lib/role-utils'
 
 export function UserNav() {
   const { data: session } = useSession()

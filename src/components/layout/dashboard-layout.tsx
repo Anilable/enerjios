@@ -5,8 +5,8 @@ import { useSession } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import { Header } from './Header'
 import { Sidebar } from './sidebar'
-import { Footer } from './footer'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { Footer } from './footer'
 import { Button } from '@/components/ui/button'
 import { ChevronRight, Home } from 'lucide-react'
 import Link from 'next/link'
@@ -162,10 +162,6 @@ export function DashboardLayout({
         </main>
       </div>
 
-      {/* Footer - Hidden on mobile to save space */}
-      <div className="hidden lg:block">
-        <Footer />
-      </div>
     </div>
   )
 }

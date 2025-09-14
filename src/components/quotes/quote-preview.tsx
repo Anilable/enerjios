@@ -97,76 +97,56 @@ interface QuotePreviewProps {
 export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreviewProps) {
   const [isPrinting, setIsPrinting] = useState(false)
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     setIsPrinting(true)
     
-    // Create a new window for printing
-    const printWindow = window.open('', '_blank')
-    if (!printWindow) {
+    try {
+      // Use the same PDF API route as download for consistency
+      const response = await fetch(`/api/quotes/${quote.id}/pdf`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/pdf'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate PDF: ${response.status}`)
+      }
+
+      // Get the PDF blob and create object URL
+      const blob = await response.blob()
+      const pdfUrl = window.URL.createObjectURL(blob)
+      
+      // Open PDF in new window and trigger print
+      const printWindow = window.open(pdfUrl, '_blank')
+      
+      if (printWindow) {
+        // Wait for PDF to load then print
+        printWindow.onload = () => {
+          setTimeout(() => {
+            printWindow.print()
+          }, 500)
+        }
+      } else {
+        // Fallback: Create hidden iframe for printing
+        const iframe = document.createElement('iframe')
+        iframe.style.display = 'none'
+        iframe.src = pdfUrl
+        document.body.appendChild(iframe)
+        
+        iframe.onload = () => {
+          setTimeout(() => {
+            iframe.contentWindow?.print()
+            document.body.removeChild(iframe)
+          }, 500)
+        }
+      }
+      
+    } catch (error) {
+      console.error('Print failed:', error)
+      alert('Yazdırma işlemi başarısız. Lütfen PDF İndir butonunu kullanarak dosyayı indirin.')
+    } finally {
       setIsPrinting(false)
-      return
-    }
-
-    // Get the quote content to print
-    const quoteElement = document.querySelector('[data-quote-content]')
-    if (!quoteElement) {
-      printWindow.close()
-      setIsPrinting(false)
-      return
-    }
-
-    // Create print-optimized HTML
-    const printHTML = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Teklif - ${quote.quoteNumber}</title>
-          <style>
-            @media print {
-              body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
-              .no-print { display: none !important; }
-              .print-break { page-break-after: always; }
-              table { width: 100%; border-collapse: collapse; }
-              th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-              th { background-color: #f5f5f5; }
-              .text-primary { color: #0066cc; }
-              .bg-primary { background-color: #0066cc; color: white; }
-              .font-bold { font-weight: bold; }
-              .text-center { text-align: center; }
-              .text-right { text-align: right; }
-              .mb-4 { margin-bottom: 16px; }
-              .mb-8 { margin-bottom: 32px; }
-              .p-4 { padding: 16px; }
-              .border { border: 1px solid #ccc; }
-              .rounded { border-radius: 4px; }
-              .grid { display: grid; }
-              .grid-cols-2 { grid-template-columns: 1fr 1fr; }
-              .grid-cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
-              .gap-4 { gap: 16px; }
-              .space-y-2 > * + * { margin-top: 8px; }
-              .space-y-4 > * + * { margin-top: 16px; }
-            }
-            @page {
-              margin: 2cm;
-            }
-          </style>
-        </head>
-        <body>
-          ${quoteElement.innerHTML}
-        </body>
-      </html>
-    `
-
-    printWindow.document.write(printHTML)
-    printWindow.document.close()
-
-    // Wait for content to load then print
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.print()
-        printWindow.close()
-        setIsPrinting(false)
-      }, 100)
     }
   }
 
