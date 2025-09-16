@@ -549,7 +549,7 @@ export default function QuotesPage() {
                             <span className="ml-2 font-medium text-green-600">-{formatCurrency(quote.discount)}</span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">KDV (18%):</span>
+                            <span className="text-muted-foreground">KDV (20%):</span>
                             <span className="ml-2 font-medium">{formatCurrency(quote.tax)}</span>
                           </div>
                           <div>

@@ -342,7 +342,33 @@ export default function ProductsPage() {
 
         // Show more user-friendly error messages
         if (errorMessage.includes('Cannot delete product')) {
-          throw new Error(errorDetails || 'Bu ürün başka kayıtlarda kullanıldığı için silinemez.')
+          // Parse the count from error details
+          const quoteMatch = errorDetails.match(/(\d+) quote/)
+          const placementMatch = errorDetails.match(/(\d+) panel placement/)
+
+          let friendlyMessage = 'Bu ürün aşağıdaki yerlerde kullanıldığı için silinemez:\n\n'
+
+          if (quoteMatch && parseInt(quoteMatch[1]) > 0) {
+            friendlyMessage += `• ${quoteMatch[1]} teklif dosyasında\n`
+          }
+          if (placementMatch && parseInt(placementMatch[1]) > 0) {
+            friendlyMessage += `• ${placementMatch[1]} panel yerleşiminde\n`
+          }
+
+          // Add affected quotes information if available
+          if (responseBody?.affectedQuotes && responseBody.affectedQuotes.length > 0) {
+            friendlyMessage += '\n📋 Kullanıldığı teklifler:\n'
+            responseBody.affectedQuotes.forEach((quote: any) => {
+              friendlyMessage += `• ${quote.quoteNumber || 'N/A'} - ${quote.customerName}\n`
+            })
+          }
+
+          friendlyMessage += '\n💡 Çözüm önerileri:\n'
+          friendlyMessage += '• Önce ilgili teklifleri silin veya başka ürün seçin\n'
+          friendlyMessage += '• Ürünü pasif yapmak için düzenle butonunu kullanın\n'
+          friendlyMessage += '• Ürün bilgilerini güncellemek için düzenleyebilirsiniz'
+
+          throw new Error(friendlyMessage)
         }
 
         throw new Error(errorMessage)

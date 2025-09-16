@@ -6,13 +6,8 @@ import { ProductType } from '@prisma/client'
 // GET all products
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession()
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    // Authentication disabled for product listing (public access)
+    // Products are public information that can be viewed without login
 
     // Get query params for filtering
     const searchParams = request.nextUrl.searchParams
@@ -94,6 +89,7 @@ export async function GET(request: NextRequest) {
 // POST - Create new product
 export async function POST(request: NextRequest) {
   try {
+    // Authentication required for creating products
     const session = await getServerSession()
     console.log('CREATE session:', session ? 'authenticated' : 'unauthenticated')
     if (!session?.user?.id) {

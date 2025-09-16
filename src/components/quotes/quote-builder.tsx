@@ -42,6 +42,7 @@ interface QuoteData {
   total: number
   laborCost?: number
   margin?: number
+  taxPercent?: number
   status: 'DRAFT' | 'SENT' | 'VIEWED' | 'APPROVED' | 'REJECTED' | 'EXPIRED'
   createdAt: string
   validUntil: string
@@ -104,7 +105,8 @@ interface ProductCatalog {
   }>
 }
 
-const productCatalog: ProductCatalog = {
+// Default hardcoded catalog as fallback
+const defaultProductCatalog: ProductCatalog = {
   panels: [
     {
       id: 'jinko_540',
@@ -196,6 +198,20 @@ const productCatalog: ProductCatalog = {
   ]
 }
 
+// Helper function to get category from ProductType
+function getCategoryFromType(type: string): string {
+  const categoryMap: Record<string, string> = {
+    SOLAR_PANEL: 'Solar Paneller',
+    INVERTER: 'İnverterler',
+    BATTERY: 'Bataryalar',
+    MOUNTING_SYSTEM: 'Montaj Malzemeleri',
+    CABLE: 'Kablolar',
+    MONITORING: 'İzleme Sistemleri',
+    ACCESSORY: 'Aksesuarlar'
+  }
+  return categoryMap[type] || 'Diğer'
+}
+
 export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
   const [formData, setFormData] = useState({
     customerName: '',
@@ -212,8 +228,10 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
   const [laborHours, setLaborHours] = useState(24)
   const [laborRate, setLaborRate] = useState(150)
   const [marginPercent, setMarginPercent] = useState(25)
-  const [taxPercent] = useState(20)
-  
+  const [taxPercent, setTaxPercent] = useState(1) // GES için %1 KDV
+  const [productCatalog, setProductCatalog] = useState<ProductCatalog>(defaultProductCatalog)
+  const [loadingProducts, setLoadingProducts] = useState(true)
+
   const [calculations, setCalculations] = useState({
     subtotal: 0,
     laborCost: 0,
@@ -222,6 +240,85 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
     total: 0,
     profitAmount: 0
   })
+
+  // Fetch products from API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoadingProducts(true)
+        console.log('🔍 Fetching products from API...')
+        const response = await fetch('/api/products')
+        console.log('📡 API Response status:', response.status)
+
+        if (response.ok) {
+          const products = await response.json()
+          console.log('📦 Raw products from API:', products)
+          console.log('📊 Products count:', products.length)
+
+          // Group products by type
+          const catalogData: ProductCatalog = {
+            panels: products.filter((p: any) => p.type === 'SOLAR_PANEL').map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              brand: p.brand || 'Generic',
+              power: p.power || p.specifications?.power || p.specifications?.watt || 0,
+              voltage: p.specifications?.voltage || 41.8,
+              current: p.specifications?.current || 13.0,
+              efficiency: p.specifications?.efficiency || 21.0,
+              warranty: p.warranty || p.specifications?.warranty || 25,
+              price: p.price || 0
+            })),
+            inverters: products.filter((p: any) => p.type === 'INVERTER').map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              brand: p.brand || 'Generic',
+              power: p.power || p.specifications?.power || p.specifications?.watt || 0,
+              inputVoltage: p.specifications?.inputVoltage || '200-1000V',
+              phases: p.specifications?.phases || 3,
+              efficiency: p.efficiency || p.specifications?.efficiency || 95,
+              warranty: p.warranty || p.specifications?.warranty || 10,
+              price: p.price || 0
+            })),
+            accessories: products.filter((p: any) =>
+              p.type === 'ACCESSORY' ||
+              p.type === 'MOUNTING_SYSTEM' ||
+              p.type === 'CABLE' ||
+              p.type === 'MONITORING' ||
+              p.type === 'BATTERY'
+            ).map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              category: p.category || getCategoryFromType(p.type),
+              unit: p.unitType || 'adet',
+              price: p.price || 0
+            }))
+          }
+
+          setProductCatalog(catalogData)
+          console.log('✅ Products loaded from API - Final catalog:', catalogData)
+          console.log('🔧 Panels count:', catalogData.panels.length)
+          console.log('⚡ Inverters count:', catalogData.inverters.length)
+          console.log('🔩 Accessories count:', catalogData.accessories.length)
+
+          // Show sample prices
+          if (catalogData.panels.length > 0) {
+            console.log('💰 Sample panel price:', catalogData.panels[0].price)
+          }
+          if (catalogData.inverters.length > 0) {
+            console.log('💰 Sample inverter price:', catalogData.inverters[0].price)
+          }
+        } else {
+          console.warn('Failed to fetch products, using default catalog')
+        }
+      } catch (error) {
+        console.error('Error fetching products:', error)
+      } finally {
+        setLoadingProducts(false)
+      }
+    }
+
+    fetchProducts()
+  }, [])
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -241,13 +338,15 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
       setItems(quote.items)
       setLaborHours(Math.floor((quote.laborCost || 0) / laborRate))
       setMarginPercent(quote.margin || 0)
+      // Always default to 1% VAT for Turkish solar systems
+      setTaxPercent(1)
     }
   }, [quote])
 
   // Calculate totals when items or settings change
   useEffect(() => {
     calculateTotals()
-  }, [items, laborHours, laborRate, marginPercent])
+  }, [items, laborHours, laborRate, marginPercent, taxPercent])
 
   const calculateTotals = () => {
     const subtotal = items.reduce((sum, item) => sum + (item.totalPrice || item.total || 0), 0)
@@ -257,6 +356,18 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
     const taxableAmount = subtotalWithLabor + marginAmount
     const tax = (taxableAmount * taxPercent) / 100
     const total = taxableAmount + tax
+
+    console.log('calculateTotals debug:', {
+      taxPercent,
+      subtotal,
+      laborCost,
+      subtotalWithLabor,
+      marginPercent,
+      marginAmount,
+      taxableAmount,
+      tax,
+      total
+    })
 
     setCalculations({
       subtotal,
@@ -287,7 +398,10 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
     setItems(prev => prev.map(item => {
       if (item.id === id) {
         const updated = { ...item, ...updates }
+        // Recalculate totals when price or quantity changes
         updated.totalPrice = updated.quantity * updated.unitPrice
+        updated.total = updated.totalPrice // Ensure both total fields are synced
+        console.log('Updated item:', updated)
         return updated
       }
       return item
@@ -298,18 +412,35 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
     setItems(prev => prev.filter(item => item.id !== id))
   }
 
-  const selectProduct = (itemId: string, productId: string, type: 'panel' | 'inverter') => {
-    const product = type === 'panel' 
-      ? productCatalog.panels.find(p => p.id === productId)
-      : productCatalog.inverters.find(p => p.id === productId)
-    
+  const selectProduct = (itemId: string, productId: string, type: 'panel' | 'inverter' | 'accessory') => {
+    let product
+
+    console.log('selectProduct called:', { itemId, productId, type })
+    console.log('Current productCatalog:', productCatalog)
+
+    if (type === 'panel') {
+      product = productCatalog.panels.find(p => p.id === productId)
+      console.log('Found panel:', product)
+    } else if (type === 'inverter') {
+      product = productCatalog.inverters.find(p => p.id === productId)
+      console.log('Found inverter:', product)
+    } else if (type === 'accessory') {
+      product = productCatalog.accessories.find(p => p.id === productId)
+      console.log('Found accessory:', product)
+    }
+
     if (product) {
+      console.log('Selecting product with price:', product.price, 'for item:', itemId)
       updateItem(itemId, {
+        productId: product.id,           // Ensure productId is set
+        productName: product.name,       // Ensure productName is set
         name: product.name,
-        brand: product.brand,
+        brand: 'brand' in product ? (product.brand || '') : '',      // Accessories might not have brand
         unitPrice: product.price,
         specifications: product
       })
+    } else {
+      console.log('Product not found!', { productId, type })
     }
   }
 
@@ -388,6 +519,7 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
       total: calculations.total,
       validUntil: validUntil.toISOString(),
       margin: marginPercent,
+      taxPercent: taxPercent,
       profitAmount: calculations.profitAmount,
       financialAnalysis: {
         annualProduction: formData.systemSize * 1300, // Mock calculation
@@ -673,6 +805,22 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
                               ))}
                             </SelectContent>
                           </Select>
+                        ) : item.type === 'ACCESSORY' ? (
+                          <Select
+                            value={item.specifications?.id || ''}
+                            onValueChange={(value) => selectProduct(item.id, value, 'accessory')}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Aksesuar seçin" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {productCatalog.accessories.map(accessory => (
+                                <SelectItem key={accessory.id} value={accessory.id}>
+                                  {accessory.name} ({accessory.category})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         ) : (
                           <Input
                             placeholder="Ürün adı"
@@ -738,6 +886,18 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
                     type="number"
                     value={marginPercent}
                     onChange={(e) => setMarginPercent(Number(e.target.value))}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="taxPercent">KDV Oranı (%)</Label>
+                  <Input
+                    id="taxPercent"
+                    type="number"
+                    value={taxPercent}
+                    onChange={(e) => setTaxPercent(Number(e.target.value))}
+                    min="0"
+                    max="50"
                   />
                 </div>
               </CardContent>

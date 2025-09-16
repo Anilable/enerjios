@@ -282,15 +282,15 @@ model ProjectRequestStatusHistory {
   projectRequestId  String
   status            ProjectRequestStatus
   previousStatus    ProjectRequestStatus?
-  userId            String
+  userId            String?
   userName          String
   note              String?
   timestamp         DateTime            @default(now())
-  
+
   // Relations
   projectRequest    ProjectRequest      @relation(fields: [projectRequestId], references: [id], onDelete: Cascade)
-  user              User                @relation("ProjectRequestHistory", fields: [userId], references: [id])
-  
+  user              User?               @relation("ProjectRequestHistory", fields: [userId], references: [id])
+
   @@index([projectRequestId])
   @@index([timestamp])
 }

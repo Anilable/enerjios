@@ -185,7 +185,7 @@ export function CustomerDetail({ customer, onEdit, onClose }: CustomerDetailProp
     })
   }
 
-  const handleProjectRequestSubmit = async (request: ProjectRequest) => {
+  const handleProjectRequestSubmit = async (request: any) => {
     try {
       await ProjectRequestAPI.create(request)
 

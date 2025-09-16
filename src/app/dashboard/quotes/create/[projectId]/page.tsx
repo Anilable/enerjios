@@ -36,6 +36,7 @@ import { ProjectRequestAPI } from '@/lib/api/project-requests'
 import { ProjectRequest } from '@/types/project-request'
 import { formatCurrency } from '@/lib/utils'
 import { QuotePreview } from '@/components/quotes/quote-preview'
+import { QuoteDeliveryModal } from '@/components/quotes/quote-delivery-modal'
 import html2canvas from 'html2canvas'
 
 // Quote item categories
@@ -57,10 +58,39 @@ const SOLAR_PACKAGES = {
     description: 'Standart konut için 5kW solar sistem',
     capacity: 5,
     items: [
-      { category: 'PANEL', name: 'Monokristalin Panel 540W', quantity: 10, unitPrice: 950, description: 'Jinko Tiger Neo 540W' },
-      { category: 'INVERTER', name: 'Huawei İnverter 5kW', quantity: 1, unitPrice: 4500, description: 'SUN2000-5KTL-M1' },
-      { category: 'MOUNTING', name: 'Çatı Montaj Sistemi', quantity: 1, unitPrice: 2500, description: 'Alüminyum ray ve bağlantı elemanları' },
-      { category: 'LABOR', name: 'Kurulum İşçiliği', quantity: 24, unitPrice: 150, description: '3 günlük profesyonel kurulum' }
+      {
+        category: 'PANEL',
+        name: 'Monokristalin Panel 540W',
+        quantity: 10,
+        unitPrice: 950,
+        description: 'Jinko Tiger Neo 540W',
+        brand: 'Jinko',
+        specifications: { power: 540, efficiency: 22.3 }
+      },
+      {
+        category: 'INVERTER',
+        name: 'Huawei İnverter 5kW',
+        quantity: 1,
+        unitPrice: 4500,
+        description: 'SUN2000-5KTL-M1',
+        brand: 'Huawei',
+        specifications: { power: 5000, efficiency: 98.2 }
+      },
+      {
+        category: 'MOUNTING',
+        name: 'Çatı Montaj Sistemi',
+        quantity: 1,
+        unitPrice: 2500,
+        description: 'Alüminyum ray ve bağlantı elemanları',
+        brand: 'Trakya Solar'
+      },
+      {
+        category: 'LABOR',
+        name: 'Kurulum İşçiliği',
+        quantity: 24,
+        unitPrice: 150,
+        description: '3 günlük profesyonel kurulum'
+      }
     ]
   },
   RESIDENTIAL_10KW: {
@@ -68,10 +98,39 @@ const SOLAR_PACKAGES = {
     description: 'Büyük konut için 10kW solar sistem',
     capacity: 10,
     items: [
-      { category: 'PANEL', name: 'Monokristalin Panel 540W', quantity: 19, unitPrice: 950, description: 'Jinko Tiger Neo 540W' },
-      { category: 'INVERTER', name: 'Huawei İnverter 10kW', quantity: 1, unitPrice: 6500, description: 'SUN2000-10KTL-M1' },
-      { category: 'MOUNTING', name: 'Çatı Montaj Sistemi', quantity: 1, unitPrice: 4500, description: 'Alüminyum ray ve bağlantı elemanları' },
-      { category: 'LABOR', name: 'Kurulum İşçiliği', quantity: 40, unitPrice: 150, description: '5 günlük profesyonel kurulum' }
+      {
+        category: 'PANEL',
+        name: 'Monokristalin Panel 540W',
+        quantity: 19,
+        unitPrice: 950,
+        description: 'Jinko Tiger Neo 540W',
+        brand: 'Jinko',
+        specifications: { power: 540, efficiency: 22.3 }
+      },
+      {
+        category: 'INVERTER',
+        name: 'Huawei İnverter 10kW',
+        quantity: 1,
+        unitPrice: 6500,
+        description: 'SUN2000-10KTL-M1',
+        brand: 'Huawei',
+        specifications: { power: 10000, efficiency: 98.4 }
+      },
+      {
+        category: 'MOUNTING',
+        name: 'Çatı Montaj Sistemi',
+        quantity: 1,
+        unitPrice: 4500,
+        description: 'Alüminyum ray ve bağlantı elemanları',
+        brand: 'Trakya Solar'
+      },
+      {
+        category: 'LABOR',
+        name: 'Kurulum İşçiliği',
+        quantity: 40,
+        unitPrice: 150,
+        description: '5 günlük profesyonel kurulum'
+      }
     ]
   },
   COMMERCIAL_20KW: {
@@ -79,10 +138,39 @@ const SOLAR_PACKAGES = {
     description: 'Küçük işletme için 20kW solar sistem',
     capacity: 20,
     items: [
-      { category: 'PANEL', name: 'Monokristalin Panel 540W', quantity: 37, unitPrice: 950, description: 'Jinko Tiger Neo 540W' },
-      { category: 'INVERTER', name: 'Huawei İnverter 20kW', quantity: 1, unitPrice: 12000, description: 'SUN2000-20KTL-M0' },
-      { category: 'MOUNTING', name: 'Çatı/Zemin Montaj Sistemi', quantity: 1, unitPrice: 8000, description: 'Endüstriyel montaj sistemi' },
-      { category: 'LABOR', name: 'Kurulum İşçiliği', quantity: 80, unitPrice: 150, description: '10 günlük profesyonel kurulum' }
+      {
+        category: 'PANEL',
+        name: 'Monokristalin Panel 540W',
+        quantity: 37,
+        unitPrice: 950,
+        description: 'Jinko Tiger Neo 540W',
+        brand: 'Jinko',
+        specifications: { power: 540, efficiency: 22.3 }
+      },
+      {
+        category: 'INVERTER',
+        name: 'Huawei İnverter 20kW',
+        quantity: 1,
+        unitPrice: 12000,
+        description: 'SUN2000-20KTL-M0',
+        brand: 'Huawei',
+        specifications: { power: 20000, efficiency: 98.6 }
+      },
+      {
+        category: 'MOUNTING',
+        name: 'Çatı/Zemin Montaj Sistemi',
+        quantity: 1,
+        unitPrice: 8000,
+        description: 'Endüstriyel montaj sistemi',
+        brand: 'Trakya Solar'
+      },
+      {
+        category: 'LABOR',
+        name: 'Kurulum İşçiliği',
+        quantity: 80,
+        unitPrice: 150,
+        description: '10 günlük profesyonel kurulum'
+      }
     ]
   }
 }
@@ -173,6 +261,7 @@ export default function CreateQuotePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false)
   const [projectRequest, setProjectRequest] = useState<ProjectRequest | null>(null)
   // Removed activeStep for single page layout
   const [products, setProducts] = useState<any[]>([])
@@ -187,7 +276,7 @@ export default function CreateQuotePage() {
     items: [],
     subtotal: 0,
     discount: 0,
-    tax: 18, // Default 18% KDV
+    tax: 20, // Default 20% KDV
     total: 0,
     validity: 30,
     notes: '',
@@ -297,13 +386,34 @@ export default function CreateQuotePage() {
   useEffect(() => {
     const loadProducts = async () => {
       try {
+        console.log('🔍 QUOTE CREATE: Fetching products from API...')
         const response = await fetch('/api/products')
+        console.log('📡 QUOTE CREATE: API Response status:', response.status)
+
         if (response.ok) {
           const data = await response.json()
+          console.log('📦 QUOTE CREATE: Raw products from API:', data)
+          console.log('📊 QUOTE CREATE: Products count:', data.length)
           setProducts(data)
+
+          // Show sample products with prices
+          data.slice(0, 3).forEach((product: any, index: number) => {
+            console.log(`💰 QUOTE CREATE: Product ${index + 1}:`, {
+              id: product.id,
+              name: product.name,
+              type: product.type,
+              price: product.price,
+              brand: product.brand,
+              stock: product.stock,
+              model: product.model,
+              power: product.power
+            })
+          })
+        } else {
+          console.error('❌ QUOTE CREATE: Failed to fetch products:', response.status, response.statusText)
         }
       } catch (error) {
-        console.error('Error loading products:', error)
+        console.error('❌ QUOTE CREATE: Error loading products:', error)
       }
     }
 
@@ -313,123 +423,19 @@ export default function CreateQuotePage() {
   // Generate initial quote items based on project capacity
   const generateInitialItems = (capacity: number, projectType: string) => {
     const items: QuoteItem[] = []
-    
-    // Calculate panel requirements (assuming 550W panels)
-    const panelWattage = 550
-    const panelCount = Math.ceil((capacity * 1000) / panelWattage)
-    
-    // Solar Panels
-    items.push({
-      id: '1',
-      category: 'PANEL',
-      name: 'Longi Solar 550W Mono Panel',
-      description: 'Yüksek verimli monokristal güneş paneli',
-      pricingType: 'UNIT',
-      unitPrice: 3500,
-      quantity: panelCount,
-      discount: 0,
-      tax: 18,
-      subtotal: panelCount * 3500,
-      total: panelCount * 3500 * 1.18
-    })
 
-    // Inverter (size based on capacity)
-    const inverterSize = capacity
-    items.push({
-      id: '2',
-      category: 'INVERTER',
-      name: `Huawei ${inverterSize}KTL İnverter`,
-      description: 'Şebeke bağlantılı solar inverter',
-      pricingType: 'UNIT',
-      unitPrice: capacity * 1200,
-      quantity: 1,
-      discount: 0,
-      tax: 18,
-      subtotal: capacity * 1200,
-      total: capacity * 1200 * 1.18
-    })
+    // Don't add any hardcoded products - user will select from database
+    // Only keep empty array to avoid breaking existing code
 
-    // Mounting System
-    items.push({
-      id: '3',
-      category: 'MOUNTING',
-      name: 'Alüminyum Montaj Sistemi',
-      description: 'Çatı tipi montaj konstrüksiyonu',
-      pricingType: 'SET',
-      unitPrice: panelCount * 450,
-      quantity: 1,
-      discount: 0,
-      tax: 18,
-      subtotal: panelCount * 450,
-      total: panelCount * 450 * 1.18
-    })
+    console.log('📝 Empty quote initialized - user will add products from database')
 
-    // DC/AC Cables
-    items.push({
-      id: '4',
-      category: 'OTHER',
-      name: 'DC/AC Kablo Seti',
-      description: 'Solar kablo, konnektör ve aksesuarlar',
-      pricingType: 'SET',
-      unitPrice: capacity * 350,
-      quantity: 1,
-      discount: 0,
-      tax: 18,
-      subtotal: capacity * 350,
-      total: capacity * 350 * 1.18
-    })
-
-    // Project Cost
-    items.push({
-      id: '5',
-      category: 'PROJECT_COST',
-      name: 'Proje ve Mühendislik Hizmetleri',
-      description: 'Proje tasarım, onay ve danışmanlık',
-      pricingType: 'FIXED',
-      unitPrice: 15000,
-      quantity: 1,
-      discount: 0,
-      tax: 18,
-      subtotal: 15000,
-      total: 15000 * 1.18
-    })
-
-    // Labor
-    items.push({
-      id: '6',
-      category: 'LABOR',
-      name: 'Montaj ve İşçilik',
-      description: 'Profesyonel kurulum ekibi',
-      pricingType: 'KW',
-      unitPrice: 800,
-      quantity: capacity,
-      discount: 0,
-      tax: 18,
-      subtotal: capacity * 800,
-      total: capacity * 800 * 1.18
-    })
-
-    // Transport
-    items.push({
-      id: '7',
-      category: 'TRANSPORT',
-      name: 'Nakliye ve Lojistik',
-      description: 'Malzeme taşıma ve depolama',
-      pricingType: 'FIXED',
-      unitPrice: 5000,
-      quantity: 1,
-      discount: 0,
-      tax: 18,
-      subtotal: 5000,
-      total: 5000 * 1.18
-    })
-
+    // Return empty items array - no hardcoded products
     setQuoteData(prev => ({
       ...prev,
-      items: items
+      items: []
     }))
 
-    calculateTotals(items)
+    calculateTotals([])
   }
 
   // Calculate totals
@@ -472,7 +478,7 @@ export default function CreateQuotePage() {
   // Apply ready-made package
   const applyPackage = (packageKey: keyof typeof SOLAR_PACKAGES) => {
     const selectedPackage = SOLAR_PACKAGES[packageKey]
-    const packageItems: QuoteItem[] = selectedPackage.items.map((item, index) => ({
+    const packageItems: ExtendedQuoteItem[] = selectedPackage.items.map((item, index) => ({
       id: `package-${Date.now()}-${index}`,
       category: item.category as keyof typeof QUOTE_CATEGORIES,
       name: item.name,
@@ -483,7 +489,9 @@ export default function CreateQuotePage() {
       discount: 0,
       tax: 20,
       subtotal: item.unitPrice * item.quantity,
-      total: item.unitPrice * item.quantity * 1.2
+      total: item.unitPrice * item.quantity * 1.2,
+      brand: (item as any).brand || '',
+      specifications: (item as any).specifications || undefined
     }))
 
     setQuoteData(prev => ({ 
@@ -500,17 +508,29 @@ export default function CreateQuotePage() {
 
   // Update item
   const updateItem = (itemId: string, field: keyof QuoteItem, value: any) => {
+    console.log('🔄 QUOTE CREATE: updateItem called:', { itemId, field, value })
+
     const updatedItems = quoteData.items.map(item => {
       if (item.id === itemId) {
         const updatedItem = { ...item, [field]: value }
-        
+
+        console.log('🔧 QUOTE CREATE: Item before update:', item)
+        console.log('🔧 QUOTE CREATE: Item after field update:', updatedItem)
+
         // Recalculate subtotal and total
         updatedItem.subtotal = updatedItem.unitPrice * updatedItem.quantity
         const discountAmount = updatedItem.subtotal * (updatedItem.discount / 100)
         const afterDiscount = updatedItem.subtotal - discountAmount
         const taxAmount = afterDiscount * (updatedItem.tax / 100)
         updatedItem.total = afterDiscount + taxAmount
-        
+
+        console.log('💰 QUOTE CREATE: Final calculated item:', {
+          unitPrice: updatedItem.unitPrice,
+          quantity: updatedItem.quantity,
+          subtotal: updatedItem.subtotal,
+          total: updatedItem.total
+        })
+
         return updatedItem
       }
       return item
@@ -569,7 +589,21 @@ export default function CreateQuotePage() {
       }
 
       if (!response.ok) {
-        throw new Error('Failed to save quote')
+        console.error('Response not OK:', response.status, response.statusText)
+        console.error('Response URL:', response.url)
+        const errorText = await response.text()
+        console.error('Response text:', errorText)
+
+        let errorData
+        try {
+          errorData = JSON.parse(errorText)
+        } catch (e) {
+          errorData = { error: errorText || 'Unknown error' }
+        }
+
+        console.error('Quote save error:', errorData)
+        console.error('Quote payload was:', quotePayload)
+        throw new Error(errorData.error || 'Failed to save quote')
       }
 
       const savedQuote = await response.json()
@@ -581,9 +615,12 @@ export default function CreateQuotePage() {
         quoteNumber: savedQuote.quoteNumber
       }))
 
+      // Show success feedback
+      console.log('✅ Quote saved successfully:', savedQuote.id)
       toast({
         title: 'Başarılı',
-        description: status === 'SENT' ? 'Teklif müşteriye gönderildi' : 'Teklif taslağı kaydedildi'
+        description: status === 'SENT' ? 'Teklif müşteriye gönderildi' : 'Teklif taslağı kaydedildi',
+        variant: 'default'
       })
 
       // Only redirect to quotes page when sending, stay on page for drafts
@@ -602,8 +639,117 @@ export default function CreateQuotePage() {
     }
   }
 
+  // Handle quote delivery
+  const handleQuoteDelivery = async (deliveryMethods: any[]) => {
+    try {
+      // First save the quote as SENT
+      const quotePayload = {
+        ...quoteData,
+        status: 'SENT',
+        quoteNumber: quoteData.quoteNumber || `Q-${Date.now().toString().slice(-8)}`,
+        createdAt: new Date().toISOString()
+      }
+
+      const response = await fetch('/api/quotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(quotePayload)
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save quote')
+      }
+
+      const savedQuote = await response.json()
+
+      // Now send via selected delivery methods
+      const deliveryPromises = deliveryMethods.map(async (method) => {
+        return fetch('/api/quotes/delivery', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            quoteId: savedQuote.id,
+            method: method.type,
+            recipient: method.recipient,
+            quoteData: generatePreviewData()
+          })
+        })
+      })
+
+      await Promise.all(deliveryPromises)
+
+      // Update local state
+      setQuoteData(prev => ({
+        ...prev,
+        id: savedQuote.id,
+        quoteNumber: savedQuote.quoteNumber
+      }))
+
+      toast({
+        title: 'Başarılı',
+        description: `Teklif ${deliveryMethods.length} yöntemle müşteriye gönderildi`
+      })
+
+      // Redirect to quotes page
+      router.push('/dashboard/quotes')
+
+    } catch (error) {
+      console.error('Error delivering quote:', error)
+      throw error // Re-throw to let modal handle the error state
+    }
+  }
+
+  // Calculate system power from products
+  const calculateSystemPower = () => {
+    let totalPower = 0
+
+    // Calculate power from products in quote items
+    quoteData.items.forEach(item => {
+      if (item.productId && item.productId.startsWith('cmf')) {
+        // Find the product from loaded products
+        const product = products.find(p => p.id === item.productId)
+        if (product) {
+          // Extract power from product data
+          let power = 0
+          if (product.power && typeof product.power === 'string') {
+            // Remove 'W' and convert to number
+            power = parseFloat(product.power.replace('W', '')) || 0
+          } else if (product.power && typeof product.power === 'number') {
+            power = product.power
+          }
+
+          // Add to total power (W to kW conversion)
+          totalPower += (power * item.quantity) / 1000
+        }
+      } else if (item.category === 'PANEL') {
+        // Estimate power for panels without product ID
+        const estimatedPanelPower = 550 // 550W per panel
+        totalPower += (estimatedPanelPower * item.quantity) / 1000
+      }
+    })
+
+    console.log('🔋 POWER CALCULATION:', {
+      totalPowerKw: totalPower,
+      quoteItems: quoteData.items.length,
+      products: products.length
+    })
+
+    return totalPower
+  }
+
   // Generate preview data
   const generatePreviewData = (): any => {
+    const systemPowerKw = calculateSystemPower()
+    const annualProduction = Math.round(systemPowerKw * 1450) // kWh per year
+    const annualSavings = Math.round(annualProduction * 2.2) // TL per kWh
+    const paybackPeriod = quoteData.total > 0 && annualSavings > 0
+      ? Math.round((quoteData.total / annualSavings) * 10) / 10
+      : 0
+
     return {
       id: quoteData.id || 'preview',
       quoteNumber: quoteData.quoteNumber || `Q-${Date.now().toString().slice(-8)}`,
@@ -611,18 +757,18 @@ export default function CreateQuotePage() {
       customerEmail: quoteData.customerEmail,
       customerPhone: quoteData.customerPhone,
       projectType: quoteData.projectType,
-      systemSize: quoteData.capacity,
+      systemSize: systemPowerKw,
       panelCount: quoteData.items.filter(item => item.category === 'PANEL').reduce((sum, item) => sum + item.quantity, 0),
-      capacity: quoteData.capacity,
+      capacity: systemPowerKw,
       items: quoteData.items.map(item => ({
         id: item.id,
         name: item.name,
         type: item.category,
-        brand: '',
+        brand: item.brand || '',
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         totalPrice: item.total,
-        specifications: {
+        specifications: item.specifications || {
           power: item.category === 'PANEL' ? 550 : undefined,
           efficiency: 20
         }
@@ -635,19 +781,19 @@ export default function CreateQuotePage() {
       createdAt: new Date(),
       validUntil: new Date(Date.now() + quoteData.validity * 24 * 60 * 60 * 1000),
       version: 1,
-      projectTitle: `${quoteData.capacity} kW Güneş Enerji Sistemi`,
+      projectTitle: `${systemPowerKw.toFixed(1)} kW Güneş Enerji Sistemi`,
       designData: {
         location: projectRequest?.location || 'Belirtilmemiş',
-        roofArea: quoteData.capacity * 8, // rough estimate
+        roofArea: systemPowerKw * 8, // rough estimate (8 m² per kW)
         irradiance: 1450,
         tiltAngle: 30,
         azimuth: 180
       },
       financialAnalysis: {
-        annualProduction: Math.round(quoteData.capacity * 1450),
-        annualSavings: Math.round(quoteData.capacity * 1450 * 2.2),
-        paybackPeriod: Math.round(quoteData.total / (quoteData.capacity * 1450 * 2.2)),
-        npv25: Math.round(quoteData.capacity * 1450 * 2.2 * 15),
+        annualProduction: annualProduction,
+        annualSavings: annualSavings,
+        paybackPeriod: paybackPeriod,
+        npv25: Math.round(annualSavings * 15), // NPV over 25 years
         irr: 12
       }
     }
@@ -823,7 +969,7 @@ export default function CreateQuotePage() {
             <QuotePreview
               quote={generatePreviewData()}
               onEdit={() => setShowPreview(false)}
-              onSend={() => saveQuote('SENT')}
+              onSend={() => setShowDeliveryModal(true)}
               onDownload={generateProfessionalPDF}
             />
           </div>
@@ -1018,12 +1164,49 @@ export default function CreateQuotePage() {
                             <Select
                               value={item.productId || ''}
                               onValueChange={(value) => {
+                                console.log('🎯 QUOTE CREATE: Product selected with ID:', value)
                                 const selectedProduct = products.find(p => p.id === value)
+                                console.log('🔍 QUOTE CREATE: Found product:', selectedProduct)
+
                                 if (selectedProduct) {
-                                  updateItem(item.id, 'productId', value)
-                                  updateItem(item.id, 'name', selectedProduct.name)
-                                  updateItem(item.id, 'unitPrice', selectedProduct.price || 0)
-                                  updateItem(item.id, 'description', `${selectedProduct.brand} ${selectedProduct.model} - ${selectedProduct.power}`)
+                                  console.log('💰 QUOTE CREATE: Setting price:', selectedProduct.price || 0)
+                                  console.log('📋 QUOTE CREATE: Product details:', {
+                                    name: selectedProduct.name,
+                                    brand: selectedProduct.brand,
+                                    price: selectedProduct.price,
+                                    type: selectedProduct.type
+                                  })
+
+                                  // Update all fields at once to avoid race condition
+                                  const updatedItems = quoteData.items.map(currentItem => {
+                                    if (currentItem.id === item.id) {
+                                      const updatedItem = {
+                                        ...currentItem,
+                                        productId: value,
+                                        name: selectedProduct.name,
+                                        unitPrice: selectedProduct.price || 0,
+                                        description: `${selectedProduct.brand} ${selectedProduct.model} - ${selectedProduct.power}`
+                                      }
+                                      // Recalculate totals
+                                      updatedItem.subtotal = updatedItem.unitPrice * updatedItem.quantity
+                                      const discountAmount = updatedItem.subtotal * (updatedItem.discount / 100)
+                                      const afterDiscount = updatedItem.subtotal - discountAmount
+                                      const taxAmount = afterDiscount * (updatedItem.tax / 100)
+                                      updatedItem.total = afterDiscount + taxAmount
+
+                                      console.log('✅ QUOTE CREATE: Item updated with price:', updatedItem.unitPrice)
+                                      return updatedItem
+                                    }
+                                    return currentItem
+                                  })
+
+                                  setQuoteData(prev => ({
+                                    ...prev,
+                                    items: updatedItems
+                                  }))
+                                  calculateTotals(updatedItems)
+                                } else {
+                                  console.error('❌ QUOTE CREATE: Product not found for ID:', value)
                                 }
                               }}
                             >
@@ -1031,9 +1214,22 @@ export default function CreateQuotePage() {
                                 <SelectValue placeholder="Malzeme seçin" />
                               </SelectTrigger>
                               <SelectContent>
-                                {products.map((product) => (
-                                  <SelectItem 
-                                    key={product.id} 
+                                {products
+                                  .filter((product) => {
+                                    // Filter products by category
+                                    if (item.category === 'PANEL' && product.type === 'SOLAR_PANEL') return true
+                                    if (item.category === 'INVERTER' && product.type === 'INVERTER') return true
+                                    if (item.category === 'BATTERY' && product.type === 'BATTERY') return true
+                                    if (item.category === 'MOUNTING' && product.type === 'MOUNTING_SYSTEM') return true
+                                    if (item.category === 'OTHER' &&
+                                        (product.type === 'CABLE' ||
+                                         product.type === 'MONITORING' ||
+                                         product.type === 'ACCESSORY')) return true
+                                    return false
+                                  })
+                                  .map((product) => (
+                                  <SelectItem
+                                    key={product.id}
                                     value={product.id}
                                     disabled={product.stock <= 0}
                                   >
@@ -1169,7 +1365,7 @@ export default function CreateQuotePage() {
                         </div>
                       </div>
                       <div className="flex justify-between">
-                        <span>KDV (18%):</span>
+                        <span>KDV ({quoteData.tax}%):</span>
                         <span className="font-medium">
                           {formatCurrency(quoteData.subtotal * (quoteData.tax / 100))}
                         </span>
@@ -1231,17 +1427,30 @@ export default function CreateQuotePage() {
                 <Download className="w-4 h-4 mr-2" />
                 PDF Raporu İndir
               </Button>
-              <Button onClick={() => saveQuote('DRAFT')}>
+              <Button
+                onClick={() => saveQuote('DRAFT')}
+                disabled={saving}
+              >
                 <Save className="w-4 h-4 mr-2" />
-                Taslak Kaydet
+                {saving ? 'Kaydediliyor...' : (quoteData.id ? 'Taslağı Güncelle' : 'Taslak Kaydet')}
               </Button>
-              <Button onClick={() => saveQuote('SENT')}>
+              <Button onClick={() => setShowDeliveryModal(true)}>
                 <Send className="w-4 h-4 mr-2" />
                 Teklifi Gönder
               </Button>
             </div>
           </>
         )}
+
+        {/* Quote Delivery Modal */}
+        <QuoteDeliveryModal
+          isOpen={showDeliveryModal}
+          onClose={() => setShowDeliveryModal(false)}
+          onSend={handleQuoteDelivery}
+          customerEmail={quoteData.customerEmail}
+          customerPhone={quoteData.customerPhone}
+          quoteNumber={quoteData.quoteNumber || `Q-${Date.now().toString().slice(-8)}`}
+        />
       </div>
     </DashboardLayout>
   )

@@ -62,6 +62,9 @@ export class ProjectRequestAPI {
   }
 
   static async create(data: Partial<ProjectRequest>): Promise<ProjectRequest> {
+    console.log('📡 API: Making create request to:', API_BASE_URL)
+    console.log('📡 API: Request data:', data)
+
     const response = await fetch(API_BASE_URL, {
       method: 'POST',
       headers: {
@@ -70,11 +73,21 @@ export class ProjectRequestAPI {
       body: JSON.stringify(data),
     })
 
+    console.log('📡 API: Response received:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
+    })
+
     if (!response.ok) {
-      throw new Error(`Failed to create project request: ${response.statusText}`)
+      const errorText = await response.text()
+      console.error('❌ API: Error response body:', errorText)
+      throw new Error(`Failed to create project request: ${response.status} ${response.statusText} - ${errorText}`)
     }
 
-    return response.json()
+    const result = await response.json()
+    console.log('✅ API: Create successful:', { id: result.id, requestNumber: result.requestNumber })
+    return result
   }
 
   static async update(id: string, data: Partial<ProjectRequest>): Promise<ProjectRequest> {

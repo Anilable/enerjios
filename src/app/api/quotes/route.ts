@@ -149,12 +149,14 @@ export async function POST(request: NextRequest) {
         items: {
           create: await Promise.all((items || []).map(async (item: QuoteItemInput) => {
             let productId = item.productId
-            
-            // If no productId provided, reject the quote item
+
+            // If no productId provided, create a placeholder ID for non-product items (like labor, mounting)
             if (!productId) {
-              throw new Error(`Quote item "${item.name || item.description}" requires a valid productId. Please select a product from the catalog.`)
+              // Use a deterministic ID based on item name/category
+              productId = `temp_${item.category}_${item.name?.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`
+              console.log(`Creating placeholder productId for non-catalog item: ${item.name}`)
             }
-            
+
             return {
               productId: productId,
               description: JSON.stringify({

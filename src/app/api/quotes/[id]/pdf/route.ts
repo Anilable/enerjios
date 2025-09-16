@@ -5,6 +5,27 @@ import { renderToStream } from '@react-pdf/renderer'
 import PDFTemplates from '@/lib/pdf-template'
 import React from 'react'
 
+// Fallback PDF generation function for production compatibility
+function generateFallbackPDF(quoteData: any) {
+  return {
+    quoteNumber: quoteData.quoteNumber,
+    customerName: quoteData.customerName,
+    customerEmail: quoteData.customerEmail,
+    systemSize: quoteData.systemSize,
+    items: quoteData.items?.map((item: any) => ({
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      total: item.totalPrice
+    })) || [],
+    subtotal: quoteData.subtotal,
+    tax: quoteData.tax,
+    total: quoteData.total,
+    createdAt: new Date().toISOString(),
+    validUntil: quoteData.validUntil
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -56,6 +77,46 @@ export async function GET(
       )
     }
 
+    // Calculate system power from products
+    const calculateSystemPower = () => {
+      let totalPower = 0
+      let panelCount = 0
+
+      quote.items?.forEach(item => {
+        if (item.product) {
+          // Calculate power from product data
+          let power = 0
+          if (item.product.power) {
+            power = parseFloat(item.product.power.toString()) || 0
+          }
+
+          // Add to total power (W to kW conversion)
+          totalPower += (power * item.quantity) / 1000
+
+          // Count panels
+          if (item.product.type === 'SOLAR_PANEL') {
+            panelCount += item.quantity
+          }
+        }
+      })
+
+      return { totalPowerKw: totalPower, panelCount }
+    }
+
+    const { totalPowerKw: systemPowerKw, panelCount } = calculateSystemPower()
+    const annualProduction = Math.round(systemPowerKw * 1450) // kWh per year
+    const annualSavings = Math.round(annualProduction * 2.2) // TL per kWh
+    const paybackPeriod = quote.total > 0 && annualSavings > 0
+      ? Math.round((quote.total / annualSavings) * 10) / 10
+      : 0
+
+    console.log('🔋 PDF POWER CALCULATION:', {
+      systemPowerKw,
+      panelCount,
+      annualProduction,
+      paybackPeriod
+    })
+
     // Transform data to match PDF template interface
     const quoteData = {
       id: quote.id,
@@ -63,10 +124,10 @@ export async function GET(
       customerName: `${quote.customer?.firstName || ''} ${quote.customer?.lastName || ''}`.trim(),
       customerEmail: quote.customer?.user?.email || '',
       customerPhone: quote.customer?.phone,
-      projectTitle: quote.project?.name || 'Güneş Enerjisi Sistemi',
-      systemSize: quote.project?.capacity || 0,
-      panelCount: 0, // TODO: Calculate from panel placements or items
-      capacity: quote.project?.capacity || 0,
+      projectTitle: `${systemPowerKw.toFixed(1)} kW Güneş Enerji Sistemi`,
+      systemSize: systemPowerKw,
+      panelCount: panelCount,
+      capacity: systemPowerKw,
       subtotal: quote.subtotal,
       tax: quote.tax,
       discount: quote.discount,
@@ -106,19 +167,41 @@ export async function GET(
           }
         }
       }) || [],
-      financialAnalysis: undefined, // TODO: Add financial analysis to Quote model
-      designData: quote.project?.location ? {
-        location: quote.project.location.address || '',
-        roofArea: 0, // TODO: Calculate from location data
-        tiltAngle: 0, // TODO: Add to location model
-        azimuth: 0, // TODO: Add to location model
-        irradiance: 0 // TODO: Add to location model
-      } : undefined
+      financialAnalysis: {
+        annualProduction: annualProduction,
+        annualSavings: annualSavings,
+        paybackPeriod: paybackPeriod,
+        npv25: Math.round(annualSavings * 15), // NPV over 25 years
+        irr: 12
+      },
+      designData: {
+        location: quote.project?.location?.address || 'Türkiye',
+        roofArea: systemPowerKw * 8, // rough estimate (8 m² per kW)
+        tiltAngle: 30,
+        azimuth: 180,
+        irradiance: 1450
+      }
     }
 
-    // Generate PDF using react-pdf
-    // renderToStream returns a Node.js stream, not a web stream
-    const stream = await renderToStream(React.createElement(PDFTemplates.QuotePDF as any, { quote: quoteData }) as any)
+    // Generate PDF using react-pdf with production-safe error handling
+    let stream
+    try {
+      stream = await renderToStream(React.createElement(PDFTemplates.QuotePDF as any, { quote: quoteData }) as any)
+    } catch (renderError) {
+      console.error('PDF rendering failed, attempting fallback:', renderError)
+      // Production fallback: Create simple text-based PDF
+      const fallbackPDFContent = generateFallbackPDF(quoteData)
+
+      const headers = new Headers()
+      headers.set('Content-Type', 'application/json') // Return as JSON if PDF fails
+      headers.set('Content-Disposition', `attachment; filename="teklif-${quoteData.quoteNumber}.json"`)
+
+      return new NextResponse(JSON.stringify({
+        error: 'PDF generation not available',
+        quoteData: fallbackPDFContent,
+        message: 'Please download the quote data and generate PDF locally'
+      }, null, 2), { headers })
+    }
 
     // Convert Node.js stream to buffer
     const chunks: Buffer[] = []

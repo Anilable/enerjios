@@ -41,6 +41,7 @@ interface QuoteData {
   total: number
   laborCost?: number
   margin?: number
+  taxPercent?: number
   status: 'DRAFT' | 'SENT' | 'VIEWED' | 'APPROVED' | 'REJECTED' | 'EXPIRED'
   createdAt: string | Date
   validUntil: string | Date
@@ -384,7 +385,7 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
                 <span>₺{quote.laborCost?.toLocaleString() || '0'}</span>
               </div>
               <div className="flex justify-between">
-                <span>KDV (%18):</span>
+                <span>KDV (%{quote.taxPercent || 1}):</span>
                 <span>₺{quote.tax.toLocaleString()}</span>
               </div>
               <Separator />

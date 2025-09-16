@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { 
+import {
   Search,
   Filter,
   Eye,
@@ -22,7 +22,9 @@ import {
   User,
   Building,
   Camera,
-  FolderPlus
+  FolderPlus,
+  Download,
+  RefreshCw
 } from 'lucide-react'
 import type { CustomerData } from '@/app/dashboard/customers/page'
 import { PhotoRequestButton } from '@/components/admin/photo-request-button'
@@ -51,6 +53,8 @@ export function CustomerList({
   const [priorityFilter, setPriorityFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [sortBy, setSortBy] = useState<string>('lastContact')
+  const [isExporting, setIsExporting] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch = searchQuery === '' || 
@@ -172,6 +176,54 @@ export function CustomerList({
     }
   }
 
+  const handleExportCustomers = async () => {
+    setIsExporting(true)
+    try {
+      // Export filtered customers to CSV
+      const headers = ['Ad Soyad', 'Email', 'Telefon', 'Şehir', 'Durum', 'Öncelik', 'Bütçe', 'Son İletişim']
+      const csvData = [
+        headers.join(','),
+        ...filteredCustomers.map(customer => [
+          `"${customer.fullName}"`,
+          `"${customer.email}"`,
+          `"${customer.phone}"`,
+          `"${customer.city}"`,
+          `"${getStatusLabel(customer.status)}"`,
+          `"${customer.priority}"`,
+          `"₺${customer.leadInfo.estimatedBudget.toLocaleString()}"`,
+          `"${formatDate(customer.lastContact)}"`
+        ].join(','))
+      ].join('\n')
+
+      const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', `musteri-listesi-${new Date().toLocaleDateString('tr-TR')}.csv`)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (error) {
+      console.error('Export failed:', error)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handleRefreshData = async () => {
+    setIsRefreshing(true)
+    try {
+      // Refresh customer data - you may want to add a refresh callback prop
+      await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
+      window.location.reload() // Simple refresh for now
+    } catch (error) {
+      console.error('Refresh failed:', error)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Filters */}
@@ -240,6 +292,29 @@ export function CustomerList({
                   <SelectItem value="priority">Öncelik</SelectItem>
                 </SelectContent>
               </Select>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 ml-auto">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleRefreshData}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {isRefreshing ? 'Yenileniyor...' : 'Yenile'}
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleExportCustomers}
+                  disabled={isExporting}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  {isExporting ? 'Dışa Aktarılıyor...' : 'Dışa Aktar'}
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -432,12 +507,20 @@ export function CustomerList({
                       Düzenle
                     </Button>
                     
-                    <Button size="sm" variant="default">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => window.open(`tel:${customer.phone}`, '_self')}
+                    >
                       <Phone className="w-3 h-3 mr-1" />
                       Ara
                     </Button>
-                    
-                    <Button size="sm" variant="outline">
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(`mailto:${customer.email}?subject=Trakya Solar - ${customer.fullName}`, '_blank')}
+                    >
                       <Mail className="w-3 h-3 mr-1" />
                       Mail
                     </Button>

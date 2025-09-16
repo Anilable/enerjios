@@ -464,7 +464,7 @@ export default function QuoteDetailPage() {
                   <span>-{formatCurrency(quote.discount)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">KDV (18%)</span>
+                  <span className="text-muted-foreground">KDV (20%)</span>
                   <span className="font-medium">{formatCurrency(quote.tax)}</span>
                 </div>
                 <Separator />

@@ -90,19 +90,6 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            <Link href="/dashboard/designer">
-              <Button 
-                variant="default" 
-                className="w-full h-24 flex-col gap-2 bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
-              >
-                <Compass className="h-8 w-8" />
-                <div>
-                  <div className="font-semibold">Proje Tasarımcısı</div>
-                  <div className="text-xs opacity-90">3D Çatı Analizi</div>
-                </div>
-              </Button>
-            </Link>
-            
             <Link href="/dashboard/project-requests">
               <Button
                 variant="default"
@@ -112,6 +99,19 @@ export default function DashboardPage() {
                 <div>
                   <div className="font-semibold">Proje Talepleri</div>
                   <div className="text-xs opacity-90">Yeni Talep</div>
+                </div>
+              </Button>
+            </Link>
+
+            <Link href="/dashboard/designer">
+              <Button
+                variant="default"
+                className="w-full h-24 flex-col gap-2 bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+              >
+                <Compass className="h-8 w-8" />
+                <div>
+                  <div className="font-semibold">Proje Tasarımcısı</div>
+                  <div className="text-xs opacity-90">3D Çatı Analizi</div>
                 </div>
               </Button>
             </Link>

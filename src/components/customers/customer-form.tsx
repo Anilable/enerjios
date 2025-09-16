@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { useEmail } from '@/hooks/use-email'
 import { useToast } from '@/hooks/use-toast'
-import { 
+import {
   User,
   Building,
   MapPin,
@@ -19,7 +21,9 @@ import {
   Tag,
   Save,
   X,
-  Plus
+  Plus,
+  Check,
+  ChevronsUpDown
 } from 'lucide-react'
 import type { CustomerData } from '@/app/dashboard/customers/page'
 
@@ -62,6 +66,7 @@ export function CustomerForm({ customer, onSave, onCancel }: CustomerFormProps) 
   const [tags, setTags] = useState<string[]>([])
   const [newTag, setNewTag] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [cityOpen, setCityOpen] = useState(false)
 
   // Load existing customer data
   useEffect(() => {
@@ -95,9 +100,17 @@ export function CustomerForm({ customer, onSave, onCancel }: CustomerFormProps) 
   }, [customer])
 
   const cities = [
-    'İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Konya', 'Gaziantep', 
-    'Şanlıurfa', 'Mersin', 'Kayseri', 'Eskişehir', 'Diyarbakır', 'Samsun', 'Denizli'
-  ]
+    'Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Amasya', 'Ankara', 'Antalya', 'Artvin',
+    'Aydın', 'Balıkesir', 'Bilecik', 'Bingöl', 'Bitlis', 'Bolu', 'Burdur', 'Bursa',
+    'Çanakkale', 'Çankırı', 'Çorum', 'Denizli', 'Diyarbakır', 'Edirne', 'Elazığ', 'Erzincan',
+    'Erzurum', 'Eskişehir', 'Gaziantep', 'Giresun', 'Gümüşhane', 'Hakkâri', 'Hatay', 'Isparta',
+    'Mersin', 'İstanbul', 'İzmir', 'Kars', 'Kastamonu', 'Kayseri', 'Kırklareli', 'Kırşehir',
+    'Kocaeli', 'Konya', 'Kütahya', 'Malatya', 'Manisa', 'Kahramanmaraş', 'Mardin', 'Muğla',
+    'Muş', 'Nevşehir', 'Niğde', 'Ordu', 'Rize', 'Sakarya', 'Samsun', 'Siirt', 'Sinop',
+    'Sivas', 'Tekirdağ', 'Tokat', 'Trabzon', 'Tunceli', 'Şanlıurfa', 'Uşak', 'Van',
+    'Yozgat', 'Zonguldak', 'Aksaray', 'Bayburt', 'Karaman', 'Kırıkkale', 'Batman', 'Şırnak',
+    'Bartın', 'Ardahan', 'Iğdır', 'Yalova', 'Karabük', 'Kilis', 'Osmaniye', 'Düzce'
+  ].sort((a, b) => a.localeCompare(b, 'tr', { sensitivity: 'base' }))
 
   const teamMembers = [
     'Mehmet Özkan', 'Ali Kaya', 'Fatma Yılmaz', 'Ahmet Demir', 'Ayşe Şahin'
@@ -354,19 +367,49 @@ export function CustomerForm({ customer, onSave, onCancel }: CustomerFormProps) 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="city">Şehir *</Label>
-                  <Select 
-                    value={formData.city} 
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, city: value }))}
-                  >
-                    <SelectTrigger className={errors.city ? 'border-red-500' : ''}>
-                      <SelectValue placeholder="Şehir seçin" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cities.map(city => (
-                        <SelectItem key={city} value={city}>{city}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={cityOpen} onOpenChange={setCityOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={cityOpen}
+                        className={`w-full justify-between ${errors.city ? 'border-red-500' : ''}`}
+                      >
+                        {formData.city || "Şehir seçin..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                      <Command>
+                        <CommandInput placeholder="Şehir ara..." className="h-9" />
+                        <CommandList>
+                          <CommandEmpty>Şehir bulunamadı.</CommandEmpty>
+                          <CommandGroup>
+                            {cities.map((city) => (
+                              <CommandItem
+                                key={city}
+                                value={city}
+                                onSelect={(currentValue) => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    city: currentValue === formData.city ? "" : currentValue
+                                  }))
+                                  setCityOpen(false)
+                                }}
+                              >
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${
+                                    formData.city === city ? "opacity-100" : "opacity-0"
+                                  }`}
+                                />
+                                {city}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   {errors.city && (
                     <p className="text-sm text-red-600 mt-1">{errors.city}</p>
                   )}
@@ -598,7 +641,7 @@ export function CustomerForm({ customer, onSave, onCancel }: CustomerFormProps) 
                       placeholder="Yeni etiket"
                       value={newTag}
                       onChange={(e) => setNewTag(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
                     />
                     <Button size="sm" onClick={handleAddTag}>
                       <Plus className="w-3 h-3" />

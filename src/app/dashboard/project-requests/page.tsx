@@ -11,6 +11,7 @@ import { DroppableColumn } from '@/components/project-requests/droppable-column'
 import { ProjectRequestFilters } from '@/components/project-requests/project-request-filters'
 import { EnhancedProjectRequestDialog as NewProjectRequestDialog } from '@/components/project-requests/enhanced-project-request-dialog'
 import { ProjectRequestDetails } from '@/components/project-requests/project-request-details'
+import { CalendarView } from '@/components/project-requests/calendar-view'
 import { ProjectRequestAPI } from '@/lib/api/project-requests'
 import { 
   ProjectRequest, 
@@ -20,7 +21,7 @@ import {
   PROJECT_REQUEST_STATUS_LABELS 
 } from '@/types/project-request'
 
-export type ViewType = 'list' | 'card' | 'kanban'
+export type ViewType = 'list' | 'card' | 'kanban' | 'calendar'
 
 type SortField = 'requestNumber' | 'customerName' | 'createdAt' | 'priority' | 'estimatedCapacity' | 'status'
 type SortDirection = 'asc' | 'desc'
@@ -52,6 +53,7 @@ import {
   LayoutGrid,
   List,
   Columns3,
+  Calendar,
   ArrowUpDown,
   MapPin,
   Trash2
@@ -436,20 +438,45 @@ export default function ProjectRequestsPage() {
     return `https://maps.googleapis.com/maps/api/staticmap?center=${encodedAddress}&zoom=15&size=300x200&maptype=satellite&markers=color:red%7C${encodedAddress}&key=${apiKey}`
   }
 
-  const handleCreateRequest = async (request: ProjectRequest) => {
+  const handleCreateRequest = async (request: any) => {
     try {
-      await ProjectRequestAPI.create(request)
+      console.log('🚀 Starting to create project request:', request)
+      const createdRequest = await ProjectRequestAPI.create(request)
+      console.log('✅ Project request created successfully:', createdRequest)
+
       setNewRequestDialogOpen(false)
       await loadProjectRequests()
+
       toast({
         title: 'Başarılı',
-        description: 'Yeni proje talebi oluşturuldu',
+        description: `Yeni proje talebi oluşturuldu: ${createdRequest.requestNumber || createdRequest.id}`,
       })
     } catch (error) {
-      console.error('Error creating request:', error)
+      console.error('❌ Error creating request:', error)
+
+      let errorMessage = 'Proje talebi oluşturulurken hata oluştu'
+
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        })
+
+        if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+          errorMessage = 'Oturum süresi dolmuş. Lütfen tekrar giriş yapın'
+        } else if (error.message.includes('403') || error.message.includes('Forbidden')) {
+          errorMessage = 'Bu işlem için yetkiniz yok'
+        } else if (error.message.includes('400') || error.message.includes('Bad Request')) {
+          errorMessage = 'Form bilgileri eksik veya hatalı'
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage = 'Bağlantı hatası. İnternet bağlantınızı kontrol edin'
+        }
+      }
+
       toast({
         title: 'Hata',
-        description: 'Proje talebi oluşturulurken hata oluştu',
+        description: errorMessage,
         variant: 'destructive'
       })
     }
@@ -674,6 +701,15 @@ export default function ProjectRequestsPage() {
             >
               <Columns3 className="w-4 h-4 mr-1" />
               <span className="hidden sm:inline">Kanban</span>
+            </Button>
+            <Button
+              variant={currentView === 'calendar' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setCurrentView('calendar')}
+              className="px-2 sm:px-3 py-1 text-xs"
+            >
+              <Calendar className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Talep İzleme</span>
             </Button>
           </div>
           
@@ -964,6 +1000,17 @@ export default function ProjectRequestsPage() {
                   ) : null}
                 </DragOverlay>
               </DndContext>
+            )}
+
+            {/* Calendar View */}
+            {currentView === 'calendar' && (
+              <CalendarView
+                requests={getAllRequests()}
+                onViewRequest={(request) => {
+                  setSelectedRequest(request)
+                  setDetailsDialogOpen(true)
+                }}
+              />
             )}
           </>
         )}

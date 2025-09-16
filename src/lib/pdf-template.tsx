@@ -1,21 +1,25 @@
 import * as React from 'react'
 import { Document, Page, Text, View, StyleSheet, Svg, Circle, Line, Rect, Font } from '@react-pdf/renderer'
 
-// Register Turkish-compatible fonts with full Unicode support
-// Using TTF fonts which are better supported by react-pdf
-Font.register({
-  family: 'Turkish',
-  fonts: [
-    {
-      src: 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5Q.ttf',
-      fontWeight: 'normal',
-    },
-    {
-      src: 'https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlvAw.ttf',
-      fontWeight: 'bold',
-    }
-  ]
-});
+// Register Turkish-compatible fonts with production-safe fallbacks
+try {
+  Font.register({
+    family: 'Turkish',
+    fonts: [
+      {
+        src: 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5Q.ttf',
+        fontWeight: 'normal',
+      },
+      {
+        src: 'https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlvAw.ttf',
+        fontWeight: 'bold',
+      }
+    ]
+  });
+} catch (error) {
+  console.warn('Failed to register custom fonts, using default:', error);
+  // Fallback to system fonts
+}
 
 // Text encoding and sanitization utilities
 const sanitizeText = (text: string | null | undefined): string => {
@@ -741,7 +745,7 @@ export const QuotePDF: React.FC<QuotePDFProps> = ({ quote }) => {
             <Text style={styles.summaryValue}>{formatCurrency(quote.laborCost || 0)}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>KDV (%18):</Text>
+            <Text style={styles.summaryLabel}>KDV (%20):</Text>
             <Text style={styles.summaryValue}>{formatCurrency(quote.tax)}</Text>
           </View>
           <View style={styles.totalRow}>

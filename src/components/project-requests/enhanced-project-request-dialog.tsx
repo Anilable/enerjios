@@ -2,6 +2,19 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { ProjectRequest, ProjectType, PROJECT_TYPE_LABELS, REQUEST_SOURCE_LABELS } from '@/types/project-request'
+
+// Type for creating a new project request (missing server-generated fields, but making some optional)
+type CreateProjectRequestData = Omit<ProjectRequest, 'id' | 'requestNumber' | 'status' | 'hasPhotos' | 'createdAt' | 'updatedAt' | 'statusHistory' | 'customerPhone' | 'address' | 'description' | 'estimatedCapacity' | 'customerId' | 'estimatedBudget' | 'estimatedRevenue' | 'scheduledVisitDate' | 'assignedEngineerId'> & {
+  customerPhone: string | null
+  address: string | null
+  description: string | null
+  estimatedCapacity: number | null
+  estimatedBudget?: number | null
+  estimatedRevenue?: number | null
+  scheduledVisitDate?: string | null
+  assignedEngineerId?: string | null
+  customerId?: string | null
+}
 import { useCustomerSearch, type Customer } from '@/hooks/use-customer-search'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -108,7 +121,7 @@ interface FormErrors {
 interface EnhancedProjectRequestDialogProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (request: ProjectRequest) => void
+  onSubmit: (request: CreateProjectRequestData) => void
   prefilledCustomer?: {
     id?: string
     name: string
@@ -137,6 +150,7 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
     } : null
   )
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false)
+  const [cityDropdownOpen, setCityDropdownOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   
@@ -166,6 +180,20 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
     availableTimeSlots: [] as string[]
   })
 
+  // Turkish cities list (81 provinces)
+  const cities = [
+    'Adana', 'Adıyaman', 'Afyonkarahisar', 'Ağrı', 'Amasya', 'Ankara', 'Antalya', 'Artvin',
+    'Aydın', 'Balıkesir', 'Bilecik', 'Bingöl', 'Bitlis', 'Bolu', 'Burdur', 'Bursa',
+    'Çanakkale', 'Çankırı', 'Çorum', 'Denizli', 'Diyarbakır', 'Edirne', 'Elazığ', 'Erzincan',
+    'Erzurum', 'Eskişehir', 'Gaziantep', 'Giresun', 'Gümüşhane', 'Hakkâri', 'Hatay', 'Isparta',
+    'Mersin', 'İstanbul', 'İzmir', 'Kars', 'Kastamonu', 'Kayseri', 'Kırklareli', 'Kırşehir',
+    'Kocaeli', 'Konya', 'Kütahya', 'Malatya', 'Manisa', 'Kahramanmaraş', 'Mardin', 'Muğla',
+    'Muş', 'Nevşehir', 'Niğde', 'Ordu', 'Rize', 'Sakarya', 'Samsun', 'Siirt',
+    'Sinop', 'Sivas', 'Tekirdağ', 'Tokat', 'Trabzon', 'Tunceli', 'Şanlıurfa', 'Uşak',
+    'Van', 'Yozgat', 'Zonguldak', 'Aksaray', 'Bayburt', 'Karaman', 'Kırıkkale', 'Batman',
+    'Şırnak', 'Bartın', 'Ardahan', 'Iğdır', 'Yalova', 'Karabük', 'Kilis', 'Osmaniye', 'Düzce'
+  ].sort((a, b) => a.localeCompare(b, 'tr', { sensitivity: 'base' }))
+
   // Enhanced form validation
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
@@ -177,8 +205,8 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
       newErrors.customerName = 'Müşteri adı en az 2 karakter olmalıdır'
     } else if (formData.customerName.length > 100) {
       newErrors.customerName = 'Müşteri adı en fazla 100 karakter olabilir'
-    } else if (!/^[a-zA-ZÇçĞğıİÖöŞşÜü\s]+$/.test(formData.customerName)) {
-      newErrors.customerName = 'Müşteri adı sadece harf ve boşluk içerebilir'
+    } else if (!/^[a-zA-ZÇçĞğıİÖöŞşÜü\s.'-]+$/.test(formData.customerName)) {
+      newErrors.customerName = 'Müşteri adı geçersiz karakterler içeriyor'
     }
 
     // Email Validation
@@ -201,11 +229,7 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
 
     // Location Validation
     if (!formData.location.trim()) {
-      newErrors.location = 'Konum bilgisi gereklidir'
-    } else if (formData.location.length < 3) {
-      newErrors.location = 'Konum bilgisi en az 3 karakter olmalıdır'
-    } else if (formData.location.length > 200) {
-      newErrors.location = 'Konum bilgisi en fazla 200 karakter olabilir'
+      newErrors.location = 'Şehir seçimi gereklidir'
     }
 
     // Address Validation (Optional)
@@ -412,55 +436,42 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
     console.log('Form validation passed')
 
     try {
-      // Determine actual project type based on system type
+      // Determine actual project type based on form inputs
+      // Use the selected projectType from dropdown, fallback to RESIDENTIAL
       let finalProjectType: ProjectType = formData.projectType || 'RESIDENTIAL'
-      if (formData.systemType === 'OFFGRID') {
-        finalProjectType = 'OFFGRID' as ProjectType
-      } else if (formData.systemType === 'HYBRID' || formData.includeStorage) {
-        finalProjectType = 'HYBRID' as ProjectType
-      } else if (formData.systemType === 'ONGRID') {
-        finalProjectType = 'ONGRID' as ProjectType
+
+      // Ensure the projectType is valid for Prisma schema
+      const validProjectTypes = ['ROOFTOP', 'LAND', 'AGRISOLAR', 'INDUSTRIAL', 'CARPARK', 'RESIDENTIAL', 'COMMERCIAL', 'AGRICULTURAL']
+      if (!validProjectTypes.includes(finalProjectType)) {
+        finalProjectType = 'RESIDENTIAL' // Safe fallback
       }
 
-      const newRequest: ProjectRequest = {
-        id: Date.now().toString(),
-        requestNumber: `REQ-${Date.now().toString().slice(-8)}`,
-        customerId: selectedCustomer?.id,
+      // Create API-compatible request data
+      const requestData = {
         customerName: formData.customerName,
         customerEmail: formData.customerEmail,
-        customerPhone: formData.customerPhone,
+        customerPhone: formData.customerPhone || null,
         location: formData.location,
-        address: formData.address,
+        address: formData.address || null,
         projectType: finalProjectType,
-        estimatedCapacity: parseFloat(formData.estimatedCapacity) || 0,
-        estimatedBudget: parseFloat(formData.estimatedBudget) || undefined,
-        description: formData.description,
-        status: 'OPEN',
-        priority: formData.urgentRequest ? 'HIGH' : formData.priority,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        scheduledVisitDate: formData.preferredVisitDate || undefined,
-        statusHistory: [
-          {
-            id: '1',
-            status: 'OPEN',
-            timestamp: new Date().toISOString(),
-            userId: 'current-user',
-            userName: 'Mevcut Kullanıcı'
-          }
-        ],
+        estimatedCapacity: parseFloat(formData.estimatedCapacity) || null,
+        estimatedBudget: parseFloat(formData.estimatedBudget) || null,
+        estimatedRevenue: parseFloat(formData.estimatedBudget) || null,
+        description: formData.description || null,
+        priority: formData.urgentRequest ? 'HIGH' : (formData.priority || 'MEDIUM'),
+        source: formData.source || 'WEBSITE',
+        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
         notes: [],
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
-        source: formData.source,
-        hasPhotos: false,
-        estimatedRevenue: parseFloat(formData.estimatedBudget) || undefined,
-        contactPreference: formData.contactPreference
+        contactPreference: formData.contactPreference || null,
+        customerId: selectedCustomer?.id || null,
+        assignedEngineerId: null,
+        scheduledVisitDate: formData.preferredVisitDate ? new Date(formData.preferredVisitDate).toISOString() : null
       }
 
-      console.log('Calling onSubmit with:', newRequest)
-      await onSubmit(newRequest)
+      console.log('Calling onSubmit with:', requestData)
+      await onSubmit(requestData)
       console.log('Form submission successful')
-      resetForm()
+      // Note: resetForm and onClose will be called by the parent component after successful submission
       
     } catch (error) {
       console.error('Form submission error:', error)
@@ -891,7 +902,12 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
                                   {filteredCustomers.map((customer) => (
                                     <CommandItem
                                       key={customer.id}
+                                      value={customer.name}
                                       onSelect={() => handleCustomerSelect(customer)}
+                                      onMouseDown={(e) => {
+                                        e.preventDefault()
+                                        handleCustomerSelect(customer)
+                                      }}
                                       className="cursor-pointer p-3"
                                     >
                                       <div className="flex flex-col w-full">
@@ -1084,16 +1100,59 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
                     <div className="space-y-1">
                       <Label htmlFor="location" className="flex items-center gap-1 text-xs">
                         <MapPin className="h-3 w-3" />
-                        Konum *
+                        Şehir *
                       </Label>
-                      <Input
-                        id="location"
-                        value={formData.location}
-                        onChange={(e) => handleInputChange('location', e.target.value)}
-                        placeholder="İstanbul, Kadıköy"
-                        className={cn(getFieldClassName('location'), "h-8 text-sm")}
-                        required
-                      />
+                      <Popover open={cityDropdownOpen} onOpenChange={setCityDropdownOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={cityDropdownOpen}
+                            className={cn(
+                              "w-full justify-between h-8 text-sm",
+                              getFieldClassName('location'),
+                              !formData.location && "text-muted-foreground"
+                            )}
+                          >
+                            {formData.location || "Şehir seçin"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[200px] p-0">
+                          <Command>
+                            <CommandInput placeholder="Şehir ara..." />
+                            <CommandList>
+                              <CommandEmpty>Şehir bulunamadı.</CommandEmpty>
+                              <CommandGroup>
+                                {cities.map((city) => (
+                                  <CommandItem
+                                    key={city}
+                                    value={city}
+                                    onSelect={(currentValue) => {
+                                      handleInputChange('location', currentValue === formData.location ? '' : currentValue)
+                                      setCityDropdownOpen(false)
+                                    }}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault()
+                                      handleInputChange('location', city)
+                                      setCityDropdownOpen(false)
+                                    }}
+                                    className="cursor-pointer"
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        formData.location === city ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {city}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       {errors.location && (
                         <p className="text-xs text-red-600 flex items-center gap-1">
                           <AlertTriangle className="h-2.5 w-2.5" />
