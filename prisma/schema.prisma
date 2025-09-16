@@ -55,6 +55,7 @@ model User {
   photoRequestsReviewed PhotoRequest[] @relation("PhotoRequestReviewer")
   assignedProjectRequests ProjectRequest[] @relation("AssignedEngineer")
   projectRequestHistory ProjectRequestStatusHistory[] @relation("ProjectRequestHistory")
+  manualExchangeRates ManualExchangeRate[]
 }
 
 model Session {
@@ -1022,4 +1023,29 @@ model PhotoUpload {
   
   // Relations
   photoRequest    PhotoRequest    @relation(fields: [photoRequestId], references: [id], onDelete: Cascade)
+}
+
+// ==================== MANUAL EXCHANGE RATES ====================
+
+// Manuel döviz kuru override tablosu - TCMB verilerini geçersiz kılar
+model ManualExchangeRate {
+  id              String          @id @default(cuid())
+  currency        String          // USD, EUR, CNY
+  rate            Float           // Manuel girilen kur
+  description     String?         // Admin notları
+
+  // Metadata
+  isActive        Boolean         @default(true)
+  createdBy       String          // Admin kullanıcı ID
+
+  // Timestamps
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  creator         User            @relation(fields: [createdBy], references: [id])
+
+  // Unique constraint - her para birimi için bir aktif kayıt
+  @@unique([currency, isActive])
+  @@index([currency])
 }

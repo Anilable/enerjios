@@ -9,20 +9,99 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Sun, Building, Users, TrendingUp, CloudSun, DollarSign, Compass, Calculator, FileText, BarChart3, FolderPlus } from 'lucide-react'
 import { getRoleName } from '@/lib/role-utils'
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { FinancialOverview } from '@/components/dashboard/financial-overview'
 import { WeatherWidgetClient } from '@/components/dashboard/weather-widget-client'
 import Link from 'next/link'
 
+interface DashboardMetrics {
+  projects: {
+    total: number
+    change: number
+    changeText: string
+  }
+  customers: {
+    total: number
+    change: number
+    changeText: string
+  }
+  capacity: {
+    total: string
+    totalRaw: number
+    change: number
+    changeText: string
+  }
+  revenue: {
+    total: string
+    totalRaw: number
+    changePercent: number
+    changeText: string
+  }
+}
+
+interface RecentProject {
+  id: string
+  name: string
+  capacity: number
+  status: string
+  type: string
+  location: string
+}
+
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
+  const [metricsLoading, setMetricsLoading] = useState(true)
+  const [recentProjects, setRecentProjects] = useState<RecentProject[]>([])
+  const [projectsLoading, setProjectsLoading] = useState(true)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/signin')
     }
   }, [status, router])
+
+  useEffect(() => {
+    if (session?.user) {
+      fetchMetrics()
+      fetchRecentProjects()
+    }
+  }, [session])
+
+  const fetchMetrics = async () => {
+    try {
+      setMetricsLoading(true)
+      const response = await fetch('/api/dashboard/metrics')
+      if (response.ok) {
+        const data = await response.json()
+        setMetrics(data)
+      } else {
+        console.error('Failed to fetch metrics, status:', response.status)
+      }
+    } catch (error) {
+      console.error('Error fetching metrics:', error)
+    } finally {
+      setMetricsLoading(false)
+    }
+  }
+
+  const fetchRecentProjects = async () => {
+    try {
+      setProjectsLoading(true)
+      const response = await fetch('/api/dashboard/recent-projects')
+      if (response.ok) {
+        const data = await response.json()
+        setRecentProjects(data)
+      } else {
+        console.error('Failed to fetch recent projects')
+      }
+    } catch (error) {
+      console.error('Error fetching recent projects:', error)
+    } finally {
+      setProjectsLoading(false)
+    }
+  }
 
   if (status === 'loading') {
     return (
@@ -165,8 +244,17 @@ export default function DashboardPage() {
               <Building className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">12</div>
-              <p className="text-xs text-muted-foreground">+2 bu ay</p>
+              {metricsLoading ? (
+                <>
+                  <Skeleton className="h-8 w-16 mb-2" />
+                  <Skeleton className="h-3 w-24" />
+                </>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{metrics?.projects.total || 0}</div>
+                  <p className="text-xs text-muted-foreground">{metrics?.projects.changeText || 'Değişim yok'}</p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -176,8 +264,17 @@ export default function DashboardPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">45</div>
-              <p className="text-xs text-muted-foreground">+5 bu hafta</p>
+              {metricsLoading ? (
+                <>
+                  <Skeleton className="h-8 w-16 mb-2" />
+                  <Skeleton className="h-3 w-24" />
+                </>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{metrics?.customers.total || 0}</div>
+                  <p className="text-xs text-muted-foreground">{metrics?.customers.changeText || 'Değişim yok'}</p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -187,8 +284,17 @@ export default function DashboardPage() {
               <Sun className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">850 kW</div>
-              <p className="text-xs text-muted-foreground">+120 kW bu ay</p>
+              {metricsLoading ? (
+                <>
+                  <Skeleton className="h-8 w-20 mb-2" />
+                  <Skeleton className="h-3 w-24" />
+                </>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{metrics?.capacity.total || '0 kW'}</div>
+                  <p className="text-xs text-muted-foreground">{metrics?.capacity.changeText || 'Değişim yok'}</p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -198,8 +304,17 @@ export default function DashboardPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₺2.4M</div>
-              <p className="text-xs text-muted-foreground">+18% geçen aya göre</p>
+              {metricsLoading ? (
+                <>
+                  <Skeleton className="h-8 w-20 mb-2" />
+                  <Skeleton className="h-3 w-28" />
+                </>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{metrics?.revenue.total || '₺0'}</div>
+                  <p className="text-xs text-muted-foreground">{metrics?.revenue.changeText || 'Değişim yok'}</p>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -233,27 +348,56 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium">Kadıköy Çatı GES</p>
-                    <p className="text-sm text-gray-500">100 kW • İstanbul</p>
+                {projectsLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                      <Skeleton className="h-6 w-20" />
+                    </div>
+                  ))
+                ) : recentProjects.length > 0 ? (
+                  recentProjects.map((project) => (
+                    <div key={project.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="font-medium">{project.name}</p>
+                        <p className="text-sm text-gray-500">
+                          {Math.round(project.capacity)} kW • {project.location}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={
+                          project.status === 'COMPLETED' ? 'default' :
+                          project.status === 'IN_PROGRESS' ? 'secondary' :
+                          project.status === 'PLANNED' ? 'secondary' :
+                          'outline'
+                        }
+                        className={
+                          project.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                          project.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                          project.status === 'PLANNED' ? 'bg-yellow-100 text-yellow-800' :
+                          project.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                          ''
+                        }
+                      >
+                        {project.status === 'COMPLETED' ? 'Tamamlandı' :
+                         project.status === 'IN_PROGRESS' ? 'Devam Ediyor' :
+                         project.status === 'PLANNED' ? 'Planlanıyor' :
+                         project.status === 'CANCELLED' ? 'İptal Edildi' :
+                         'Taslak'}
+                      </Badge>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>Henüz proje bulunmuyor.</p>
+                    <Link href="/dashboard/projects" className="text-primary hover:underline">
+                      Yeni proje oluştur
+                    </Link>
                   </div>
-                  <Badge variant="secondary">Planlanıyor</Badge>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium">Konya Tarımsal GES</p>
-                    <p className="text-sm text-gray-500">250 kW • Konya</p>
-                  </div>
-                  <Badge className="bg-green-100 text-green-800">Tamamlandı</Badge>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium">Ankara Fabrika GES</p>
-                    <p className="text-sm text-gray-500">500 kW • Ankara</p>
-                  </div>
-                  <Badge className="bg-blue-100 text-blue-800">Devam Ediyor</Badge>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>

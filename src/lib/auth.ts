@@ -166,7 +166,7 @@ export const authOptions: NextAuthOptions = {
 
       // Use the correct port based on environment
       const correctBaseUrl = process.env.NODE_ENV === 'development'
-        ? 'http://localhost:3001'
+        ? 'http://localhost:3000'
         : baseUrl
 
       // Allows relative callback URLs

@@ -32,8 +32,9 @@ import {
   Search, Filter, Eye, Edit, MoreHorizontal, TrendingUp,
   Calendar, MapPin, User, Zap, Clock, AlertCircle,
   CheckCircle, XCircle, Pause, Play, DollarSign,
-  FileText, Phone, Mail
+  FileText, Phone, Mail, Trash2
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface ProjectOverview {
   id: string
@@ -107,125 +108,52 @@ export default function ProjectOverviewPage() {
   const [priorityFilter, setPriorityFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
 
-  // Mock data - would come from API
+  const handleDeleteProject = async (projectId: string, projectTitle: string) => {
+    if (!confirm(`"${projectTitle}" projesini silmek istediğinizden emin misiniz?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'DELETE'
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success('Proje başarıyla silindi')
+        // Refresh projects list
+        setProjects(projects.filter(p => p.id !== projectId))
+      } else {
+        toast.error(result.error || 'Proje silinirken hata oluştu')
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      toast.error('Proje silinirken hata oluştu')
+    }
+  }
+
+  // Fetch projects from API
   useEffect(() => {
-    setTimeout(() => {
-      setProjects([
-        {
-          id: 'PRJ-1734524789123-ABC123',
-          title: 'GES Projesi - Mehmet Yılmaz',
-          customer: {
-            name: 'Mehmet Yılmaz',
-            email: 'mehmet@example.com',
-            phone: '+90 532 123 4567',
-            company: 'Yılmaz Çiftliği'
-          },
-          status: 'APPROVED',
-          priority: 'HIGH',
-          type: 'agricultural',
-          location: {
-            address: 'Keşan, Edirne',
-            city: 'Edirne',
-            district: 'Keşan'
-          },
-          technical: {
-            systemSize: 50,
-            panelCount: 125,
-            annualProduction: 85000,
-            roofArea: 280
-          },
-          financial: {
-            estimatedCost: 175000,
-            quotedPrice: 185000,
-            approvedBudget: 185000
-          },
-          timeline: {
-            createdAt: '2024-12-18',
-            designCompleted: '2024-12-18',
-            quoteApproved: '2024-12-19'
-          },
-          progress: 75,
-          assignedTo: 'Ahmet Kaya',
-          lastActivity: '2 saat önce',
-          activityCount: 8
-        },
-        {
-          id: 'PRJ-1734524789124-DEF456',
-          title: 'GES Projesi - Fatma Demir',
-          customer: {
-            name: 'Fatma Demir',
-            email: 'fatma@example.com',
-            phone: '+90 533 987 6543'
-          },
-          status: 'QUOTE_SENT',
-          priority: 'MEDIUM',
-          type: 'residential',
-          location: {
-            address: 'Çorlu, Tekirdağ',
-            city: 'Tekirdağ',
-            district: 'Çorlu'
-          },
-          technical: {
-            systemSize: 12,
-            panelCount: 30,
-            annualProduction: 18000,
-            roofArea: 75
-          },
-          financial: {
-            estimatedCost: 45000,
-            quotedPrice: 48000
-          },
-          timeline: {
-            createdAt: '2024-12-17',
-            designCompleted: '2024-12-18'
-          },
-          progress: 40,
-          assignedTo: 'Elif Özkan',
-          lastActivity: '1 gün önce',
-          activityCount: 5
-        },
-        {
-          id: 'PRJ-1734524789125-GHI789',
-          title: 'GES Projesi - Özkan Sanayi Ltd.',
-          customer: {
-            name: 'Ali Özkan',
-            email: 'ali@ozkansanayi.com',
-            phone: '+90 534 555 4444',
-            company: 'Özkan Sanayi Ltd.'
-          },
-          status: 'IN_PROGRESS',
-          priority: 'HIGH',
-          type: 'commercial',
-          location: {
-            address: 'Hadımköy, İstanbul',
-            city: 'İstanbul',
-            district: 'Arnavutköy'
-          },
-          technical: {
-            systemSize: 250,
-            panelCount: 625,
-            annualProduction: 400000,
-            roofArea: 1200
-          },
-          financial: {
-            estimatedCost: 850000,
-            quotedPrice: 875000,
-            approvedBudget: 875000
-          },
-          timeline: {
-            createdAt: '2024-12-10',
-            designCompleted: '2024-12-12',
-            quoteApproved: '2024-12-15',
-            installationStarted: '2024-12-18'
-          },
-          progress: 85,
-          assignedTo: 'Mehmet Arslan',
-          lastActivity: '3 saat önce',
-          activityCount: 15
+    const fetchProjects = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/projects')
+        const result = await response.json()
+
+        if (result.success) {
+          setProjects(result.data)
+        } else {
+          console.error('Failed to fetch projects:', result.error)
         }
-      ])
-      setLoading(false)
-    }, 1000)
+      } catch (error) {
+        console.error('Error fetching projects:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProjects()
   }, [])
 
   // Filter projects
@@ -287,9 +215,6 @@ export default function ProjectOverviewPage() {
               Tüm projelerinizi takip edin ve yönetin
             </p>
           </div>
-          <Button>
-            Yeni Proje Ekle
-          </Button>
         </div>
 
         {/* Stats Cards */}
@@ -593,6 +518,13 @@ export default function ProjectOverviewPage() {
                               <DropdownMenuItem>
                                 <Mail className="w-4 h-4 mr-2" />
                                 Email Gönder
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-red-600 hover:text-red-700"
+                                onClick={() => handleDeleteProject(project.id, project.title)}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Sil
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

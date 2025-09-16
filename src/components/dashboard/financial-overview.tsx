@@ -3,16 +3,32 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useFinancialRates, useSolarIndustryRates } from '@/hooks/use-exchange-rates'
-import { 
-  TrendingUp, TrendingDown, DollarSign, Euro, 
-  RefreshCw, AlertTriangle, Info, Zap, 
-  Calculator, PieChart, BarChart3
+import { useSession } from 'next-auth/react'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import {
+  TrendingUp, TrendingDown, DollarSign, Euro,
+  RefreshCw, AlertTriangle, Info, Zap,
+  Calculator, PieChart, BarChart3, Edit, X, Check
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 export function FinancialOverview() {
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === 'ADMIN'
+
+  const [editMode, setEditMode] = useState(false)
+  const [updating, setUpdating] = useState(false)
+  const [manualRates, setManualRates] = useState({
+    USD: '',
+    EUR: '',
+    CNY: ''
+  })
+
   const {
     majorRates,
     loading,
@@ -59,6 +75,66 @@ export function FinancialOverview() {
   }
 
   const importCosts = getImportCosts(sampleEquipmentCosts)
+
+  // Manuel kur güncelleme fonksiyonu
+  const updateManualRates = async () => {
+    setUpdating(true)
+
+    try {
+      // Filter out empty values and convert to numbers
+      const ratesToUpdate = Object.entries(manualRates)
+        .filter(([_, value]) => value.trim() !== '')
+        .map(([currency, value]) => ({
+          currency,
+          rate: parseFloat(value.replace(',', '.')),
+          description: `Dashboard'dan güncellendi - ${new Date().toLocaleString('tr-TR')}`
+        }))
+
+      if (ratesToUpdate.length === 0) {
+        toast.error('En az bir kur değeri girmelisiniz')
+        return
+      }
+
+      const response = await fetch('/api/admin/exchange-rates', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          rates: ratesToUpdate
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success(`${ratesToUpdate.length} döviz kuru başarıyla güncellendi`)
+        setManualRates({ USD: '', EUR: '', CNY: '' })
+        setEditMode(false)
+        // Kurları yenile
+        refetch()
+      } else {
+        toast.error(data.error || 'Kurlar güncellenirken hata oluştu')
+      }
+    } catch (error) {
+      toast.error('Güncellemede hata oluştu')
+      console.error('Update error:', error)
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const cancelEdit = () => {
+    setEditMode(false)
+    setManualRates({ USD: '', EUR: '', CNY: '' })
+  }
+
+  const handleRateChange = (currency: string, value: string) => {
+    setManualRates(prev => ({
+      ...prev,
+      [currency]: value
+    }))
+  }
 
   // Sample portfolio data for chart
   const portfolioData = [
@@ -222,37 +298,137 @@ export function FinancialOverview() {
       {/* Solar Industry Rates */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="w-5 h-5" />
-            Solar Endüstri Döviz Kurları
-          </CardTitle>
-          <CardDescription>
-            Solar ekipman ithalatı için güncel kurlar
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="w-5 h-5" />
+                Solar Endüstri Döviz Kurları
+                {editMode && <Badge variant="secondary" className="ml-2">Düzenleme Modu</Badge>}
+              </CardTitle>
+              <CardDescription>
+                Solar ekipman ithalatı için güncel kurlar
+                {isAdmin && !editMode && (
+                  <span className="text-xs text-blue-600 ml-2">• Admin olarak kurları düzenleyebilirsiniz</span>
+                )}
+              </CardDescription>
+            </div>
+            {isAdmin && (
+              <div className="flex gap-2">
+                {!editMode ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditMode(true)}
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Kurları Düzenle
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={cancelEdit}
+                      disabled={updating}
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      İptal
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={updateManualRates}
+                      disabled={updating}
+                    >
+                      <Check className="w-4 h-4 mr-2" />
+                      {updating ? 'Kaydediliyor...' : 'Kaydet'}
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
+          {editMode && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <Label className="text-sm font-medium text-blue-900 mb-3 block">
+                Manuel Kur Girişi (Boş bırakılan kurlar değiştirilmez)
+              </Label>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="manual-usd" className="text-sm">USD Kuru</Label>
+                  <Input
+                    id="manual-usd"
+                    type="number"
+                    step="0.0001"
+                    placeholder="30.1234"
+                    value={manualRates.USD}
+                    onChange={(e) => handleRateChange('USD', e.target.value)}
+                    disabled={updating}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="manual-eur" className="text-sm">EUR Kuru</Label>
+                  <Input
+                    id="manual-eur"
+                    type="number"
+                    step="0.0001"
+                    placeholder="33.5678"
+                    value={manualRates.EUR}
+                    onChange={(e) => handleRateChange('EUR', e.target.value)}
+                    disabled={updating}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="manual-cny" className="text-sm">CNY Kuru</Label>
+                  <Input
+                    id="manual-cny"
+                    type="number"
+                    step="0.0001"
+                    placeholder="4.1234"
+                    value={manualRates.CNY}
+                    onChange={(e) => handleRateChange('CNY', e.target.value)}
+                    disabled={updating}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid gap-4 md:grid-cols-3">
             {Object.entries(solarRates).map(([currency, rate]) => (
               <div key={currency} className="p-4 border rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-medium">{currency}/TRY</span>
-                  <Badge variant={
-                    currency === 'USD' ? 'default' : 
-                    currency === 'EUR' ? 'secondary' : 'outline'
-                  }>
-                    {currency === 'USD' ? 'Amerika' : 
-                     currency === 'EUR' ? 'Avrupa' : 'Çin'}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={
+                      currency === 'USD' ? 'default' :
+                      currency === 'EUR' ? 'secondary' : 'outline'
+                    }>
+                      {currency === 'USD' ? 'Amerika' :
+                       currency === 'EUR' ? 'Avrupa' : 'Çin'}
+                    </Badge>
+                    {rate?.source && (
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                        Manuel
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-                
+
                 <div className="text-xl font-bold mb-1">
-                  {rate ? `₺${(rate.selling || rate.forexSelling || 0).toFixed(2)}` : 'N/A'}
+                  {rate ? `₺${(rate.selling || rate.forexSelling || 0).toFixed(4)}` : 'N/A'}
                 </div>
-                
+
                 <div className="text-xs text-muted-foreground">
                   {currency === 'USD' ? 'Paneller, Aksesuarlar' :
                    currency === 'EUR' ? 'İnverterler, Bataryalar' :
                    'Üretim Ekipmanları'}
+                  {rate?.source && (
+                    <div className="text-green-600 mt-1">
+                      {rate.source}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

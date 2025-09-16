@@ -1,6 +1,9 @@
-import type { NextConfig } from "next";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-const nextConfig: NextConfig = {
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const nextConfig = {
   // Production optimizations
   compress: true,
   poweredByHeader: false,
@@ -75,22 +78,8 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
 
-  // Server external packages
-  serverExternalPackages: ['sharp', 'bcryptjs'],
-
-  // Turbopack configuration
-  turbopack: {
-    rules: {
-      '*.svg': {
-        loaders: ['@svgr/webpack'],
-        as: '*.js',
-      },
-    },
-  },
-
   // Output configuration for production
   output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
-  outputFileTracingRoot: __dirname,
 
   // Security headers
   async headers() {
@@ -148,7 +137,7 @@ const nextConfig: NextConfig = {
   },
 
   // Webpack optimizations
-  webpack: (config, { dev, isServer }) => {
+  webpack: (config, { dev }) => {
     // Simple development configuration - avoid complex optimizations that cause errors
     if (dev) {
       config.optimization = {

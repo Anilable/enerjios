@@ -711,6 +711,15 @@ export default function ProjectRequestsPage() {
               <Calendar className="w-4 h-4 mr-1" />
               <span className="hidden sm:inline">Talep İzleme</span>
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.location.href = '/dashboard/projects/overview'}
+              className="px-2 sm:px-3 py-1 text-xs border-l ml-2 pl-3"
+            >
+              <BarChart3 className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Proje Genel Görünüm</span>
+            </Button>
           </div>
           
           {/* Sort Options (for list and card views) */}

@@ -2,7 +2,7 @@
 
 import { Suspense, useRef, useState, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls, Grid, Box, Line, Text, Html } from '@react-three/drei'
+import { OrbitControls, Grid, Box, Line, Html } from '@react-three/drei'
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Sun, Loader2 } from 'lucide-react'

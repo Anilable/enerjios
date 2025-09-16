@@ -77,6 +77,7 @@ export interface ExchangeRate {
   forexSelling: number | null
   change?: number
   changePercent?: number
+  source?: string
 }
 
 export interface ExchangeRatesData {

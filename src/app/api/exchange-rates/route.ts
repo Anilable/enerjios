@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { XMLParser } from 'fast-xml-parser'
+import { prisma } from '@/lib/prisma'
 
 interface TCMBCurrencyData {
   '@_CurrencyCode': string
@@ -29,6 +30,7 @@ interface ExchangeRate {
   forexSelling: number | null
   change?: number
   changePercent?: number
+  source?: string // Manuel/TCMB kaynak bilgisi
 }
 
 interface ExchangeRatesResponse {
@@ -124,37 +126,90 @@ function calculateChange(current: number, previous: number): { change: number, c
   return { change: Math.round(change * 10000) / 10000, changePercent: Math.round(changePercent * 100) / 100 }
 }
 
+// Manuel kurları getir ve TCMB kurlarına override et
+async function getManualRateOverrides(): Promise<Record<string, { rate: number, source: string }>> {
+  try {
+    const manualRates = await prisma.manualExchangeRate.findMany({
+      where: { isActive: true },
+      select: {
+        currency: true,
+        rate: true,
+        description: true,
+        updatedAt: true
+      }
+    })
+
+    const overrides: Record<string, { rate: number, source: string }> = {}
+
+    manualRates.forEach(rate => {
+      overrides[rate.currency] = {
+        rate: rate.rate,
+        source: `Manuel (${rate.description || 'Admin girişi'})`
+      }
+    })
+
+    console.log('📋 Found manual overrides:', Object.keys(overrides))
+
+    return overrides
+  } catch (error) {
+    console.error('Manual rates fetch error:', error)
+    return {}
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const currency = searchParams.get('currency') // Optional filter for specific currency
     const includeHistory = searchParams.get('history') === 'true' // Include historical comparison
 
+    // Manuel kurları getir
+    const manualOverrides = await getManualRateOverrides()
+
     // Check cache first
     const now = Date.now()
     if (cachedRates && (now - cacheTimestamp) < CACHE_DURATION) {
+      // Cache varken de manuel kurları uygula
+      const updatedRates = { ...cachedRates }
+      if (Object.keys(manualOverrides).length > 0) {
+        updatedRates.rates = updatedRates.rates.map(rate => {
+          const manualRate = manualOverrides[rate.code]
+          if (manualRate) {
+            return {
+              ...rate,
+              buying: manualRate.rate,
+              selling: manualRate.rate,
+              forexBuying: manualRate.rate,
+              forexSelling: manualRate.rate,
+              source: manualRate.source
+            }
+          }
+          return rate
+        })
+      }
+
       // Filter by currency if requested
       if (currency) {
-        const filteredRate = cachedRates.rates.find(rate => 
+        const filteredRate = updatedRates.rates.find(rate =>
           rate.code.toUpperCase() === currency.toUpperCase()
         )
-        
+
         if (!filteredRate) {
           return NextResponse.json(
             { error: 'Currency not found' },
             { status: 404 }
           )
         }
-        
+
         return NextResponse.json({
-          date: cachedRates.date,
-          bulletinNo: cachedRates.bulletinNo,
+          date: updatedRates.date,
+          bulletinNo: updatedRates.bulletinNo,
           rate: filteredRate,
-          lastUpdated: cachedRates.lastUpdated
+          lastUpdated: updatedRates.lastUpdated
         })
       }
-      
-      return NextResponse.json(cachedRates)
+
+      return NextResponse.json(updatedRates)
     }
 
     if (!process.env.TCMB_API_URL) {
@@ -274,6 +329,25 @@ export async function GET(request: NextRequest) {
         forexSelling: 4.2456
       }
     ]
+
+    // Manuel kurları uygula (override TCMB data)
+    if (Object.keys(manualOverrides).length > 0) {
+      rates.forEach(rate => {
+        const manualRate = manualOverrides[rate.code]
+        if (manualRate) {
+          // Manuel kuru tüm rate türlerine uygula
+          rate.buying = manualRate.rate
+          rate.selling = manualRate.rate
+          rate.forexBuying = manualRate.rate
+          rate.forexSelling = manualRate.rate
+          // Manuel kaynak bilgisini ekle
+          rate.source = manualRate.source
+        }
+      })
+
+      console.log(`🔧 Applied ${Object.keys(manualOverrides).length} manual rate overrides:`,
+        Object.keys(manualOverrides).join(', '))
+    }
 
     // Get major currencies
     const majorCurrencies = {

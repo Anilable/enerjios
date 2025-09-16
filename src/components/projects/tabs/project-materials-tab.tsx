@@ -319,7 +319,7 @@ export function ProjectMaterialsTab({ project }: ProjectMaterialsTabProps) {
                   cy="50%"
                   outerRadius={80}
                   dataKey="cost"
-                  label={({ category, cost }) => `${category}: ₺${(cost/1000).toFixed(0)}K`}
+                  label={({ category, cost }: any) => `${category}: ₺${(Number(cost)/1000).toFixed(0)}K`}
                 >
                   {costByCategory.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
