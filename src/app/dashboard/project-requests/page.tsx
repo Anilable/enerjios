@@ -12,18 +12,23 @@ import { ProjectRequestFilters } from '@/components/project-requests/project-req
 import { EnhancedProjectRequestDialog as NewProjectRequestDialog } from '@/components/project-requests/enhanced-project-request-dialog'
 import { ProjectRequestDetails } from '@/components/project-requests/project-request-details'
 import { CalendarView } from '@/components/project-requests/calendar-view'
+import { NotesManagement } from '@/components/project-requests/notes-management'
+import { SourceLegend } from '@/components/project-requests/source-legend'
 import { ProjectRequestAPI } from '@/lib/api/project-requests'
-import { 
-  ProjectRequest, 
-  ProjectRequestStatus, 
+import {
+  ProjectRequest,
+  ProjectRequestStatus,
   KanbanColumn,
   ProjectRequestFilters as FilterType,
-  PROJECT_REQUEST_STATUS_LABELS 
+  PROJECT_REQUEST_STATUS_LABELS,
+  REQUEST_SOURCE_LABELS,
+  REQUEST_SOURCE_COLORS,
+  REQUEST_SOURCE_ICONS
 } from '@/types/project-request'
 
 export type ViewType = 'list' | 'card' | 'kanban' | 'calendar'
 
-type SortField = 'requestNumber' | 'customerName' | 'createdAt' | 'priority' | 'estimatedCapacity' | 'status'
+type SortField = 'requestNumber' | 'customerName' | 'createdAt' | 'priority' | 'estimatedCapacity' | 'status' | 'source' | 'assignedEngineer'
 type SortDirection = 'asc' | 'desc'
 import { 
   DndContext, 
@@ -130,6 +135,8 @@ export default function ProjectRequestsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [requestToDelete, setRequestToDelete] = useState<ProjectRequest | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [globalNotesManagementOpen, setGlobalNotesManagementOpen] = useState(false)
+  const [selectedRequestForGlobalNotes, setSelectedRequestForGlobalNotes] = useState<ProjectRequest | null>(null)
   const { toast } = useToast()
   const { data: session, status: sessionStatus } = useSession()
 
@@ -418,6 +425,14 @@ export default function ProjectRequestsPage() {
           aValue = a.status
           bValue = b.status
           break
+        case 'source':
+          aValue = REQUEST_SOURCE_LABELS[a.source]
+          bValue = REQUEST_SOURCE_LABELS[b.source]
+          break
+        case 'assignedEngineer':
+          aValue = a.assignedEngineerName || ''
+          bValue = b.assignedEngineerName || ''
+          break
         default:
           return 0
       }
@@ -582,6 +597,17 @@ export default function ProjectRequestsPage() {
     }
   }
 
+  // Handle global notes management
+  const handleOpenGlobalNotesManagement = (request: ProjectRequest) => {
+    setSelectedRequestForGlobalNotes(request)
+    setGlobalNotesManagementOpen(true)
+  }
+
+  const handleCloseGlobalNotesManagement = () => {
+    setGlobalNotesManagementOpen(false)
+    setSelectedRequestForGlobalNotes(null)
+  }
+
   const totalRequests = columns.reduce((sum, column) => sum + column.count, 0)
   const highPriorityCount = columns
     .flatMap(col => col.requests)
@@ -592,11 +618,14 @@ export default function ProjectRequestsPage() {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Proje Talepleri</h1>
-            <p className="text-muted-foreground">
-              Müşteri proje taleplerini takip edin ve yönetin
-            </p>
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Proje Talepleri</h1>
+              <p className="text-muted-foreground">
+                Müşteri proje taleplerini takip edin ve yönetin
+              </p>
+            </div>
+            <SourceLegend compact />
           </div>
           <Button onClick={() => setNewRequestDialogOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
@@ -735,6 +764,8 @@ export default function ProjectRequestsPage() {
                 <option value="requestNumber">Talep No</option>
                 <option value="priority">Öncelik</option>
                 <option value="estimatedCapacity">Kapasite</option>
+                <option value="source">Kaynak</option>
+                <option value="assignedEngineer">Atanan</option>
                 <option value="status">Durum</option>
               </select>
               <Button
@@ -815,6 +846,8 @@ export default function ProjectRequestsPage() {
                         <th className="text-left p-2 sm:p-4 font-medium hidden lg:table-cell">Lokasyon</th>
                         <th className="text-left p-2 sm:p-4 font-medium">Kapasite</th>
                         <th className="text-left p-2 sm:p-4 font-medium">Öncelik</th>
+                        <th className="text-left p-2 sm:p-4 font-medium hidden xl:table-cell">Kaynak</th>
+                        <th className="text-left p-2 sm:p-4 font-medium hidden lg:table-cell">Atanan</th>
                         <th className="text-left p-2 sm:p-4 font-medium">Durum</th>
                         <th className="text-left p-2 sm:p-4 font-medium hidden sm:table-cell">Tarih</th>
                         {canDeleteRequests && (
@@ -845,13 +878,39 @@ export default function ProjectRequestsPage() {
                           <td className="p-2 sm:p-4 text-sm font-medium">{request.estimatedCapacity} kW</td>
                           <td className="p-2 sm:p-4">
                             <Badge variant={
-                              request.priority === 'HIGH' ? 'destructive' : 
-                              request.priority === 'MEDIUM' ? 'default' : 
+                              request.priority === 'HIGH' ? 'destructive' :
+                              request.priority === 'MEDIUM' ? 'default' :
                               'secondary'
                             } className="text-xs">
-                              {request.priority === 'HIGH' ? 'H' : 
+                              {request.priority === 'HIGH' ? 'H' :
                                request.priority === 'MEDIUM' ? 'M' : 'L'}
                             </Badge>
+                          </td>
+                          <td className="p-2 sm:p-4 hidden xl:table-cell">
+                            <Badge
+                              variant="outline"
+                              className={`text-xs flex items-center gap-1 w-fit ${REQUEST_SOURCE_COLORS[request.source].badge}`}
+                              title={`Kaynak: ${REQUEST_SOURCE_LABELS[request.source]}`}
+                            >
+                              <span>{REQUEST_SOURCE_ICONS[request.source]}</span>
+                              <span>{REQUEST_SOURCE_LABELS[request.source]}</span>
+                            </Badge>
+                          </td>
+                          <td className="p-2 sm:p-4 hidden lg:table-cell">
+                            {request.assignedEngineerName ? (
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                  <span className="text-xs font-medium text-blue-700">
+                                    {request.assignedEngineerName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                  </span>
+                                </div>
+                                <span className="text-sm font-medium truncate max-w-[100px]" title={request.assignedEngineerName}>
+                                  {request.assignedEngineerName}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">Atanmamış</span>
+                            )}
                           </td>
                           <td className="p-2 sm:p-4">
                             <Badge variant="outline" className="text-xs">
@@ -961,9 +1020,35 @@ export default function ProjectRequestsPage() {
                             {PROJECT_REQUEST_STATUS_LABELS[request.status]}
                           </Badge>
                         </div>
-                        
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(request.createdAt).toLocaleDateString('tr-TR')}
+
+                        {request.assignedEngineerName && (
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                              <span className="text-xs font-medium text-blue-700">
+                                {request.assignedEngineerName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs text-muted-foreground">Atanan:</div>
+                              <div className="text-sm font-medium truncate" title={request.assignedEngineerName}>
+                                {request.assignedEngineerName}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between items-center">
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(request.createdAt).toLocaleDateString('tr-TR')}
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs flex items-center gap-1 ${REQUEST_SOURCE_COLORS[request.source].badge}`}
+                            title={`Kaynak: ${REQUEST_SOURCE_LABELS[request.source]}`}
+                          >
+                            <span>{REQUEST_SOURCE_ICONS[request.source]}</span>
+                            <span className="hidden sm:inline">{REQUEST_SOURCE_LABELS[request.source]}</span>
+                          </Badge>
                         </div>
                       </div>
                     </CardContent>
@@ -1099,6 +1184,16 @@ export default function ProjectRequestsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Global Notes Management Dialog */}
+        {selectedRequestForGlobalNotes && (
+          <NotesManagement
+            projectRequestId={selectedRequestForGlobalNotes.id}
+            projectRequestCustomerName={selectedRequestForGlobalNotes.customerName}
+            isOpen={globalNotesManagementOpen}
+            onClose={handleCloseGlobalNotesManagement}
+          />
+        )}
       </div>
     </DashboardLayout>
   )
