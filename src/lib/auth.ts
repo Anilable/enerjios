@@ -2,8 +2,13 @@ import { NextAuthOptions } from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
+import AppleProvider from "next-auth/providers/apple"
 import bcrypt from "bcryptjs"
 import { db } from "./db"
+import { logOAuthStatus, checkOAuthRateLimit } from "./env-validation"
+
+// Log OAuth configuration status in development
+logOAuthStatus()
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db) as any,
@@ -25,6 +30,21 @@ export const authOptions: NextAuthOptions = {
                 prompt: "consent",
                 access_type: "offline",
                 response_type: "code"
+              }
+            }
+          }),
+        ]
+      : []),
+    // Apple OAuth - Only enabled if credentials are provided
+    ...(process.env.APPLE_ID && process.env.APPLE_SECRET
+      ? [
+          AppleProvider({
+            clientId: process.env.APPLE_ID,
+            clientSecret: process.env.APPLE_SECRET,
+            authorization: {
+              params: {
+                scope: 'name email',
+                response_mode: 'form_post',
               }
             }
           }),
@@ -94,16 +114,28 @@ export const authOptions: NextAuthOptions = {
         return true
       }
 
-      // Google OAuth sign in
-      if (account?.provider === "google") {
+      // OAuth sign in (Google or Apple)
+      if (account?.provider === "google" || account?.provider === "apple") {
         try {
+          // Rate limiting for OAuth attempts
+          if (!checkOAuthRateLimit(user.email!, 10, 15 * 60 * 1000)) {
+            console.warn(`OAuth rate limit exceeded for ${user.email}`)
+            return false
+          }
+
+          // Validate email
+          if (!user.email) {
+            console.error(`${account?.provider} sign-in: No email provided`)
+            return false
+          }
+
           // Check if user exists
           const existingUser = await db.user.findUnique({
-            where: { email: user.email! },
+            where: { email: user.email },
           })
 
           if (existingUser) {
-            // Update existing user with Google info if needed
+            // Update existing user with OAuth info if needed
             await db.user.update({
               where: { id: existingUser.id },
               data: {
@@ -111,10 +143,17 @@ export const authOptions: NextAuthOptions = {
                 image: user.image || existingUser.image,
               }
             })
+          } else {
+            // For new users via OAuth, ensure they have required fields
+            if (!user.name && account?.provider === "apple") {
+              // Apple might not provide name, use email as fallback
+              user.name = user.email.split('@')[0]
+            }
           }
+
           return true
         } catch (error) {
-          console.error("Google sign-in error:", error)
+          console.error(`${account?.provider} sign-in error:`, error)
           return false
         }
       }
@@ -127,8 +166,8 @@ export const authOptions: NextAuthOptions = {
         token.status = user.status
       }
 
-      // Handle Google OAuth
-      if (account?.provider === "google") {
+      // Handle OAuth (Google or Apple)
+      if (account?.provider === "google" || account?.provider === "apple") {
         try {
           const dbUser = await db.user.findUnique({
             where: { email: token.email! },
@@ -189,7 +228,7 @@ export const authOptions: NextAuthOptions = {
       if (isNewUser) {
         console.log(`New user signed up: ${user.email}`)
         
-        // Create default customer profile for new Google users
+        // Create default customer profile for new OAuth users
         if (user.email && !user.role) {
           await db.user.update({
             where: { id: user.id },
