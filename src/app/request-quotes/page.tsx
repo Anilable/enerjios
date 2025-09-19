@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
@@ -43,7 +43,7 @@ const TURKEY_CITIES = [
   'Manisa', 'Sivas', 'Gebze', 'Balıkesir', 'Tarsus', 'Kütahya', 'Trabzon', 'Çorum'
 ]
 
-export default function RequestQuotesPage() {
+function RequestQuotesForm() {
   const { data: session } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -529,5 +529,13 @@ export default function RequestQuotesPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function RequestQuotesPage() {
+  return (
+    <Suspense fallback={<div className='flex items-center justify-center p-8'>Loading...</div>}>
+      <RequestQuotesForm />
+    </Suspense>
   )
 }
