@@ -34,3 +34,6 @@ dist/
 # Vercel
 .vercel
 
+*.md
+**/*.md
+PHOTO_REQUEST_TESTING.md

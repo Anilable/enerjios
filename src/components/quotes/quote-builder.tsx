@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { PricingGuard, FinancialDataGuard, usePermissions } from '@/components/ui/permission-guard'
-import { 
+import { Package as PackageType, PACKAGE_TYPE_LABELS, PACKAGE_TYPE_ICONS } from '@/types/package'
+import {
   Plus,
   Trash2,
   Calculator,
@@ -22,7 +23,8 @@ import {
   Save,
   Send,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Box
 } from 'lucide-react'
 interface QuoteData {
   id: string
@@ -56,7 +58,8 @@ interface QuoteData {
 
 interface QuoteItem {
   id: string
-  productId: string
+  productId?: string
+  packageId?: string
   productName: string
   name?: string
   type?: string
@@ -65,6 +68,7 @@ interface QuoteItem {
   unitPrice: number
   total: number
   totalPrice?: number
+  isPackage?: boolean
   specifications?: any
 }
 
@@ -235,6 +239,8 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
   const [taxPercent, setTaxPercent] = useState(1) // GES için %1 KDV
   const [productCatalog, setProductCatalog] = useState<ProductCatalog>(defaultProductCatalog)
   const [loadingProducts, setLoadingProducts] = useState(true)
+  const [packages, setPackages] = useState<PackageType[]>([])
+  const [loadingPackages, setLoadingPackages] = useState(true)
 
   const [calculations, setCalculations] = useState({
     subtotal: 0,
@@ -322,6 +328,30 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
     }
 
     fetchProducts()
+  }, [])
+
+  // Fetch packages from API
+  useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        setLoadingPackages(true)
+        console.log('🔍 Fetching packages from API...')
+        const response = await fetch('/api/packages?isActive=true')
+        console.log('📡 Package API Response status:', response.status)
+        if (response.ok) {
+          const data = await response.json()
+          console.log('📦 Packages from API:', data.packages)
+          setPackages(data.packages || [])
+        } else {
+          console.warn('Failed to fetch packages')
+        }
+      } catch (error) {
+        console.error('Error fetching packages:', error)
+      } finally {
+        setLoadingPackages(false)
+      }
+    }
+    fetchPackages()
   }, [])
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -414,6 +444,24 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
 
   const removeItem = (id: string) => {
     setItems(prev => prev.filter(item => item.id !== id))
+  }
+
+  // Add package as a single item to quote
+  const addPackage = (packageData: PackageType) => {
+    const newItem: QuoteItem = {
+      id: Date.now().toString(),
+      packageId: packageData.id,
+      productName: packageData.name,
+      name: packageData.name,
+      type: 'PACKAGE',
+      quantity: 1,
+      unitPrice: packageData.totalPrice,
+      total: packageData.totalPrice,
+      totalPrice: packageData.totalPrice,
+      isPackage: true,
+      specifications: packageData
+    }
+    setItems(prev => [...prev, newItem])
   }
 
   const selectProduct = (itemId: string, productId: string, itemType: string) => {
@@ -741,6 +789,74 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
             </Card>
           </div>
 
+          {/* Package Selection */}
+          {!loadingPackages && packages.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Box className="w-5 h-5 mr-2" />
+                  Hazır Paketler
+                </CardTitle>
+                <CardDescription>
+                  Hazır sistemleri tek seferde ekleyin
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {packages.map(pkg => (
+                    <Card key={pkg.id} className="cursor-pointer hover:shadow-md transition-all border-2 hover:border-blue-300">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{PACKAGE_TYPE_ICONS[pkg.type]}</span>
+                              <h4 className="font-semibold">{pkg.name}</h4>
+                            </div>
+                            <Badge variant="outline" className={`mt-1 text-xs ${pkg.type === 'ON_GRID' ? 'bg-blue-50 text-blue-700' : pkg.type === 'OFF_GRID' ? 'bg-yellow-50 text-yellow-700' : pkg.type === 'TARIMSAL_SULAMA' ? 'bg-green-50 text-green-700' : 'bg-purple-50 text-purple-700'}`}>
+                              {PACKAGE_TYPE_LABELS[pkg.type]}
+                            </Badge>
+                          </div>
+                          <PricingGuard fallback={null}>
+                            <div className="text-right">
+                              <div className="font-bold text-lg text-green-600">
+                                ₺{pkg.totalPrice.toLocaleString()}
+                              </div>
+                              {pkg.totalPower && (
+                                <div className="text-xs text-muted-foreground">
+                                  {(pkg.totalPower / 1000).toFixed(1)} kW
+                                </div>
+                              )}
+                            </div>
+                          </PricingGuard>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        {pkg.description && (
+                          <p className="text-sm text-muted-foreground mb-3">
+                            {pkg.description}
+                          </p>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">
+                            {pkg.items.length} ürün
+                          </span>
+                          <Button
+                            size="sm"
+                            onClick={() => addPackage(pkg)}
+                            className="ml-2"
+                          >
+                            <Plus className="w-3 h-3 mr-1" />
+                            Ekle
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Items List */}
           <Card>
             <CardHeader>
@@ -777,8 +893,8 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
                   <div key={item.id} className="border rounded-lg p-4">
                     <div className="grid grid-cols-12 gap-3 items-center">
                       <div className="col-span-1">
-                        <Badge variant="secondary" className="text-xs">
-                          {item.type}
+                        <Badge variant="secondary" className={`text-xs ${item.isPackage ? 'bg-blue-100 text-blue-800' : ''}`}>
+                          {item.isPackage ? 'PAKET' : item.type}
                         </Badge>
                       </div>
                       
@@ -831,6 +947,14 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
                               ))}
                             </SelectContent>
                           </Select>
+                        ) : item.type === 'PACKAGE' || item.isPackage ? (
+                          <div className="flex items-center gap-2">
+                            <Box className="w-4 h-4 text-blue-600" />
+                            <span className="font-medium text-blue-600">{item.name}</span>
+                            <Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700">
+                              Paket
+                            </Badge>
+                          </div>
                         ) : (
                           <Input
                             placeholder="Ürün adı"

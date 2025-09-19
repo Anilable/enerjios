@@ -185,9 +185,9 @@ export async function GET(
         }
 
         // Use custom item name if available, otherwise fallback to product name
-        const itemName = itemDetails.name || item.product.name
-        const itemType = itemDetails.category || item.product.type || 'PRODUCT'
-        const itemBrand = item.product.brand === 'Custom' ? (itemDetails.brand || 'Özel') : (item.product.brand || '-')
+        const itemName = itemDetails.name || item.product?.name || 'Ürün'
+        const itemType = itemDetails.category || item.product?.type || 'PRODUCT'
+        const itemBrand = item.product?.brand === 'Custom' ? (itemDetails.brand || 'Özel') : (item.product?.brand || '-')
 
         return {
           id: item.id,
@@ -198,8 +198,8 @@ export async function GET(
           unitPrice: item.unitPrice,
           totalPrice: item.total,
           specifications: {
-            power: (item.product.specifications as any)?.power || undefined,
-            efficiency: (item.product.specifications as any)?.efficiency || undefined
+            power: (item.product?.specifications as any)?.power || undefined,
+            efficiency: (item.product?.specifications as any)?.efficiency || undefined
           }
         }
       }) || [],

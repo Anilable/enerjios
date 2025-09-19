@@ -147,14 +147,14 @@ export async function GET(
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         total: item.total,
-        product: {
+        product: item.product ? {
           name: item.product.name,
           brand: item.product.brand,
           model: item.product.model,
           type: item.product.type,
           power: item.product.power,
           warranty: item.product.warranty
-        }
+        } : null
       }))
     });
 

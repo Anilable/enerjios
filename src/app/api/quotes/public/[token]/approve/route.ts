@@ -96,8 +96,8 @@ export async function POST(
 
     if (quoteWithItems?.items) {
       for (const item of quoteWithItems.items) {
-        // Skip if it's a placeholder product ID (for custom items)
-        if (item.productId.startsWith('temp_')) {
+        // Skip if no productId (package items) or if it's a placeholder product ID (for custom items)
+        if (!item.productId || item.productId.startsWith('temp_')) {
           continue;
         }
 

@@ -13,10 +13,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from '@/hooks/use-toast'
 import { Toaster } from '@/components/ui/toaster'
 import { formatCurrency } from '@/lib/utils'
-import { 
-  Package, 
-  Plus, 
-  Search, 
+import { Package as PackageType, PACKAGE_TYPES, PACKAGE_TYPE_LABELS, PACKAGE_TYPE_COLORS, PACKAGE_TYPE_ICONS, CreatePackageData, PackageItem } from '@/types/package'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Package,
+  Plus,
+  Search,
   MoreHorizontal,
   Zap,
   Battery,
@@ -37,7 +41,11 @@ import {
   BookOpen,
   Eye,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Box,
+  Grid3x3,
+  Trash,
+  Save
 } from 'lucide-react'
 
 type Product = {
@@ -123,6 +131,23 @@ export default function ProductsPage() {
   const [newCategoryFormData, setNewCategoryFormData] = useState<{name: string, color: string, icon: string}>({name: '', color: 'blue', icon: 'Package'})
   const [currentUser, setCurrentUser] = useState<{id: string, email: string, role: string, name: string} | null>(null)
 
+  // Package Management State
+  const [activeTab, setActiveTab] = useState('products')
+  const [packages, setPackages] = useState<PackageType[]>([])
+  const [showAddPackageDialog, setShowAddPackageDialog] = useState(false)
+  const [showEditPackageDialog, setShowEditPackageDialog] = useState(false)
+  const [showDeletePackageDialog, setShowDeletePackageDialog] = useState(false)
+  const [selectedPackage, setSelectedPackage] = useState<PackageType | null>(null)
+  const [packageFormData, setPackageFormData] = useState<CreatePackageData>({
+    name: '',
+    type: 'ON_GRID',
+    description: '',
+    items: []
+  })
+  const [packageSearchTerm, setPackageSearchTerm] = useState('')
+  const [selectedProducts, setSelectedProducts] = useState<{productId: string, quantity: number, unitPrice: number}[]>([])
+  const [loadingPackages, setLoadingPackages] = useState(false)
+
   // Fetch products from database
   const fetchProducts = async () => {
     try {
@@ -194,17 +219,45 @@ export default function ProductsPage() {
     }
   }
 
+  // Fetch packages from database
+  const fetchPackages = async () => {
+    try {
+      setLoadingPackages(true)
+      const response = await fetch('/api/packages')
+      if (!response.ok) {
+        throw new Error('Failed to fetch packages')
+      }
+      const data = await response.json()
+      setPackages(data.packages || [])
+    } catch (error) {
+      console.error('Error fetching packages:', error)
+      toast({
+        title: "Hata",
+        description: "Paketler yüklenirken bir hata oluştu.",
+        variant: "destructive"
+      })
+    } finally {
+      setLoadingPackages(false)
+    }
+  }
+
   // Initial data load
   useEffect(() => {
     fetchProducts()
     fetchCategories()
     fetchUser()
+    fetchPackages()
   }, [])
 
   const filteredProducts = products.filter(product =>
     (product.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (product.brand || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (product.category || '').toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const filteredPackages = packages.filter(pkg =>
+    (pkg.name || '').toLowerCase().includes(packageSearchTerm.toLowerCase()) ||
+    PACKAGE_TYPE_LABELS[pkg.type].toLowerCase().includes(packageSearchTerm.toLowerCase())
   )
 
   // File upload helper function
@@ -839,13 +892,250 @@ export default function ProductsPage() {
   const handleRefresh = () => {
     fetchProducts()
     fetchCategories()
+    fetchPackages()
+  }
+
+  // Package Management Functions
+  const handleAddPackage = async () => {
+    if (!packageFormData.name || !packageFormData.type || packageFormData.items.length === 0) {
+      toast({
+        title: "Hata",
+        description: "Paket adı, tipi ve en az bir ürün gereklidir.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    try {
+      setSaving(true)
+      const response = await fetch('/api/packages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(packageFormData)
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create package')
+      }
+
+      const newPackage = await response.json()
+      setPackages(prev => [...prev, newPackage])
+      setPackageFormData({
+        name: '',
+        type: 'ON_GRID',
+        description: '',
+        items: []
+      })
+      setSelectedProducts([])
+      setShowAddPackageDialog(false)
+
+      toast({
+        title: "Başarılı",
+        description: "Paket başarıyla oluşturuldu."
+      })
+    } catch (error) {
+      console.error('Error creating package:', error)
+      toast({
+        title: "Hata",
+        description: error instanceof Error ? error.message : "Paket oluşturulurken bir hata oluştu.",
+        variant: "destructive"
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleEditPackage = async () => {
+    if (!selectedPackage || !packageFormData.name) {
+      toast({
+        title: "Hata",
+        description: "Paket adı gereklidir.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    try {
+      setSaving(true)
+      const response = await fetch(`/api/packages/${selectedPackage.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(packageFormData)
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update package')
+      }
+
+      const updatedPackage = await response.json()
+      setPackages(packages.map(pkg => pkg.id === selectedPackage.id ? updatedPackage : pkg))
+      setSelectedPackage(null)
+      setShowEditPackageDialog(false)
+
+      toast({
+        title: "Başarılı",
+        description: "Paket başarıyla güncellendi."
+      })
+    } catch (error) {
+      console.error('Error updating package:', error)
+      toast({
+        title: "Hata",
+        description: error instanceof Error ? error.message : "Paket güncellenirken bir hata oluştu.",
+        variant: "destructive"
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeletePackage = async () => {
+    if (!selectedPackage) return
+
+    try {
+      setSaving(true)
+      const response = await fetch(`/api/packages/${selectedPackage.id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete package')
+      }
+
+      setPackages(packages.filter(pkg => pkg.id !== selectedPackage.id))
+      setSelectedPackage(null)
+      setShowDeletePackageDialog(false)
+
+      toast({
+        title: "Başarılı",
+        description: "Paket başarıyla silindi."
+      })
+    } catch (error) {
+      console.error('Error deleting package:', error)
+      toast({
+        title: "Hata",
+        description: error instanceof Error ? error.message : "Paket silinirken bir hata oluştu.",
+        variant: "destructive"
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const openEditPackageDialog = (pkg: PackageType) => {
+    setSelectedPackage(pkg)
+    setPackageFormData({
+      name: pkg.name,
+      type: pkg.type,
+      description: pkg.description || '',
+      items: pkg.items.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        description: item.description
+      }))
+    })
+    setShowEditPackageDialog(true)
+  }
+
+  const openDeletePackageDialog = (pkg: PackageType) => {
+    setSelectedPackage(pkg)
+    setShowDeletePackageDialog(true)
+  }
+
+  const addProductToPackage = (productId: string) => {
+    const product = products.find(p => p.id === productId)
+    if (!product) return
+
+    const existingIndex = selectedProducts.findIndex(item => item.productId === productId)
+    if (existingIndex >= 0) {
+      // Update quantity
+      const newSelectedProducts = [...selectedProducts]
+      newSelectedProducts[existingIndex].quantity += 1
+      setSelectedProducts(newSelectedProducts)
+    } else {
+      // Add new product
+      setSelectedProducts([...selectedProducts, {
+        productId: productId,
+        quantity: 1,
+        unitPrice: product.price
+      }])
+    }
+
+    // Update package form data
+    const packageItems = selectedProducts.map(item => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      description: undefined
+    }))
+
+    setPackageFormData({
+      ...packageFormData,
+      items: packageItems
+    })
+  }
+
+  const removeProductFromPackage = (productId: string) => {
+    const newSelectedProducts = selectedProducts.filter(item => item.productId !== productId)
+    setSelectedProducts(newSelectedProducts)
+
+    setPackageFormData({
+      ...packageFormData,
+      items: newSelectedProducts.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        description: undefined
+      }))
+    })
+  }
+
+  const updateProductQuantity = (productId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeProductFromPackage(productId)
+      return
+    }
+
+    const newSelectedProducts = selectedProducts.map(item =>
+      item.productId === productId ? { ...item, quantity } : item
+    )
+    setSelectedProducts(newSelectedProducts)
+
+    setPackageFormData({
+      ...packageFormData,
+      items: newSelectedProducts.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        description: undefined
+      }))
+    })
   }
 
   return (
     <>
       <Toaster />
-      <DashboardLayout title="Ürün Yönetimi">
-        <div className="space-y-6">
+      <DashboardLayout title="Ürün ve Paket Yönetimi">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="products" className="flex items-center gap-2">
+              <Package className="w-4 h-4" />
+              Ürünler
+            </TabsTrigger>
+            <TabsTrigger value="packages" className="flex items-center gap-2">
+              <Box className="w-4 h-4" />
+              Paket Yönetimi
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="products" className="space-y-6">
         {/* Header Actions */}
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -2118,7 +2408,538 @@ export default function ProductsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        </div>
+          </TabsContent>
+
+          {/* Packages Tab */}
+          <TabsContent value="packages" className="space-y-6">
+            {/* Package Header */}
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Paket ara..."
+                    className="pl-10 w-64"
+                    value={packageSearchTerm}
+                    onChange={(e) => setPackageSearchTerm(e.target.value)}
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={loadingPackages}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${loadingPackages ? 'animate-spin' : ''}`} />
+                  Yenile
+                </Button>
+              </div>
+
+              <Dialog open={showAddPackageDialog} onOpenChange={setShowAddPackageDialog}>
+                <DialogTrigger asChild>
+                  <Button className="flex items-center gap-2" onClick={() => {
+                    setPackageFormData({
+                      name: '',
+                      type: 'ON_GRID',
+                      description: '',
+                      items: []
+                    })
+                    setSelectedProducts([])
+                  }}>
+                    <Plus className="w-4 h-4" />
+                    Yeni Paket Oluştur
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Yeni Paket Oluştur</DialogTitle>
+                    <DialogDescription>
+                      Ürünlerden paket oluşturun ve müşterilerinize hazır çözümler sunun.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-6 py-4">
+                    {/* Package Basic Info */}
+                    <div className="grid gap-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="package-name">Paket Adı *</Label>
+                          <Input
+                            id="package-name"
+                            value={packageFormData.name}
+                            onChange={(e) => setPackageFormData({...packageFormData, name: e.target.value})}
+                            placeholder="Örn: Temel Ev Sistemi"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="package-type">Paket Tipi *</Label>
+                          <Select value={packageFormData.type} onValueChange={(value: any) => setPackageFormData({...packageFormData, type: value})}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {PACKAGE_TYPES.map((type) => (
+                                <SelectItem key={type.value} value={type.value}>
+                                  {type.icon} {type.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="package-description">Açıklama</Label>
+                        <Textarea
+                          id="package-description"
+                          value={packageFormData.description}
+                          onChange={(e) => setPackageFormData({...packageFormData, description: e.target.value})}
+                          placeholder="Paket açıklaması..."
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Product Selection */}
+                    <div className="grid gap-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-base font-medium">Ürün Seçimi</Label>
+                        <Badge variant="secondary">
+                          {selectedProducts.length} ürün seçildi
+                        </Badge>
+                      </div>
+
+                      {/* Selected Products */}
+                      {selectedProducts.length > 0 && (
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-sm">Seçilen Ürünler</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-2">
+                            {selectedProducts.map((item) => {
+                              const product = products.find(p => p.id === item.productId)
+                              if (!product) return null
+                              return (
+                                <div key={item.productId} className="flex items-center justify-between p-2 border rounded">
+                                  <div className="flex-1">
+                                    <p className="font-medium text-sm">{product.name}</p>
+                                    <p className="text-xs text-muted-foreground">{product.brand} - {formatCurrency(item.unitPrice)}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      type="number"
+                                      value={item.quantity}
+                                      onChange={(e) => updateProductQuantity(item.productId, parseInt(e.target.value) || 0)}
+                                      className="w-20 h-8"
+                                      min="1"
+                                    />
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => removeProductFromPackage(item.productId)}
+                                    >
+                                      <Trash className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                            <div className="pt-2 border-t">
+                              <div className="flex justify-between font-medium">
+                                <span>Toplam:</span>
+                                <span>{formatCurrency(selectedProducts.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0))}</span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Available Products */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-sm">Mevcut Ürünler</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid gap-2 max-h-60 overflow-y-auto">
+                            {products.map((product) => {
+                              const isSelected = selectedProducts.some(item => item.productId === product.id)
+                              return (
+                                <div key={product.id} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
+                                  <div className="flex-1">
+                                    <p className="font-medium text-sm">{product.name}</p>
+                                    <p className="text-xs text-muted-foreground">{product.brand} - {formatCurrency(product.price)}</p>
+                                  </div>
+                                  <Button
+                                    variant={isSelected ? "secondary" : "outline"}
+                                    size="sm"
+                                    onClick={() => isSelected ? removeProductFromPackage(product.id) : addProductToPackage(product.id)}
+                                  >
+                                    {isSelected ? "Çıkar" : "Ekle"}
+                                  </Button>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowAddPackageDialog(false)} disabled={saving}>
+                      İptal
+                    </Button>
+                    <Button onClick={handleAddPackage} disabled={saving || selectedProducts.length === 0}>
+                      {saving ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Oluşturuluyor...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          Paket Oluştur
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {/* Package Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {PACKAGE_TYPES.map((type) => {
+                const count = packages.filter(pkg => pkg.type === type.value).length
+                return (
+                  <Card key={type.value} className="cursor-pointer hover:shadow-md transition-all">
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">{type.icon}</span>
+                        <div>
+                          <p className="text-2xl font-bold">{count}</p>
+                          <p className="text-sm text-muted-foreground">{type.label}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+
+            {/* Package List */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Box className="w-5 h-5" />
+                  Paket Listesi
+                </CardTitle>
+                <CardDescription>
+                  Mevcut paketlerinizi görüntüleyin ve yönetin
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingPackages ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                  </div>
+                ) : filteredPackages.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    {packageSearchTerm ? 'Arama kriterlerine uygun paket bulunamadı.' : 'Henüz paket oluşturulmamış.'}
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {filteredPackages.map((pkg) => (
+                      <Card key={pkg.id} className="hover:shadow-md transition-all cursor-pointer" onClick={() => openEditPackageDialog(pkg)}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-lg">{PACKAGE_TYPE_ICONS[pkg.type]}</span>
+                                <h3 className="font-semibold">{pkg.name}</h3>
+                                <Badge className={PACKAGE_TYPE_COLORS[pkg.type]}>
+                                  {PACKAGE_TYPE_LABELS[pkg.type]}
+                                </Badge>
+                              </div>
+                              {pkg.description && (
+                                <p className="text-sm text-muted-foreground mb-3">{pkg.description}</p>
+                              )}
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                                <div>
+                                  <p className="text-sm font-medium">Toplam Fiyat</p>
+                                  <p className="text-lg font-bold text-green-600">{formatCurrency(pkg.totalPrice)}</p>
+                                </div>
+                                {pkg.totalPower && (
+                                  <div>
+                                    <p className="text-sm font-medium">Toplam Güç</p>
+                                    <p className="text-lg font-bold">{pkg.totalPower} kW</p>
+                                  </div>
+                                )}
+                                <div>
+                                  <p className="text-sm font-medium">Ürün Sayısı</p>
+                                  <p className="text-lg font-bold">{pkg.items.length} ürün</p>
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground">Ürünler:</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {pkg.items.slice(0, 3).map((item) => (
+                                    <Badge key={item.id} variant="outline" className="text-xs">
+                                      {item.quantity}x {item.product.name}
+                                    </Badge>
+                                  ))}
+                                  {pkg.items.length > 3 && (
+                                    <Badge variant="outline" className="text-xs">
+                                      +{pkg.items.length - 3} daha
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 ml-4">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                  <DropdownMenuItem onClick={() => openEditPackageDialog(pkg)}>
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Düzenle
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => openDeletePackageDialog(pkg)}
+                                    className="text-red-600"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Sil
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Edit Package Dialog */}
+            <Dialog open={showEditPackageDialog} onOpenChange={setShowEditPackageDialog}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Paket Düzenle</DialogTitle>
+                  <DialogDescription>
+                    Paket bilgilerini güncelleyin.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-package-name">Paket Adı *</Label>
+                    <Input
+                      id="edit-package-name"
+                      value={packageFormData.name}
+                      onChange={(e) => setPackageFormData({...packageFormData, name: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-package-type">Paket Tipi *</Label>
+                    <Select value={packageFormData.type} onValueChange={(value: any) => setPackageFormData({...packageFormData, type: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PACKAGE_TYPES.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.icon} {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-package-description">Açıklama</Label>
+                    <Textarea
+                      id="edit-package-description"
+                      value={packageFormData.description}
+                      onChange={(e) => setPackageFormData({...packageFormData, description: e.target.value})}
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* Package Items Section */}
+                  <div className="grid gap-2">
+                    <Label>Paket İçeriği</Label>
+                    <div className="border rounded-lg p-4 space-y-3">
+                      {packageFormData.items.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          Bu pakette henüz ürün yok. Aşağıdan ürün ekleyebilirsiniz.
+                        </p>
+                      ) : (
+                        packageFormData.items.map((item, index) => {
+                          const product = products.find(p => p.id === item.productId)
+                          return (
+                            <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                              <div className="flex-1">
+                                <p className="font-medium">{product?.name || 'Ürün bulunamadı'}</p>
+                                <p className="text-sm text-muted-foreground">{product?.brand}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  value={item.quantity}
+                                  onChange={(e) => {
+                                    const newItems = [...packageFormData.items]
+                                    newItems[index].quantity = parseFloat(e.target.value) || 0
+                                    newItems[index].unitPrice = product?.price || 0
+                                    setPackageFormData({...packageFormData, items: newItems})
+                                  }}
+                                  className="w-20"
+                                  min="0"
+                                  step="0.1"
+                                />
+                                <span className="text-sm text-muted-foreground">adet</span>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-medium">{formatCurrency((item.quantity * (product?.price || 0)))}</p>
+                                <p className="text-sm text-muted-foreground">{formatCurrency(product?.price || 0)}/adet</p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const newItems = packageFormData.items.filter((_, i) => i !== index)
+                                  setPackageFormData({...packageFormData, items: newItems})
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )
+                        })
+                      )}
+
+                      {/* Add Product Section */}
+                      <div className="border-t pt-3 mt-3">
+                        <div className="flex gap-2">
+                          <Select
+                            value=""
+                            onValueChange={(productId) => {
+                              const product = products.find(p => p.id === productId)
+                              if (product) {
+                                const existingIndex = packageFormData.items.findIndex(item => item.productId === productId)
+                                if (existingIndex >= 0) {
+                                  // Ürün zaten var, miktarını artır
+                                  const newItems = [...packageFormData.items]
+                                  newItems[existingIndex].quantity += 1
+                                  setPackageFormData({...packageFormData, items: newItems})
+                                } else {
+                                  // Yeni ürün ekle
+                                  const newItem = {
+                                    productId: product.id,
+                                    quantity: 1,
+                                    unitPrice: product.price
+                                  }
+                                  setPackageFormData({
+                                    ...packageFormData,
+                                    items: [...packageFormData.items, newItem]
+                                  })
+                                }
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Stoktan ürün seç..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {products.map((product) => (
+                                <SelectItem key={product.id} value={product.id}>
+                                  <div className="flex items-center justify-between w-full">
+                                    <span>{product.name}</span>
+                                    <span className="text-sm text-muted-foreground ml-2">
+                                      {product.brand} - {formatCurrency(product.price)}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {/* Package Total */}
+                      {packageFormData.items.length > 0 && (
+                        <div className="border-t pt-3 mt-3">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Toplam Fiyat:</span>
+                            <span className="text-lg font-bold text-green-600">
+                              {formatCurrency(
+                                packageFormData.items.reduce((total, item) => {
+                                  const product = products.find(p => p.id === item.productId)
+                                  return total + (item.quantity * (product?.price || 0))
+                                }, 0)
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowEditPackageDialog(false)} disabled={saving}>
+                    İptal
+                  </Button>
+                  <Button onClick={handleEditPackage} disabled={saving}>
+                    {saving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Güncelleniyor...
+                      </>
+                    ) : (
+                      'Güncelle'
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Delete Package Dialog */}
+            <Dialog open={showDeletePackageDialog} onOpenChange={setShowDeletePackageDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Paket Sil</DialogTitle>
+                  <DialogDescription>
+                    Bu paketi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+                  </DialogDescription>
+                </DialogHeader>
+                {selectedPackage && (
+                  <div className="py-4">
+                    <p className="font-medium">{selectedPackage.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {PACKAGE_TYPE_LABELS[selectedPackage.type]} - {selectedPackage.items.length} ürün
+                    </p>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowDeletePackageDialog(false)} disabled={saving}>
+                    İptal
+                  </Button>
+                  <Button variant="destructive" onClick={handleDeletePackage} disabled={saving}>
+                    {saving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Siliniyor...
+                      </>
+                    ) : (
+                      'Sil'
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+        </Tabs>
         <Toaster />
       </DashboardLayout>
     </>

@@ -62,6 +62,8 @@ model User {
   manualExchangeRates     ManualExchangeRate[]
   productsCreated         Product[]                     @relation("ProductCreatedBy")
   productsUpdated         Product[]                     @relation("ProductUpdatedBy")
+  packagesCreated         Package[]                     @relation("PackageCreatedBy")
+  packagesUpdated         Package[]                     @relation("PackageUpdatedBy")
 }
 
 model Session {
@@ -126,6 +128,7 @@ model Company {
   projects      Project[]      @relation("CompanyProjects")
   quotes        Quote[]        @relation("CompanyQuotes")
   products      Product[]
+  packages      Package[]
   installations Installation[]
   reviews       Review[]
   certificates  Certificate[]
@@ -519,6 +522,73 @@ model Product {
   updatedBy       User?            @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
   quoteItems      QuoteItem[]
   panelPlacements PanelPlacement[]
+  packageItems    PackageItem[]
+}
+
+// ==================== PACKAGE SYSTEM ====================
+
+enum PackageType {
+  ON_GRID         // Standard grid-tied solar systems
+  OFF_GRID        // Battery backup systems
+  TARIMSAL_SULAMA // Agricultural irrigation systems
+  DC_POMPALAR     // DC pump systems
+}
+
+model Package {
+  id          String      @id @default(cuid())
+  companyId   String?
+  name        String
+  type        PackageType
+  description String?
+
+  // Calculated totals
+  totalPrice       Float // Auto-calculated from items
+  totalPower       Float? // kW - for solar packages
+  estimatedSavings Float? // Annual savings estimate
+
+  // Display
+  images      String? // JSON array of image URLs
+  isActive    Boolean @default(true)
+  isFeatured  Boolean @default(false)
+
+  // Metadata
+  createdById String?
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  company     Company?      @relation(fields: [companyId], references: [id])
+  createdBy   User?         @relation("PackageCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?         @relation("PackageUpdatedBy", fields: [updatedById], references: [id])
+  items       PackageItem[]
+  quoteItems  QuoteItem[]   @relation("PackageQuoteItems")
+
+  @@index([type])
+  @@index([isActive])
+  @@index([companyId])
+}
+
+model PackageItem {
+  id          String  @id @default(cuid())
+  packageId   String
+  productId   String
+  quantity    Float
+  unitPrice   Float   // Price per unit when package was created
+  total       Float   // quantity * unitPrice
+  description String? // Custom description for this item in package
+  order       Int     @default(0) // Display order
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  package Package @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([packageId])
+  @@index([productId])
+  @@unique([packageId, productId]) // Prevent duplicate products in same package
 }
 
 // ==================== QUOTE SYSTEM ====================
@@ -597,15 +667,22 @@ model Quote {
 model QuoteItem {
   id          String  @id @default(cuid())
   quoteId     String
-  productId   String
+  productId   String?
+  packageId   String? // New: for package-based quote items
   description String?
   quantity    Float
   unitPrice   Float
   total       Float
 
+  // Item type indicator
+  isPackage   Boolean @default(false)
+
   // Relations
   quote   Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+  package Package? @relation("PackageQuoteItems", fields: [packageId], references: [id])
+
+  // Ensure either productId or packageId is set, but not both (enforced at application level)
 }
 
 // ==================== INSTALLATION ====================
