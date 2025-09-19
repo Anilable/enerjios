@@ -326,9 +326,7 @@ function Scene3D({ designerState, updateDesignerState, showLayers, sunTime, sele
 
       {/* Sky hemisphere light */}
       <hemisphereLight
-        skyColor="#87ceeb"
-        groundColor="#8fbc8f"
-        intensity={0.6}
+        args={["#87ceeb", "#8fbc8f", 0.6]}
       />
 
       {/* Rim lighting for depth */}

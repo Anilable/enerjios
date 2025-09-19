@@ -25,7 +25,8 @@ import {
   XCircle,
   DollarSign,
   Award,
-  AlertCircle
+  AlertCircle,
+  Zap
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Partner, PartnerQuoteRequest, QuoteRequest } from '@/types/partner'

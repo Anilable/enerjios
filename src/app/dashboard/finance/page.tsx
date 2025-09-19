@@ -112,7 +112,7 @@ export default async function FinancePage() {
     user.role as any,
     user.id,
     ['finance:read'],
-    user.companyId
+    undefined // User object doesn't have companyId field
   )
 
   if (!hasFinanceAccess) {

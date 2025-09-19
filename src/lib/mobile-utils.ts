@@ -260,8 +260,8 @@ export const preventZoom = (element: HTMLElement): void => {
 }
 
 export const enableSmoothScrolling = (element: HTMLElement): void => {
-  element.style.scrollBehavior = 'smooth'
-  element.style.webkitOverflowScrolling = 'touch'
+  element.style.scrollBehavior = 'smooth';
+  (element.style as any).webkitOverflowScrolling = 'touch'
 }
 
 // Mobile accessibility utilities

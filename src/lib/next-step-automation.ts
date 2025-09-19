@@ -3,7 +3,7 @@
  * Client-side calculation of next steps based on project request status and timestamps
  */
 
-import { RequestStatus } from '@/types/project-request'
+import { ProjectRequestStatus } from '@/types/project-request'
 
 export interface NextStep {
   id: string
@@ -28,7 +28,7 @@ export type NextStepType =
   | 'DOCUMENT_PREPARATION'
 
 export interface NextStepRule {
-  fromStatus: RequestStatus
+  fromStatus: ProjectRequestStatus
   stepType: NextStepType
   title: string
   description: string
@@ -144,11 +144,11 @@ export const STEP_TYPE_CONFIG = {
 
 export interface ProjectRequestWithTimestamps {
   id: string
-  status: RequestStatus
+  status: ProjectRequestStatus
   createdAt: Date
   updatedAt: Date
   statusHistory?: Array<{
-    status: RequestStatus
+    status: ProjectRequestStatus
     changedAt: Date
   }>
 }

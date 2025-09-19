@@ -31,7 +31,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import {
   Shield, Users, Building, Settings, Eye, Edit, Trash2,
   Plus, Search, Filter, CheckCircle, AlertCircle,
-  User, Crown, Star, Briefcase, Banknote, HelpCircle
+  User, Crown, Star, Briefcase, Banknote, HelpCircle, Wrench
 } from 'lucide-react'
 import { Permission, Role, ROLE_PERMISSIONS, PermissionManager } from '@/lib/permissions'
 
@@ -168,7 +168,8 @@ export default function PermissionsPage() {
       CUSTOMER: User,
       FARMER: Star,
       BANK: Banknote,
-      SUPPORT: HelpCircle
+      SUPPORT: HelpCircle,
+      INSTALLATION_TEAM: Wrench
     }
     return icons[role] || User
   }
@@ -180,7 +181,8 @@ export default function PermissionsPage() {
       CUSTOMER: 'text-green-600 bg-green-100',
       FARMER: 'text-yellow-600 bg-yellow-100',
       BANK: 'text-gray-600 bg-gray-100',
-      SUPPORT: 'text-orange-600 bg-orange-100'
+      SUPPORT: 'text-orange-600 bg-orange-100',
+      INSTALLATION_TEAM: 'text-red-600 bg-red-100'
     }
     return colors[role] || 'text-gray-600 bg-gray-100'
   }

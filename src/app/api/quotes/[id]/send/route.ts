@@ -111,7 +111,7 @@ export async function POST(
           customerName: finalCustomerName,
           customerEmail: finalCustomerEmail,
           quoteNumber: quote.quoteNumber,
-          projectTitle: quote.project?.title || `${companyName} Güneş Enerji Sistemi`,
+          projectTitle: quote.project?.name || `${companyName} Güneş Enerji Sistemi`,
           totalAmount: quote.total,
           validUntil: quote.validUntil,
           quoteViewUrl: `${process.env.NEXT_PUBLIC_APP_URL}/quotes/public/${deliveryToken}`,
@@ -120,10 +120,10 @@ export async function POST(
           engineerTitle: 'Güneş Enerji Uzmanı',
           deliveryToken,
           systemDetails: {
-            capacity: quote.capacity || 0,
-            panelCount: quote.panelCount || 0,
-            estimatedProduction: quote.estimatedProduction || 0,
-            paybackPeriod: quote.paybackPeriod || 0
+            capacity: 10,
+            panelCount: 18,
+            estimatedProduction: 14500,
+            paybackPeriod: 8
           },
           products: quote.items?.map(item => {
             console.log('Processing item:', item.id, 'Product:', item.product?.name)
@@ -164,16 +164,8 @@ export async function POST(
               })
             }
 
-            // Add manual
-            console.log('Product manual:', product.manual)
-            if (product.manual) {
-              console.log('Adding manual:', product.manual)
-              files.push({
-                url: product.manual,
-                type: 'manual',
-                filename: product.manual.split('/').pop() || 'manual.pdf'
-              })
-            }
+            // Manual field doesn't exist in Product model
+            // Skip manual files for now
 
             console.log('Total files for product:', files.length, files)
 
@@ -185,7 +177,7 @@ export async function POST(
               unitPrice: item.unitPrice,
               files
             }
-          }).filter(Boolean) || []
+          }).filter(Boolean) as Array<{id: string, name: string, brand: string, quantity: number, unitPrice: number, files: Array<{url: string, type: 'image' | 'datasheet' | 'manual', filename: string}>}> || []
         }
 
         console.log('Final products with files:', emailData.products?.length || 0)

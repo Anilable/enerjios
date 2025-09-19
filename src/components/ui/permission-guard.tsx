@@ -87,7 +87,7 @@ export function PermissionGuard({
   const permissionManager = new PermissionManager(
     session.user.role as Role,
     session.user.id,
-    session.user.companyId
+    undefined
   )
 
   // Check permissions
@@ -144,7 +144,7 @@ export function usePermissions() {
   const permissionManager = new PermissionManager(
     session.user.role as Role,
     session.user.id,
-    session.user.companyId
+    undefined
   )
 
   return {

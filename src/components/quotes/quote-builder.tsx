@@ -786,7 +786,7 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
                         {item.type === 'PANEL' ? (
                           <Select
                             value={item.productId || ''}
-                            onValueChange={(value) => selectProduct(item.id, value, item.type)}
+                            onValueChange={(value) => selectProduct(item.id || '', value, item.type || '')}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Panel seçin" />
@@ -802,7 +802,7 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
                         ) : item.type === 'INVERTER' ? (
                           <Select
                             value={item.productId || ''}
-                            onValueChange={(value) => selectProduct(item.id, value, item.type)}
+                            onValueChange={(value) => selectProduct(item.id || '', value, item.type || '')}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="İnverter seçin" />
@@ -818,7 +818,7 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
                         ) : item.type === 'ACCESSORY' ? (
                           <Select
                             value={item.productId || ''}
-                            onValueChange={(value) => selectProduct(item.id, value, item.type)}
+                            onValueChange={(value) => selectProduct(item.id || '', value, item.type || '')}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Aksesuar seçin" />

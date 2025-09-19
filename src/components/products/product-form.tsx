@@ -673,7 +673,7 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
               </div>
 
               {/* Margin calculation display */}
-              {formData.pricing?.basePrice > 0 && formData.pricing?.costPrice > 0 && (
+              {formData.pricing?.basePrice && formData.pricing?.costPrice && formData.pricing.basePrice > 0 && formData.pricing.costPrice > 0 && (
                 <div className="p-3 bg-muted rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Kar Marjı:</span>

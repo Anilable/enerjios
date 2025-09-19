@@ -794,7 +794,7 @@ export default function ProductManagementPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Toplam Alış Değeri</p>
                   <p className="text-2xl font-bold">₺{(totalPurchaseValue / 1000000).toFixed(1)}M</p>
-                  <p className="text-xs text-muted-foreground">{products.filter(p => p.pricing.costPrice > 0).length} ürün</p>
+                  <p className="text-xs text-muted-foreground">{products.filter(p => p.pricing?.costPrice && p.pricing.costPrice > 0).length} ürün</p>
                 </div>
                 <Warehouse className="w-8 h-8 text-blue-600" />
               </div>

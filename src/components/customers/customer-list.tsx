@@ -727,7 +727,7 @@ export function CustomerList({
               İptal
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteCustomer}
+              onClick={() => handleDeleteCustomer()}
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700"
             >

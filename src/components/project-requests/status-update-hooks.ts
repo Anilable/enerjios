@@ -35,8 +35,7 @@ export function useStatusUpdate() {
 
       toast({
         title: 'Başarılı',
-        description: `Talep durumu ${statusLabels[newStatus]} olarak güncellendi`,
-        duration: 3000
+        description: `Talep durumu ${statusLabels[newStatus]} olarak güncellendi`
       })
 
       return true
@@ -60,8 +59,7 @@ export function useStatusUpdate() {
       toast({
         title: 'Hata',
         description: errorMessage,
-        variant: 'destructive',
-        duration: 5000
+        variant: 'destructive'
       })
 
       return false

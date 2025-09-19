@@ -12,6 +12,7 @@ export interface MobileInputProps
   error?: boolean
   fullWidth?: boolean
   touchOptimized?: boolean
+  onClear?: () => void
 }
 
 const MobileInput = React.forwardRef<HTMLInputElement, MobileInputProps>(

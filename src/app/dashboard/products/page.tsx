@@ -265,7 +265,11 @@ export default function ProductsPage() {
       return uploadedFiles
     } catch (error) {
       console.error('❌ File upload error:', error)
-      toast.error('Dosya yükleme başarısız!')
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Dosya yükleme başarısız!"
+      })
       throw error
     }
   }
@@ -285,7 +289,7 @@ export default function ProductsPage() {
       setUploadingFiles(true)
 
       // Upload files first
-      let uploadedFiles = { images: [], datasheet: undefined, manual: undefined }
+      let uploadedFiles: { images: string[], datasheet?: string, manual?: string } = { images: [], datasheet: undefined, manual: undefined }
       try {
         uploadedFiles = await uploadFiles()
         toast({
@@ -328,14 +332,14 @@ export default function ProductsPage() {
           model: formData.model || '',
           power: formData.power,
           price: Number(formData.price),
-          purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : null,
-          purchaseDate: formData.purchaseDate || null,
+          // purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : null,
+          // purchaseDate: formData.purchaseDate || null,
           stock: Number(formData.stock) || 0,
           warranty: formData.warranty,
           description: formData.description,
           images: JSON.stringify(uploadedFiles.images),
-          datasheet: uploadedFiles.datasheet,
-          manual: uploadedFiles.manual
+          datasheet: uploadedFiles.datasheet
+          // manual: uploadedFiles.manual // Field doesn't exist in Product model
         })
       })
 
@@ -400,7 +404,7 @@ export default function ProductsPage() {
       setUploadingFiles(true)
 
       // Upload files first if any selected
-      let uploadedFiles = { images: [], datasheet: undefined, manual: undefined }
+      let uploadedFiles: { images: string[], datasheet?: string, manual?: string } = { images: [], datasheet: undefined, manual: undefined }
       try {
         if (selectedFiles.images || selectedFiles.datasheet || selectedFiles.manual) {
           console.log('📁 Files detected, starting upload...')
@@ -435,15 +439,15 @@ export default function ProductsPage() {
           model: formData.model,
           power: formData.power,
           price: Number(formData.price),
-          purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : null,
-          purchaseDate: formData.purchaseDate || null,
-          editDate: formData.editDate || new Date(),
+          // purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : null,
+          // purchaseDate: formData.purchaseDate || null,
+          // editDate: formData.editDate || new Date(),
           stock: Number(formData.stock),
           warranty: formData.warranty,
           description: formData.description,
           images: JSON.stringify(allImages),
           datasheet: uploadedFiles.datasheet || selectedProduct.datasheet,
-          manual: uploadedFiles.manual || selectedProduct.manual
+          // manual: uploadedFiles.manual || selectedProduct.manual // Field doesn't exist
         })
       })
 
@@ -946,7 +950,7 @@ export default function ProductsPage() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                {/* <div className="grid grid-cols-2 gap-2">
                   <div className="grid gap-2">
                     <Label htmlFor="purchasePrice">Alış Fiyatı (₺)</Label>
                     <Input
@@ -957,6 +961,7 @@ export default function ProductsPage() {
                       placeholder="0"
                     />
                   </div>
+                </div> */}
                   <div className="grid gap-2">
                     <Label htmlFor="price">Satış Fiyatı (₺) *</Label>
                     <Input
@@ -967,8 +972,8 @@ export default function ProductsPage() {
                       placeholder="0"
                     />
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
+                {/* </div> */}
+                {/* <div className="grid grid-cols-2 gap-2">
                   <div className="grid gap-2">
                     <Label htmlFor="purchaseDate">Alış Tarihi</Label>
                     <Input
@@ -977,17 +982,16 @@ export default function ProductsPage() {
                       value={formData.purchaseDate ? new Date(formData.purchaseDate).toISOString().split('T')[0] : ''}
                       onChange={(e) => setFormData({...formData, purchaseDate: e.target.value ? new Date(e.target.value) : undefined})}
                     />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="stock">Stok</Label>
-                    <Input
-                      id="stock"
-                      type="number"
-                      value={formData.stock || ''}
-                      onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})}
-                      placeholder="0"
-                    />
-                  </div>
+                  </div> */}
+                <div className="grid gap-2">
+                  <Label htmlFor="stock">Stok</Label>
+                  <Input
+                    id="stock"
+                    type="number"
+                    value={formData.stock || ''}
+                    onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})}
+                    placeholder="0"
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="description">Açıklama</Label>
@@ -1178,7 +1182,7 @@ export default function ProductsPage() {
                                   <FileText
                                     className="w-4 h-4 text-red-600 cursor-pointer hover:text-red-800"
                                     onClick={() => {
-                                      setCurrentFile({type: 'pdf', url: product.datasheet, name: 'Teknik Döküman'})
+                                      setCurrentFile({type: 'pdf', url: product.datasheet || '', name: 'Teknik Döküman'})
                                       setShowFileModal(true)
                                     }}
                                   />
@@ -1187,12 +1191,13 @@ export default function ProductsPage() {
                                   </div>
                                 </div>
                               )}
+                              {/* Manual field doesn't exist in Product model
                               {product.manual && (
                                 <div className="group relative">
                                   <BookOpen
                                     className="w-4 h-4 text-green-600 cursor-pointer hover:text-green-800"
                                     onClick={() => {
-                                      setCurrentFile({type: 'pdf', url: product.manual, name: 'Kullanım Kılavuzu'})
+                                      setCurrentFile({type: 'pdf', url: product.datasheet || '', name: 'Kullanım Kılavuzu'})
                                       setShowFileModal(true)
                                     }}
                                   />
@@ -1200,7 +1205,7 @@ export default function ProductsPage() {
                                     Kullanım kılavuzu
                                   </div>
                                 </div>
-                              )}
+                              )} */}
                             </div>
                           </div>
                         </td>
@@ -1425,15 +1430,17 @@ export default function ProductsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">Toplam Alış Değeri</p>
                   <p className="text-xl font-bold text-blue-600">
-                    {formatCurrency(
+                    {/* {formatCurrency(
                       products.reduce((sum, p) => {
                         const purchasePrice = p.purchasePrice || 0
                         return sum + (purchasePrice * p.stock)
                       }, 0)
-                    )}
+                    )} */}
+                    ₺0
                   </p>
                   <p className="text-sm text-blue-600">
-                    {products.filter(p => p.purchasePrice).length} ürünün alış fiyatı mevcut
+                    {/* {products.filter(p => p.purchasePrice).length} ürünün alış fiyatı mevcut */}
+                    Alış fiyatı verisi mevcut değil
                   </p>
                 </div>
 
@@ -1441,21 +1448,23 @@ export default function ProductsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">Potansiyel Kar</p>
                   <p className="text-xl font-bold text-emerald-600">
-                    {formatCurrency(
+                    {/* {formatCurrency(
                       products.reduce((sum, p) => {
                         const purchasePrice = p.purchasePrice || 0
                         const profit = (p.price - purchasePrice) * p.stock
                         return sum + (profit > 0 ? profit : 0)
                       }, 0)
-                    )}
+                    )} */}
+                    ₺0
                   </p>
                   <p className="text-sm text-emerald-600">
-                    {(products.reduce((sum, p) => {
+                    {/* {(products.reduce((sum, p) => {
                       const purchasePrice = p.purchasePrice || 0
                       if (purchasePrice === 0) return sum
                       const margin = ((p.price - purchasePrice) / purchasePrice) * 100
                       return sum + margin
-                    }, 0) / Math.max(products.filter(p => p.purchasePrice).length, 1)).toFixed(1)}% ortalama kar marjı
+                    }, 0) / Math.max(products.filter(p => p.purchasePrice).length, 1)).toFixed(1)}% ortalama kar marjı */}
+                    Alış fiyatı olmadan kar hesaplanamaz
                   </p>
                 </div>
               </div>
@@ -1664,7 +1673,7 @@ export default function ProductsPage() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              {/* <div className="grid grid-cols-2 gap-2">
                 <div className="grid gap-2">
                   <Label htmlFor="edit-purchasePrice">Alış Fiyatı (₺)</Label>
                   <Input
@@ -1674,7 +1683,7 @@ export default function ProductsPage() {
                     onChange={(e) => setFormData({...formData, purchasePrice: Number(e.target.value)})}
                     placeholder="0"
                   />
-                </div>
+                </div> */}
                 <div className="grid gap-2">
                   <Label htmlFor="edit-price">Satış Fiyatı (₺) *</Label>
                   <Input
@@ -1684,8 +1693,8 @@ export default function ProductsPage() {
                     onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
                   />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
+              {/* </div> */}
+              {/* <div className="grid grid-cols-2 gap-2">
                 <div className="grid gap-2">
                   <Label htmlFor="edit-purchaseDate">Alış Tarihi</Label>
                   <Input
@@ -1694,7 +1703,7 @@ export default function ProductsPage() {
                     value={formData.purchaseDate ? new Date(formData.purchaseDate).toISOString().split('T')[0] : ''}
                     onChange={(e) => setFormData({...formData, purchaseDate: e.target.value ? new Date(e.target.value) : undefined})}
                   />
-                </div>
+                </div> */}
                 <div className="grid gap-2">
                   <Label htmlFor="edit-stock">Stok</Label>
                   <Input
@@ -1704,8 +1713,8 @@ export default function ProductsPage() {
                     onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})}
                   />
                 </div>
-              </div>
-              <div className="grid gap-2">
+              {/* </div> */}
+              {/* <div className="grid gap-2">
                 <Label htmlFor="edit-editDate">Düzenleme Tarihi</Label>
                 <Input
                   id="edit-editDate"
@@ -1713,7 +1722,7 @@ export default function ProductsPage() {
                   value={formData.editDate ? new Date(formData.editDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
                   onChange={(e) => setFormData({...formData, editDate: e.target.value ? new Date(e.target.value) : new Date()})}
                 />
-              </div>
+              </div> */}
 
               {/* File Upload Section */}
               <div className="space-y-4">

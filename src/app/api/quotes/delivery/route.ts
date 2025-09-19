@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       console.log('Quote data:', quoteData.id)
 
       // If quote has an ID, fetch full product data from database
-      let productsWithFiles = []
+      let productsWithFiles: Array<{id: string, name: string, brand: string, quantity: number, unitPrice: number, files: Array<{url: string, type: 'image' | 'datasheet' | 'manual', filename: string}>}> = []
       if (quoteData.id) {
         try {
           const fullQuote = await prisma.quote.findUnique({
@@ -39,8 +39,7 @@ export async function POST(request: NextRequest) {
                       name: true,
                       brand: true,
                       images: true,
-                      datasheet: true,
-                      manual: true
+                      datasheet: true
                     }
                   }
                 }
@@ -49,7 +48,7 @@ export async function POST(request: NextRequest) {
           })
 
           if (fullQuote && fullQuote.items) {
-            productsWithFiles = fullQuote.items.map(item => {
+            productsWithFiles = fullQuote.items.map((item: any) => {
               console.log('Processing item:', item.id, 'Product:', item.product?.name)
               const product = item.product
               if (!product) return null
@@ -109,7 +108,7 @@ export async function POST(request: NextRequest) {
                 unitPrice: item.unitPrice,
                 files
               }
-            }).filter(Boolean)
+            }).filter(Boolean) as Array<{id: string, name: string, brand: string, quantity: number, unitPrice: number, files: Array<{url: string, type: 'image' | 'datasheet' | 'manual', filename: string}>}>
           }
         } catch (error) {
           console.error('Error fetching product files:', error)
@@ -132,18 +131,18 @@ export async function POST(request: NextRequest) {
         engineerTitle: 'Güneş Enerji Uzmanı',
         deliveryToken: quoteData.id || 'draft',
         systemDetails: {
-          capacity: quoteData.capacity || (productsWithFiles.reduce((total, product) => {
+          capacity: quoteData.capacity || (productsWithFiles.reduce((total: any, product: any) => {
             const power = parseFloat(product.name?.match(/(\d+(?:\.\d+)?)\s*[kK]?[wW]/)?.[1] || '0') || 0;
             return total + (power * product.quantity / 1000); // Convert W to kW
           }, 0)).toFixed(1),
-          panelCount: quoteData.panelCount || productsWithFiles.reduce((total, product) => {
+          panelCount: quoteData.panelCount || productsWithFiles.reduce((total: any, product: any) => {
             if (product.name?.toLowerCase().includes('panel') || product.name?.toLowerCase().includes('güneş')) {
               return total + product.quantity;
             }
             return total;
           }, 0),
           estimatedProduction: quoteData.estimatedProduction || Math.round(
-            parseFloat(quoteData.capacity || (productsWithFiles.reduce((total, product) => {
+            parseFloat(quoteData.capacity || (productsWithFiles.reduce((total: any, product: any) => {
               const power = parseFloat(product.name?.match(/(\d+(?:\.\d+)?)\s*[kK]?[wW]/)?.[1] || '0') || 0;
               return total + (power * product.quantity / 1000);
             }, 0)).toFixed(1)) * 1450 // Average solar hours in Turkey per year

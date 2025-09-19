@@ -229,12 +229,11 @@ export async function PUT(
       data: {
         firstName,
         lastName,
-        email,
         phone,
         address,
         city,
         district,
-        customerType,
+        type: customerType,
         companyName,
         taxNumber
       }

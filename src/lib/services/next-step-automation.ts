@@ -37,6 +37,8 @@ export class NextStepAutomationService {
 
     return rules.map(rule => ({
       ...rule,
+      description: rule.description || undefined,
+      stepDescription: rule.stepDescription || undefined,
       createdAt: rule.createdAt.toISOString(),
       updatedAt: rule.updatedAt.toISOString()
     }))
@@ -99,6 +101,14 @@ export class NextStepAutomationService {
 
         createdSteps.push({
           ...nextStep,
+          description: nextStep.description || undefined,
+          automationRule: nextStep.automationRule || undefined,
+          completedBy: nextStep.completedBy || undefined,
+          completedByUser: nextStep.completedByUser ? {
+            ...nextStep.completedByUser,
+            name: nextStep.completedByUser.name || ''
+          } : undefined,
+          metadata: nextStep.metadata ? nextStep.metadata as Record<string, any> : undefined,
           dueDate: nextStep.dueDate.toISOString(),
           completedAt: nextStep.completedAt?.toISOString(),
           createdAt: nextStep.createdAt.toISOString(),
@@ -136,6 +146,14 @@ export class NextStepAutomationService {
 
     return steps.map(step => ({
       ...step,
+      description: step.description || undefined,
+      automationRule: step.automationRule || undefined,
+      completedBy: step.completedBy || undefined,
+      completedByUser: step.completedByUser ? {
+        ...step.completedByUser,
+        name: step.completedByUser.name || ''
+      } : undefined,
+      metadata: step.metadata ? step.metadata as Record<string, any> : undefined,
       dueDate: step.dueDate.toISOString(),
       completedAt: step.completedAt?.toISOString(),
       createdAt: step.createdAt.toISOString(),
@@ -173,6 +191,14 @@ export class NextStepAutomationService {
     for (const step of steps) {
       const transformedStep: ProjectRequestNextStep = {
         ...step,
+        description: step.description || undefined,
+        automationRule: step.automationRule || undefined,
+        completedBy: step.completedBy || undefined,
+        completedByUser: step.completedByUser ? {
+          ...step.completedByUser,
+          name: step.completedByUser.name || ''
+        } : undefined,
+        metadata: step.metadata ? step.metadata as Record<string, any> : undefined,
         dueDate: step.dueDate.toISOString(),
         completedAt: step.completedAt?.toISOString(),
         createdAt: step.createdAt.toISOString(),
@@ -212,6 +238,14 @@ export class NextStepAutomationService {
 
     return {
       ...step,
+      description: step.description || undefined,
+      automationRule: step.automationRule || undefined,
+      completedBy: step.completedBy || undefined,
+      completedByUser: step.completedByUser ? {
+        ...step.completedByUser,
+        name: step.completedByUser.name || ''
+      } : undefined,
+      metadata: step.metadata ? step.metadata as Record<string, any> : undefined,
       dueDate: step.dueDate.toISOString(),
       completedAt: step.completedAt?.toISOString(),
       createdAt: step.createdAt.toISOString(),
@@ -251,6 +285,14 @@ export class NextStepAutomationService {
 
     return {
       ...step,
+      description: step.description || undefined,
+      automationRule: step.automationRule || undefined,
+      completedBy: step.completedBy || undefined,
+      completedByUser: step.completedByUser ? {
+        ...step.completedByUser,
+        name: step.completedByUser.name || ''
+      } : undefined,
+      metadata: step.metadata ? step.metadata as Record<string, any> : undefined,
       dueDate: step.dueDate.toISOString(),
       completedAt: step.completedAt?.toISOString(),
       createdAt: step.createdAt.toISOString(),
@@ -312,6 +354,14 @@ export class NextStepAutomationService {
 
     return steps.map(step => ({
       ...step,
+      description: step.description || undefined,
+      automationRule: step.automationRule || undefined,
+      completedBy: step.completedBy || undefined,
+      completedByUser: step.completedByUser ? {
+        ...step.completedByUser,
+        name: step.completedByUser.name || ''
+      } : undefined,
+      metadata: step.metadata ? step.metadata as Record<string, any> : undefined,
       projectRequest: undefined, // Remove from the response as it's not part of the interface
       dueDate: step.dueDate.toISOString(),
       completedAt: step.completedAt?.toISOString(),
@@ -352,6 +402,14 @@ export class NextStepAutomationService {
 
     return steps.map(step => ({
       ...step,
+      description: step.description || undefined,
+      automationRule: step.automationRule || undefined,
+      completedBy: step.completedBy || undefined,
+      completedByUser: step.completedByUser ? {
+        ...step.completedByUser,
+        name: step.completedByUser.name || ''
+      } : undefined,
+      metadata: step.metadata ? step.metadata as Record<string, any> : undefined,
       dueDate: step.dueDate.toISOString(),
       completedAt: step.completedAt?.toISOString(),
       createdAt: step.createdAt.toISOString(),
@@ -465,6 +523,14 @@ export class NextStepAutomationService {
 
     return {
       ...step,
+      description: step.description || undefined,
+      automationRule: step.automationRule || undefined,
+      completedBy: step.completedBy || undefined,
+      completedByUser: step.completedByUser ? {
+        ...step.completedByUser,
+        name: step.completedByUser.name || ''
+      } : undefined,
+      metadata: step.metadata ? step.metadata as Record<string, any> : undefined,
       dueDate: step.dueDate.toISOString(),
       completedAt: step.completedAt?.toISOString(),
       createdAt: step.createdAt.toISOString(),

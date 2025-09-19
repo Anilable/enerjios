@@ -1,6 +1,6 @@
 'use client'
 
-import { ProjectRequest, PROJECT_TYPE_LABELS, REQUEST_SOURCE_LABELS, REQUEST_SOURCE_COLORS, REQUEST_SOURCE_ICONS } from '@/types/project-request'
+import { ProjectRequest, ProjectRequestStatus, PROJECT_TYPE_LABELS, REQUEST_SOURCE_LABELS, REQUEST_SOURCE_COLORS, REQUEST_SOURCE_ICONS } from '@/types/project-request'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'

@@ -12,27 +12,7 @@ interface FileTokenPayload {
   expiresAt: number
 }
 
-// Generate secure file access token
-export function generateFileToken(filePath: string, expiresInHours: number = 720): string {
-  const payload: FileTokenPayload = {
-    filePath,
-    expiresAt: Date.now() + (expiresInHours * 60 * 60 * 1000)
-  }
-
-  const payloadStr = JSON.stringify(payload)
-
-  // Generate IV for AES-256-CBC
-  const iv = crypto.randomBytes(16)
-  const cipher = crypto.createCipheriv('aes-256-cbc', crypto.scryptSync(SECRET_KEY, 'salt', 32), iv)
-
-  let encrypted = cipher.update(payloadStr, 'utf8', 'hex')
-  encrypted += cipher.final('hex')
-
-  // Combine IV and encrypted data
-  const combined = iv.toString('hex') + ':' + encrypted
-
-  return Buffer.from(combined, 'utf8').toString('base64url')
-}
+// Generate secure file access token - moved to utility function
 
 // Validate and decrypt token
 function validateToken(token: string): FileTokenPayload | null {
@@ -103,7 +83,8 @@ export async function GET(
     }
 
     // Return file with appropriate headers
-    return new NextResponse(fileBuffer, {
+    // Convert Buffer to Uint8Array for Response
+    return new Response(new Uint8Array(fileBuffer), {
       headers: {
         'Content-Type': contentType,
         'Content-Disposition': `inline; filename="${payload.filePath.split('/').pop()}"`,

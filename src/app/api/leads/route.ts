@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Invalid request data',
-          details: error.errors,
+          details: error.issues,
         },
         { status: 400 }
       )
@@ -87,7 +87,6 @@ export async function GET(request: NextRequest) {
         id: true,
         name: true,
         phone: true,
-        city: true,
         source: true,
         status: true,
         createdAt: true,

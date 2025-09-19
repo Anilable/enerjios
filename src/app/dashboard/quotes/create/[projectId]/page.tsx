@@ -676,7 +676,7 @@ export default function CreateQuotePage() {
   // Handle quote delivery
   const handleQuoteDelivery = async (deliveryMethods: any[]) => {
     try {
-      let savedQuote
+      let savedQuote: any
 
       // If quote doesn't have an ID, save it first as DRAFT
       if (!quoteData.id) {
@@ -1279,7 +1279,10 @@ export default function CreateQuotePage() {
                                 <SelectValue placeholder="Malzeme seçin" />
                               </SelectTrigger>
                               <SelectContent>
-                                {console.log('🔍 PRODUCTS: Filtering by category:', item.category) || products
+                                {(() => {
+                                  console.log('🔍 PRODUCTS: Filtering by category:', item.category);
+                                  return products;
+                                })()
                                   .filter(product => {
                                     // If category is OTHER, show all products
                                     if (item.category === 'OTHER') return true

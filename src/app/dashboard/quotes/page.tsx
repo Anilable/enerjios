@@ -789,7 +789,7 @@ export default function QuotesPage() {
       {/* Admin Quote Approval Dialog */}
       {selectedQuoteForApproval && (
         <AdminQuoteApprovalDialog
-          quote={selectedQuoteForApproval}
+          quote={selectedQuoteForApproval as any}
           isOpen={approvalDialogOpen}
           onClose={() => {
             setApprovalDialogOpen(false)

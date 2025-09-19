@@ -190,7 +190,7 @@ export function NotesManagement({
     setFormData({
       content: note.content,
       priority: note.priority || 'MEDIUM',
-      isPrivate: note.isPrivate,
+      isPrivate: note.isPrivate || false,
       tags: Array.isArray(note.tags) ? note.tags as string[] : []
     })
     setShowCreateForm(true)

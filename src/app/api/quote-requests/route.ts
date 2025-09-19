@@ -104,7 +104,6 @@ export async function POST(request: NextRequest) {
         company: {
           select: {
             name: true,
-            email: true,
             phone: true,
           },
         },
@@ -171,7 +170,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Invalid request data',
-          details: error.errors,
+          details: error.issues,
         },
         { status: 400 }
       )

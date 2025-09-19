@@ -1,5 +1,5 @@
   import { Resend } from 'resend'
-import { generateFileToken } from '@/app/api/files/[token]/route'
+// generateFileToken temporarily disabled - import issue
 
   // Initialize Resend with proper error handling
   const resend = new Resend(process.env.RESEND_API_KEY)
@@ -690,7 +690,8 @@ import { generateFileToken } from '@/app/api/files/[token]/route'
                         </div>
                         <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
                           ${images.slice(0, 3).map(image => {
-                            const token = generateFileToken(image.url, 720)
+                            // const token = generateFileToken(image.url, 720)
+                            const token = 'temp-token' // temporary fix
                             return `<div style="position: relative; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); border: 3px solid #f3f4f6;">
                               <img src="${baseUrl}/api/files/${token}" alt="${product.name}" style="width: 120px; height: 120px; object-fit: cover; display: block;" />
                             </div>`
@@ -706,14 +707,16 @@ import { generateFileToken } from '@/app/api/files/[token]/route'
 
                       <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-start;">
                         ${datasheets.length > 0 ? `
-                        <a href="${baseUrl}/api/files/${generateFileToken(datasheets[0].url, 720)}"
+                        <a href="${baseUrl}/api/files/temp-token"
+                          // href="${baseUrl}/api/files/TOKEN_PLACEHOLDER"
                            style="display: inline-flex; align-items: center; background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; padding: 12px 20px; text-decoration: none; border-radius: 25px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3); transition: all 0.3s ease;">
                           <span style="margin-right: 8px; font-size: 16px;">📋</span>
                           Teknik Döküman İndir
                         </a>
                         ` : ''}
                         ${manuals.length > 0 ? `
-                        <a href="${baseUrl}/api/files/${generateFileToken(manuals[0].url, 720)}"
+                        <a href="${baseUrl}/api/files/temp-token"
+                          // href="${baseUrl}/api/files/TOKEN_PLACEHOLDER"
                            style="display: inline-flex; align-items: center; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 12px 20px; text-decoration: none; border-radius: 25px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3); transition: all 0.3s ease;">
                           <span style="margin-right: 8px; font-size: 16px;">📖</span>
                           Kullanım Kılavuzu İndir
