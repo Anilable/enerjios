@@ -37,10 +37,11 @@ export async function GET(
       return NextResponse.json({ error: 'Note not found' }, { status: 404 })
     }
 
-    // Check permissions: Only admin, the creator, or company users can view
+    // Check permissions: Only admin, the creator, company users, or installation team can view
     if (session.user.role !== 'ADMIN' &&
         note.createdBy !== session.user.id &&
-        session.user.role !== 'COMPANY') {
+        session.user.role !== 'COMPANY' &&
+        session.user.role !== 'INSTALLATION_TEAM') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

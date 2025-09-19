@@ -27,6 +27,7 @@ import {
 import { useRouter } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { NotesIndicator } from './notes-indicator'
 import { StatusUpdateDropdown } from './status-update-dropdown'
 
@@ -41,8 +42,12 @@ interface ProjectRequestCardProps {
 
 export function ProjectRequestCard({ request, onClick, onDelete, onStatusUpdate, isDragging = false, canDelete = false }: ProjectRequestCardProps) {
   const router = useRouter()
+  const { data: session } = useSession()
   const [hasQuote, setHasQuote] = useState(false)
   const [quoteId, setQuoteId] = useState<string | null>(null)
+
+  // Check if user can see financial information
+  const canViewFinancials = session?.user?.role !== 'INSTALLATION_TEAM'
 
   const {
     attributes,
@@ -215,7 +220,7 @@ export function ProjectRequestCard({ request, onClick, onDelete, onStatusUpdate,
             </div>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
-            {request.status !== 'LOST' && request.status !== 'CONVERTED_TO_PROJECT' && (
+            {request.status !== 'LOST' && request.status !== 'CONVERTED_TO_PROJECT' && canViewFinancials && (
               <>
                 <Button
                   variant="ghost"
@@ -328,7 +333,7 @@ export function ProjectRequestCard({ request, onClick, onDelete, onStatusUpdate,
             <span className="font-medium text-xs">{request.estimatedCapacity} kW</span>
           </div>
 
-          {request.estimatedBudget && (
+          {request.estimatedBudget && canViewFinancials && (
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-1 text-muted-foreground">
                 <DollarSign className="w-3 h-3 flex-shrink-0" />

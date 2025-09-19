@@ -27,7 +27,7 @@ export function TestimonialsSection() {
       id: 1,
       name: 'Mehmet Çiftçi',
       title: 'Çiftçi - Konya',
-      avatar: '/images/avatars/mehmet.jpg',
+      avatar: 'https://ui-avatars.com/api/?name=Mehmet+Çiftçi&background=22c55e&color=fff&size=128',
       type: 'FARMER',
       typeIcon: Tractor,
       rating: 5,
@@ -128,7 +128,7 @@ export function TestimonialsSection() {
   ]
 
   return (
-    <section className="py-20 lg:py-32 bg-white relative z-0">
+    <section className="py-20 lg:py-32 bg-white dark:bg-gray-900 relative z-0">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
@@ -138,19 +138,19 @@ export function TestimonialsSection() {
             <span>Müşteri Yorumları</span>
           </div>
           
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6">
             Müşterilerimiz
             <span className="text-primary block">Ne Diyor?</span>
           </h2>
           
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
             Gerçek müşterilerimizin deneyimleri ve güneş enerjisi ile elde ettikleri tasarruf hikayeleri
           </p>
         </div>
 
         {/* Main Testimonial */}
         <div className="max-w-4xl mx-auto mb-16">
-          <Card className="overflow-hidden shadow-2xl border-0">
+          <Card className="overflow-hidden shadow-2xl border-0 dark:bg-gray-800">
             <CardContent className="p-0">
               <div className="grid md:grid-cols-2">
                 
@@ -171,7 +171,7 @@ export function TestimonialsSection() {
                   </div>
 
                   {/* Testimonial Text */}
-                  <blockquote className="text-lg text-gray-700 mb-8 leading-relaxed">
+                  <blockquote className="text-lg text-gray-700 dark:text-gray-300 mb-8 leading-relaxed">
                     "{currentTestimonial.content}"
                   </blockquote>
 
@@ -188,7 +188,7 @@ export function TestimonialsSection() {
                       <div className="font-semibold text-gray-900">
                         {currentTestimonial.name}
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
                         {currentTestimonial.title}
                       </div>
                     </div>
@@ -205,19 +205,19 @@ export function TestimonialsSection() {
                   {/* Stats */}
                   <div className="grid grid-cols-1 gap-3 text-sm">
                     <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                      <span className="text-gray-600">Aylık Tasarruf</span>
+                      <span className="text-gray-600 dark:text-gray-300">Aylık Tasarruf</span>
                       <span className="font-semibold text-green-700">
                         {currentTestimonial.stats.savings}
                       </span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                      <span className="text-gray-600">Sistem</span>
+                      <span className="text-gray-600 dark:text-gray-300">Sistem</span>
                       <span className="font-semibold text-blue-700">
                         {currentTestimonial.stats.system}
                       </span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-primary/5 rounded-lg">
-                      <span className="text-gray-600">Geri Ödeme</span>
+                      <span className="text-gray-600 dark:text-gray-300">Geri Ödeme</span>
                       <span className="font-semibold text-primary">
                         {currentTestimonial.stats.payback}
                       </span>
@@ -231,10 +231,10 @@ export function TestimonialsSection() {
                     <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                       <TypeIcon className="w-12 h-12 text-primary" />
                     </div>
-                    <h3 className="font-bold text-gray-900 mb-2">
+                    <h3 className="font-bold text-gray-900 dark:text-white mb-2">
                       {getTypeLabel(currentTestimonial.type)} Müşterisi
                     </h3>
-                    <p className="text-gray-600 text-sm">
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">
                       EnerjiOS ile temiz enerjiye geçiş
                     </p>
                   </div>

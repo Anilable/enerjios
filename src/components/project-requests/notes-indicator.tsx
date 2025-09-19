@@ -88,6 +88,8 @@ export function NotesIndicator({
     return null
   }
 
+  // In non-compact mode, only show if there are notes
+  // In compact mode, always show the button (even if no notes exist yet)
   if (notes.length === 0 && !compact) return null
 
   const NotesButton = (

@@ -26,6 +26,7 @@ import {
   Trash2
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { AdminQuoteApprovalDialog } from '@/components/quotes/AdminQuoteApprovalDialog'
@@ -113,9 +114,18 @@ const mockQuotes: Quote[] = [
 
 export default function QuotesPage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const { toast } = useToast()
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Redirect INSTALLATION_TEAM users as they don't have access to quotes
+  useEffect(() => {
+    if (session?.user?.role === 'INSTALLATION_TEAM') {
+      router.push('/dashboard')
+      return
+    }
+  }, [session, router])
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false)
   const [selectedQuoteForApproval, setSelectedQuoteForApproval] = useState<Quote | null>(null)
 

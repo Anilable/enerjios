@@ -103,7 +103,7 @@ export function CalculatorSection() {
   }
 
   return (
-    <section id="calculator-section" className="py-20 lg:py-32 bg-gradient-to-br from-primary/5 to-yellow-50 relative z-0 mb-16">
+    <section id="calculator-section" className="py-20 lg:py-32 bg-gradient-to-br from-primary/5 to-yellow-50 dark:from-primary/10 dark:to-yellow-900/20 relative z-0 mb-16">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
@@ -113,12 +113,12 @@ export function CalculatorSection() {
             <span>Hızlı Hesaplama</span>
           </div>
           
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6">
             GES Yatırımınızı
             <span className="text-primary block">Hemen Hesaplayın</span>
           </h2>
           
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
+          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto mb-8">
             Bulunduğunuz şehir ve elektrik faturanıza göre güneş enerjisi sisteminin 
             size sağlayacağı tasarruf ve yatırım getirisini öğrenin.
           </p>
@@ -128,7 +128,7 @@ export function CalculatorSection() {
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
             
             {/* Calculator Form */}
-            <Card className="shadow-xl border-0">
+            <Card className="shadow-xl border-0 dark:bg-gray-800">
               <CardHeader className="text-center pb-6">
                 <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Calculator className="w-8 h-8 text-primary" />
@@ -208,7 +208,7 @@ export function CalculatorSection() {
                   )}
                 </Button>
 
-                <p className="text-xs text-gray-500 text-center">
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
                   * Hesaplamalar yaklaşık değerlerdir. Kesin analiz için detaylı inceleme gereklidir.
                 </p>
               </CardContent>
@@ -275,15 +275,15 @@ export function CalculatorSection() {
                   </Card>
                 </>
               ) : (
-                <Card className="h-full border-dashed border-2 border-gray-300">
+                <Card className="h-full border-dashed border-2 border-gray-300 dark:border-gray-600 dark:bg-gray-800">
                   <CardContent className="flex flex-col items-center justify-center text-center h-full py-16">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                      <Calculator className="w-8 h-8 text-gray-400" />
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+                      <Calculator className="w-8 h-8 text-gray-400 dark:text-gray-500" />
                     </div>
-                    <h3 className="font-semibold text-gray-900 mb-2">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
                       Hesaplama Sonuçları
                     </h3>
-                    <p className="text-gray-500 text-sm">
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">
                       Formu doldurup hesapla butonuna basın
                     </p>
                   </CardContent>

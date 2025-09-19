@@ -463,6 +463,7 @@ function SolarEnergyAnimation({
 export function HeroSection() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [isLowPerformance, setIsLowPerformance] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     // Check for low performance devices
@@ -474,6 +475,7 @@ export function HeroSection() {
     }
 
     checkPerformance()
+    setMounted(true)
 
     // Update time every minute for better performance
     const timeInterval = setInterval(() => {
@@ -508,18 +510,6 @@ export function HeroSection() {
   const minutes = turkeyTime.getMinutes()
   const totalMinutes = hours * 60 + minutes
 
-  // Debug logging for development
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🕐 Current Time Debug:', {
-      browserTime: currentTime.toLocaleTimeString('tr-TR'),
-      turkeyTime: turkeyTime.toLocaleTimeString('tr-TR'),
-      hours,
-      minutes,
-      currentPhase: hours >= 0 && hours < 6 ? 'Deep Night' :
-                   hours >= 6 && hours < 18 ? 'Daytime' :
-                   hours >= 18 && hours < 22 ? 'Evening' : 'Night'
-    })
-  }
 
   // Improved Day/Night cycle calculations
   const isDeepNight = hours >= 0 && hours < 6     // 00:00-06:00: Deep night (stars, no solar)
@@ -548,6 +538,17 @@ export function HeroSection() {
     { value: '₺2.4M+', label: 'Müşteri Tasarrufu', icon: TrendingUp },
     { value: '25 Yıl', label: 'Garanti', icon: Shield },
   ]
+
+  // Prevent hydration mismatch by ensuring client-side rendering for time-dependent content
+  if (!mounted) {
+    return (
+      <section className="relative min-h-screen overflow-hidden bg-gradient-to-br from-orange-50 via-yellow-50 to-blue-50">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="relative min-h-screen overflow-hidden bg-gradient-to-br from-orange-50 via-yellow-50 to-blue-50">
@@ -592,20 +593,25 @@ export function HeroSection() {
               <Button
                 size="lg"
                 className="bg-primary hover:bg-primary/90 px-8 py-4 text-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl"
-                onClick={() => window.location.href = '/request-quotes'}
+                onClick={() => window.location.href = '/auth/signin'}
               >
                 <Sun className="w-5 h-5 mr-2" />
-                Ücretsiz Teklif Al
+                Hemen Başla
               </Button>
 
               <Button
                 variant="outline"
                 size="lg"
                 className="border-primary text-primary hover:bg-primary hover:text-white px-8 py-4 text-lg font-semibold transition-all duration-300"
-                onClick={() => window.location.href = '/partners'}
+                onClick={() => {
+                  const companiesSection = document.querySelector('#companies-section')
+                  if (companiesSection) {
+                    companiesSection.scrollIntoView({ behavior: 'smooth' })
+                  }
+                }}
               >
                 <FileSearch className="w-5 h-5 mr-2" />
-                Partnerleri Keşfet
+                Firmaları Gör
               </Button>
             </div>
 
@@ -624,6 +630,16 @@ export function HeroSection() {
               >
                 <FileSearch className="w-4 h-4 mr-2" />
                 Hızlı Hesaplama
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="lg"
+                className="text-orange-600 hover:bg-orange-100 px-6 py-3 text-base font-medium transition-all duration-300"
+                onClick={() => window.location.href = '/partner/register'}
+              >
+                <TrendingUp className="w-4 h-4 mr-2" />
+                Partner Ol
               </Button>
             </div>
 

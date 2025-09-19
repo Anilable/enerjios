@@ -147,7 +147,7 @@ export default function DashboardPage() {
       ]}
     >
       <div className="mb-6">
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-gray-300">
           EnerjiOS dashboard'unuza hoş geldiniz. 
           {user.role === 'COMPANY' && ' Firma projelerinizi ve tekliflerinizi buradan yönetebilirsiniz.'}
           {user.role === 'FARMER' && ' Çiftlik projelerinizi ve tarımsal GES sistemlerinizi buradan takip edebilirsiniz.'}
@@ -158,10 +158,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions Section */}
-      <Card className="mb-8 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+      <Card className="mb-8 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-700">
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2">
-            <Compass className="h-6 w-6 text-blue-600" />
+            <Compass className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             Hızlı İşlemler
           </CardTitle>
           <CardDescription>
@@ -213,12 +213,12 @@ export default function DashboardPage() {
               <Link href="/dashboard/calculator">
                 <Button
                   variant="outline"
-                  className="w-full h-24 flex-col gap-2 border-2 hover:bg-gray-50 hover:scale-105 transition-all"
+                  className="w-full h-24 flex-col gap-2 border-2 hover:bg-gray-50 dark:hover:bg-gray-800 hover:scale-105 transition-all"
                 >
                   <Calculator className="h-8 w-8 text-green-600" />
                   <div>
                     <div className="font-semibold">GES Hesaplayıcı</div>
-                    <div className="text-xs text-gray-600">Maliyet Analizi</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Maliyet Analizi</div>
                   </div>
                 </Button>
               </Link>
@@ -228,12 +228,12 @@ export default function DashboardPage() {
               <Link href="/dashboard/quotes">
                 <Button
                   variant="outline"
-                  className="w-full h-24 flex-col gap-2 border-2 hover:bg-gray-50 hover:scale-105 transition-all"
+                  className="w-full h-24 flex-col gap-2 border-2 hover:bg-gray-50 dark:hover:bg-gray-800 hover:scale-105 transition-all"
                 >
                   <FileText className="h-8 w-8 text-orange-600" />
                   <div>
                     <div className="font-semibold">Teklifler</div>
-                    <div className="text-xs text-gray-600">Fiyat Teklifleri</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Fiyat Teklifleri</div>
                   </div>
                 </Button>
               </Link>
@@ -243,12 +243,12 @@ export default function DashboardPage() {
               <Link href="/dashboard/project-requests">
                 <Button
                   variant="outline"
-                  className="w-full h-24 flex-col gap-2 border-2 hover:bg-gray-50 hover:scale-105 transition-all"
+                  className="w-full h-24 flex-col gap-2 border-2 hover:bg-gray-50 dark:hover:bg-gray-800 hover:scale-105 transition-all"
                 >
                   <Building className="h-8 w-8 text-blue-600" />
                   <div>
                     <div className="font-semibold">Kurulum Projeleri</div>
-                    <div className="text-xs text-gray-600">Aktif Kurulumlar</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Aktif Kurulumlar</div>
                   </div>
                 </Button>
               </Link>
@@ -257,12 +257,12 @@ export default function DashboardPage() {
             <Link href="/dashboard/reports">
               <Button 
                 variant="outline" 
-                className="w-full h-24 flex-col gap-2 border-2 hover:bg-gray-50 hover:scale-105 transition-all"
+                className="w-full h-24 flex-col gap-2 border-2 hover:bg-gray-50 dark:hover:bg-gray-800 hover:scale-105 transition-all"
               >
                 <BarChart3 className="h-8 w-8 text-purple-600" />
                 <div>
                   <div className="font-semibold">Raporlar</div>
-                  <div className="text-xs text-gray-600">Performans Analizi</div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">Performans Analizi</div>
                 </div>
               </Button>
             </Link>
@@ -392,7 +392,7 @@ export default function DashboardPage() {
                 <div className="space-y-4">
                   {projectsLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div key={i} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <div className="space-y-2">
                           <Skeleton className="h-4 w-40" />
                           <Skeleton className="h-3 w-32" />
@@ -403,13 +403,13 @@ export default function DashboardPage() {
                     ))
                   ) : recentProjects.length > 0 ? (
                     recentProjects.map((project) => (
-                      <div key={project.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <div key={project.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                         <div>
                           <p className="font-semibold text-lg">{project.name}</p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
                             <span className="font-medium">{Math.round(project.capacity)} kW</span> • {project.location}
                           </p>
-                          <p className="text-xs text-gray-500 capitalize">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
                             {project.type === 'ROOFTOP' ? 'Çatı GES' :
                              project.type === 'LAND' ? 'Arazi GES' :
                              project.type === 'AGRISOLAR' ? 'Tarımsal GES' :
@@ -440,8 +440,8 @@ export default function DashboardPage() {
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-12 text-gray-500">
-                      <Building className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                      <Building className="h-12 w-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
                       <p className="text-lg font-medium mb-2">Henüz proje bulunmuyor</p>
                       <p className="text-sm mb-4">İlk GES projenizi oluşturmak için aşağıdaki bağlantıyı kullanabilirsiniz.</p>
                       <Link href="/dashboard/project-requests" className="text-primary hover:underline font-medium">
@@ -497,19 +497,19 @@ export default function DashboardPage() {
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Bekleyen Kurulumlar</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">Bekleyen Kurulumlar</span>
                     <span className="font-semibold">5</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Devam Eden</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">Devam Eden</span>
                     <span className="font-semibold text-blue-600">3</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Bu Ay Tamamlanan</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">Bu Ay Tamamlanan</span>
                     <span className="font-semibold text-green-600">12</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Ortalama Süre</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">Ortalama Süre</span>
                     <span className="font-semibold">2.5 gün</span>
                   </div>
                 </div>

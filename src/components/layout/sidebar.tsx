@@ -447,11 +447,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             depth > 0 ? 'ml-4 pl-8' : '',
             isActive 
               ? 'bg-primary text-primary-foreground' 
-              : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
           )}
         >
           <div className="flex items-center space-x-3">
-            <Icon className={cn('h-4 w-4', isActive ? 'text-primary-foreground' : 'text-gray-500')} />
+            <Icon className={cn('h-4 w-4', isActive ? 'text-primary-foreground' : 'text-gray-500 dark:text-gray-400')} />
             <span>{item.title}</span>
           </div>
           
@@ -493,16 +493,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* Sidebar */}
       <div className={cn(
-        'fixed left-0 top-0 z-30 h-full w-64 transform bg-white border-r transition-transform duration-200 ease-in-out md:relative md:translate-x-0',
+        'fixed left-0 top-0 z-30 h-full w-64 transform bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-transform duration-200 ease-in-out md:relative md:translate-x-0',
         isOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
         {/* Sidebar Header */}
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-2">
             <Sun className="h-6 w-6 text-primary" />
             <div>
-              <h2 className="font-semibold text-gray-900">Dashboard</h2>
-              <p className="text-xs text-gray-500">{getRoleName(session.user.role)}</p>
+              <h2 className="font-semibold text-gray-900 dark:text-white">Dashboard</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{getRoleName(session.user.role)}</p>
             </div>
           </div>
           <Button
@@ -523,16 +523,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </ScrollArea>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
               <Sun className="h-4 w-4 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
+              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                 {session.user.name}
               </p>
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                 {session.user.email}
               </p>
             </div>

@@ -74,28 +74,34 @@ export function TrustSection() {
 
   const partners = [
     {
-      name: 'Jinko Solar',
+      name: 'Havensis',
       type: 'Panel Üreticisi',
-      logo: '/logos/jinko.png',
-      description: 'Dünya\'nın en büyük panel üreticisi'
+      logo: '/logos/havensis.png',
+      description: 'Türkiye\'nin öncü güneş enerjisi çözümleri sağlayıcısı'
     },
     {
-      name: 'Huawei',
-      type: 'İnverter Üreticisi', 
-      logo: '/logos/huawei.png',
-      description: 'Akıllı enerji çözümleri lideri'
-    },
-    {
-      name: 'SMA Solar',
-      type: 'İnverter Üreticisi',
-      logo: '/logos/sma.png',
-      description: 'Alman kalitesi inverter teknolojisi'
-    },
-    {
-      name: 'Canadian Solar',
+      name: 'Hagel',
       type: 'Panel Üreticisi',
-      logo: '/logos/canadian.png',
-      description: 'Güvenilir panel teknolojisi'
+      logo: '/logos/hagel.png',
+      description: 'Yüksek verimli güneş paneli üretimi'
+    },
+    {
+      name: 'DMRTech',
+      type: 'GES Kurulum Firması',
+      logo: '/logos/dmrtech.png',
+      description: 'Profesyonel kurulum ve bakım hizmetleri'
+    },
+    {
+      name: 'Tommatech',
+      type: 'Panel Üreticisi',
+      logo: '/logos/tommatech.png',
+      description: 'İleri teknoloji güneş paneli üretimi'
+    },
+    {
+      name: 'CW Enerji',
+      type: 'Panel Üreticisi',
+      logo: '/logos/cw-enerji.png',
+      description: 'Yıllık 1.8 GW üretim kapasitesi'
     }
   ]
 
@@ -107,7 +113,7 @@ export function TrustSection() {
   ]
 
   return (
-    <section className="py-16 lg:py-24 bg-gray-50">
+    <section className="py-16 lg:py-24 bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
@@ -117,12 +123,12 @@ export function TrustSection() {
             <span>Güven & Kalite</span>
           </div>
           
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6">
             Neden Bize
             <span className="text-primary block">Güvenmelisiniz?</span>
           </h2>
           
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
             Sektörün önde gelen firmalarıyla işbirliği, uluslararası sertifikalar ve 
             binlerce mutlu müşteriyle güven yarattık.
           </p>
@@ -133,20 +139,20 @@ export function TrustSection() {
           {certifications.map((cert, index) => {
             const Icon = cert.icon
             return (
-              <Card key={index} className="group hover:shadow-lg transition-all duration-300 border-0 bg-white">
+              <Card key={index} className="group hover:shadow-lg transition-all duration-300 border-0 bg-white dark:bg-gray-800">
                 <CardContent className="p-6 text-center">
                   <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl ${cert.color} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
                     <Icon className="w-8 h-8" />
                   </div>
                   
-                  <h3 className="font-bold text-gray-900 mb-2 flex items-center justify-center">
+                  <h3 className="font-bold text-gray-900 dark:text-white mb-2 flex items-center justify-center">
                     {cert.title}
                     {cert.verified && (
                       <CheckCircle className="w-4 h-4 text-green-500 ml-2" />
                     )}
                   </h3>
                   
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
                     {cert.description}
                   </p>
                 </CardContent>
@@ -156,12 +162,12 @@ export function TrustSection() {
         </div>
 
         {/* Guarantees */}
-        <div className="bg-white rounded-3xl p-8 lg:p-12 mb-16 shadow-lg">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 lg:p-12 mb-16 shadow-lg">
           <div className="text-center mb-10">
-            <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+            <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-4">
               Kapsamlı Garanti Sistemi
             </h3>
-            <p className="text-gray-600 max-w-2xl mx-auto">
+            <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
               Yatırımınızın güvencesi altında uzun vadeli tasarruf yapın
             </p>
           </div>
@@ -174,10 +180,10 @@ export function TrustSection() {
                   <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-primary group-hover:text-white transition-colors">
                     <Icon className="w-8 h-8 text-primary" />
                   </div>
-                  <h4 className="font-semibold text-gray-900 mb-2">
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
                     {guarantee.title}
                   </h4>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
                     {guarantee.description}
                   </p>
                 </div>
@@ -189,23 +195,23 @@ export function TrustSection() {
         {/* Partners */}
         <div className="mb-16">
           <div className="text-center mb-10">
-            <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+            <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-4">
               Güvenilir Partnerlerimiz
             </h3>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-300">
               Dünya lideri markalarla işbirliği yaparak kaliteyi garanti ediyoruz
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {partners.map((partner, index) => (
-              <Card key={index} className="group hover:shadow-lg transition-all duration-300 bg-white border-0">
+              <Card key={index} className="group hover:shadow-lg transition-all duration-300 bg-white dark:bg-gray-800 border-0">
                 <CardContent className="p-6 text-center">
                   <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/10 transition-colors">
                     <Sun className="w-8 h-8 text-gray-400 group-hover:text-primary transition-colors" />
                   </div>
                   
-                  <h4 className="font-bold text-gray-900 mb-1">
+                  <h4 className="font-bold text-gray-900 dark:text-white mb-1">
                     {partner.name}
                   </h4>
                   
@@ -213,7 +219,7 @@ export function TrustSection() {
                     {partner.type}
                   </Badge>
                   
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-gray-600 dark:text-gray-300">
                     {partner.description}
                   </p>
                 </CardContent>

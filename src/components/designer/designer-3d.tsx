@@ -3,6 +3,7 @@
 import { Suspense, useRef, useState, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Grid, Box, Line, Html } from '@react-three/drei'
+import { Geometry, Base, Addition, Subtraction } from '@react-three/csg'
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Sun, Loader2 } from 'lucide-react'
@@ -20,7 +21,7 @@ interface Designer3DProps {
   }
 }
 
-// 3D House Component with South-Facing Roof
+// Enhanced 3D House Component with CSG for better roof-wall integration
 function House3D({ roofPoints, showRoof }: { roofPoints: Array<{ x: number; y: number; z: number }>, showRoof: boolean }) {
   const houseRef = useRef<THREE.Group>(null)
 
@@ -66,58 +67,23 @@ function House3D({ roofPoints, showRoof }: { roofPoints: Array<{ x: number; y: n
         </Box>
       </group>
 
-      {/* South-Facing Gabled Roof */}
-      <group position={[0, houseHeight, 0]}>
-        {/* South-facing roof surface (main solar panel area) */}
-        <mesh
-          position={[0, roofHeight/2 * Math.sin(roofAngle), -houseDepth/4]}
-          rotation={[roofAngle, 0, 0]}
-        >
-          <planeGeometry args={[houseWidth + 1, houseDepth/2 + 0.5]} />
-          <meshLambertMaterial
-            color="#cd853f"
-            side={THREE.DoubleSide}
-          />
-        </mesh>
+      {/* Super Simple Flat Roof - just a box! */}
+      <Box args={[houseWidth + 0.5, 0.3, houseDepth + 0.5]} position={[0, houseHeight + 0.15, 0]}>
+        <meshLambertMaterial color="#cd853f" />
+      </Box>
 
-        {/* North-facing roof surface */}
-        <mesh
-          position={[0, roofHeight/2 * Math.sin(roofAngle), houseDepth/4]}
-          rotation={[-roofAngle, 0, 0]}
-        >
-          <planeGeometry args={[houseWidth + 1, houseDepth/2 + 0.5]} />
-          <meshLambertMaterial
-            color="#a0522d"
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-
-        {/* Roof ridge */}
-        <Box args={[houseWidth + 1, 0.1, 0.2]} position={[0, roofHeight/2 * Math.sin(roofAngle) + 0.05, 0]}>
-          <meshLambertMaterial color="#8b4513" />
-        </Box>
-
-        {/* Roof edges/gutters */}
-        <Box args={[houseWidth + 1.2, 0.05, 0.1]} position={[0, 0, -houseDepth/2 - 0.2]}>
-          <meshLambertMaterial color="#708090" />
-        </Box>
-        <Box args={[houseWidth + 1.2, 0.05, 0.1]} position={[0, 0, houseDepth/2 + 0.2]}>
-          <meshLambertMaterial color="#708090" />
-        </Box>
-      </group>
-
-      {/* Chimney */}
-      <Box args={[0.8, 2, 0.8]} position={[houseWidth/3, houseHeight + roofHeight/2 + 1, 0]}>
+      {/* Chimney - positioned on flat roof */}
+      <Box args={[0.8, 1.5, 0.8]} position={[houseWidth/3, houseHeight + 0.3 + 0.75, 0]}>
         <meshLambertMaterial color="#8b0000" />
       </Box>
 
       {/* Roof Area Label */}
-      <Html position={[0, houseHeight + roofHeight + 0.5, -2]} center>
+      <Html position={[0, houseHeight + 1, -2]} center>
         <div className="bg-white/90 px-3 py-2 rounded-lg text-sm font-medium shadow-lg border">
           <div className="text-center">
-            <div className="font-bold text-primary">Güney Yönlü Çatı</div>
+            <div className="font-bold text-primary">Düz Çatı</div>
             <div className="text-xs text-gray-600 mt-1">
-              {((houseWidth + 1) * (houseDepth/2 + 0.5)).toFixed(0)} m² Solar Alan
+              {(houseWidth * houseDepth).toFixed(0)} m² Solar Alan
             </div>
             <div className="text-xs text-green-600 mt-1">
               ⭐ Optimal Güneş Konumu
@@ -398,8 +364,8 @@ function Scene3D({ designerState, updateDesignerState, showLayers, sunTime, sele
       {showLayers.panels && designerState.panels.map((panel) => (
         <SolarPanel3D
           key={panel.id}
-          position={[panel.position.x, panel.position.y + 3.5, panel.position.z]} // Adjusted for house roof height
-          rotation={[Math.PI / 6, panel.rotation.y, panel.rotation.z]} // Match roof angle
+          position={[panel.position.x, panel.position.y, panel.position.z]} // Use exact panel position
+          rotation={[panel.rotation.x, panel.rotation.y, panel.rotation.z]} // Use panel rotation
           panelType={panel.type}
           selected={selectedPanel === panel.id}
           onClick={() => handlePanelClick(panel.id)}
@@ -453,17 +419,15 @@ export function Designer3D(props: Designer3DProps) {
   }, [])
 
   const addPanel = (position: [number, number, number]) => {
-    // Auto-position panels on south-facing roof
+    // Simple flat roof positioning
     const houseHeight = 3
-    const roofHeight = 2.5
-    const roofAngle = Math.PI / 6
-    const adjustedY = houseHeight + (roofHeight / 2) * Math.sin(roofAngle)
-    const adjustedZ = position[2] < 0 ? position[2] : -2 // Keep on south side
+    const roofThickness = 0.3
+    const adjustedY = houseHeight + roofThickness + 0.1 // Just above flat roof
 
     const newPanel = {
       id: `panel_${Date.now()}`,
-      position: { x: position[0], y: adjustedY, z: adjustedZ },
-      rotation: { x: Math.PI / 6, y: 0, z: 0 }, // Match roof angle
+      position: { x: position[0], y: adjustedY, z: position[2] },
+      rotation: { x: 0, y: 0, z: 0 }, // Flat - no angle
       type: 'JINKO_540W',
       power: 540
     }
@@ -477,8 +441,10 @@ export function Designer3D(props: Designer3DProps) {
     const panelWidth = 1
     const panelHeight = 2
     const spacing = 0.2
-    const roofWidth = 6
-    const roofDepth = 4
+    const houseWidth = 12
+    const houseDepth = 8
+    const roofWidth = houseWidth - 1 // Leave margin
+    const roofDepth = houseDepth - 1 // Leave margin
 
     const cols = Math.floor(roofWidth / (panelWidth + spacing))
     const rows = Math.floor(roofDepth / (panelHeight + spacing))
@@ -487,13 +453,13 @@ export function Designer3D(props: Designer3DProps) {
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const x = -roofWidth/2 + col * (panelWidth + spacing) + panelWidth/2
-        const z = -4 + row * (panelHeight + spacing) + panelHeight/2
-        const y = 3.5 + (z + 2) * Math.tan(Math.PI / 6)
+        const z = -roofDepth/2 + row * (panelHeight + spacing) + panelHeight/2
+        const y = 3 + 0.3 + 0.1 // houseHeight + roofThickness + margin
 
         newPanels.push({
           id: `panel_auto_${row}_${col}`,
           position: { x, y, z },
-          rotation: { x: Math.PI / 6, y: 0, z: 0 },
+          rotation: { x: 0, y: 0, z: 0 }, // Flat panels
           type: 'JINKO_540W',
           power: 540
         })

@@ -54,12 +54,9 @@ export function CompaniesSection() {
       const data: CompaniesResponse = await response.json()
 
       if (data.success) {
-        // If no companies from database, show sample data for demo
-        if (data.data.length === 0) {
-          setCompanies(getSampleCompanies())
-        } else {
-          setCompanies(data.data)
-        }
+        // Only show sample companies, ignore database companies for now
+        const sampleCompanies = getSampleCompanies()
+        setCompanies(sampleCompanies)
       } else {
         setError(data.error || 'Şirket bilgileri alınamadı')
       }
@@ -73,73 +70,63 @@ export function CompaniesSection() {
 
   const getSampleCompanies = (): Company[] => [
     {
-      id: 'sample-1',
-      name: 'EnerjiTek Solar',
-      type: 'INSTALLER',
-      location: 'Bakırköy, İstanbul',
-      description: 'Konut ve ticari GES kurulum uzmanı. 10 yılı aşkın deneyimle güvenilir enerji çözümleri.',
-      rating: 4.8,
-      website: 'www.enerjitek.com.tr',
-      projectCount: 125,
-      reviewCount: 89,
-      specialization: 'GES Kurulum Firması'
-    },
-    {
-      id: 'sample-2',
-      name: 'Güneş Panel Teknoloji',
+      id: 'havensis',
+      name: 'Havensis',
       type: 'MANUFACTURER',
-      location: 'Çankaya, Ankara',
-      description: 'Yüksek verimli güneş paneli üretimi ve AR-GE çalışmaları ile sektörde öncü.',
-      rating: 4.6,
-      website: 'www.gunespanel.com.tr',
-      projectCount: 89,
-      reviewCount: 67,
+      location: 'İstanbul',
+      description: 'Türkiye\'nin öncü güneş enerjisi çözümleri sağlayıcısı. Yenilikçi teknolojiler ve kaliteli üretim.',
+      rating: 4.9,
+      website: 'havensis.com',
+      projectCount: 750,
+      reviewCount: 220,
       specialization: 'Panel & Ekipman Üreticisi'
     },
     {
-      id: 'sample-3',
-      name: 'Yeşil Enerji Danışmanlık',
-      type: 'CONSULTANT',
-      location: 'Konak, İzmir',
-      description: 'Enerji verimliliği ve GES projelerinde uzman danışmanlık hizmetleri.',
-      rating: 4.9,
-      website: 'www.yesilenerji.com.tr',
-      projectCount: 156,
-      reviewCount: 112,
-      specialization: 'Danışmanlık Firması'
+      id: 'hagel',
+      name: 'Hagel',
+      type: 'MANUFACTURER',
+      location: 'Ankara',
+      description: 'Yüksek verimli güneş paneli üretimi ve enerji depolama sistemleri konusunda uzman.',
+      rating: 4.8,
+      website: 'hagel.com.tr',
+      projectCount: 650,
+      reviewCount: 180,
+      specialization: 'Panel & Ekipman Üreticisi'
     },
     {
-      id: 'sample-4',
-      name: 'Solar Yatırım Bankası',
-      type: 'BANK',
-      location: 'Levent, İstanbul',
-      description: 'GES projelerine özel finansman çözümleri ve yatırım danışmanlığı.',
-      rating: 4.5,
-      website: 'www.solaryatirim.com.tr',
-      projectCount: 78,
-      reviewCount: 45,
-      specialization: 'Finansal Kuruluş'
-    },
-    {
-      id: 'sample-5',
-      name: 'Akıllı Enerji Sistemleri',
+      id: 'dmrtech',
+      name: 'DMRTech',
       type: 'INSTALLER',
-      location: 'Nilüfer, Bursa',
-      description: 'Endüstriyel ve tarımsal GES kurulumu. Akıllı enerji yönetim sistemleri.',
+      location: 'İzmir',
+      description: 'Profesyonel GES kurulum ve bakım hizmetleri. Endüstriyel ve konut projelerinde uzman.',
       rating: 4.7,
-      projectCount: 203,
-      reviewCount: 178,
+      website: 'dmrtech.com.tr',
+      projectCount: 420,
+      reviewCount: 150,
       specialization: 'GES Kurulum Firması'
     },
     {
-      id: 'sample-6',
-      name: 'Anadolu Panel',
+      id: 'tommatech',
+      name: 'Tommatech',
       type: 'MANUFACTURER',
-      location: 'Kayışdağı, İstanbul',
-      description: 'Türkiye\'nin önde gelen yerli panel üreticisi. İhracat odaklı üretim.',
-      rating: 4.4,
-      projectCount: 67,
-      reviewCount: 34,
+      location: 'Bursa',
+      description: 'İleri teknoloji güneş paneli üretimi ve AR-GE çalışmaları ile sektörde öncü kuruluş.',
+      rating: 4.8,
+      website: 'tommatech.com',
+      projectCount: 580,
+      reviewCount: 195,
+      specialization: 'Panel & Ekipman Üreticisi'
+    },
+    {
+      id: 'cw-enerji',
+      name: 'CW Enerji',
+      type: 'MANUFACTURER',
+      location: 'Antalya OSB, Antalya',
+      description: '2010\'dan beri güneş enerjisi alanında faaliyet gösteren. Yıllık 1.8 GW panel üretim kapasitesi ile Türkiye\'nin öncü firmalarından.',
+      rating: 4.9,
+      website: 'cw-enerji.com',
+      projectCount: 850,
+      reviewCount: 245,
       specialization: 'Panel & Ekipman Üreticisi'
     }
   ]
@@ -196,7 +183,7 @@ export function CompaniesSection() {
   }
 
   return (
-    <section className="py-16 lg:py-24 bg-white">
+    <section id="companies-section" className="py-16 lg:py-24 bg-white">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Section Header */}
@@ -318,7 +305,7 @@ export function CompaniesSection() {
                 className="px-8"
                 asChild
               >
-                <Link href="/auth/login">
+                <Link href="/auth/signin">
                   <Eye className="w-5 h-5 mr-2" />
                   Daha Fazlası İçin Giriş Yapın
                 </Link>

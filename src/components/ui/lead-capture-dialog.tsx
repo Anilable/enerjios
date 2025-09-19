@@ -31,20 +31,41 @@ export function LeadCaptureDialog({
     e.preventDefault()
     setIsSubmitting(true)
 
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Here you would normally send the data to your API
-    console.log('Lead captured:', formData)
-    
-    setIsSubmitting(false)
-    setIsOpen(false)
-    
-    // Reset form
-    setFormData({ name: '', phone: '', city: '', preferredTime: '' })
-    
-    // Show success message (you might want to use a toast here)
-    alert('Teşekkürler! En kısa sürede sizi arayacağız.')
+    try {
+      const response = await fetch('/api/leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          phone: formData.phone,
+          city: formData.city,
+          preferredTime: formData.preferredTime,
+          source: 'Website - Lead Capture Dialog',
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to submit lead')
+      }
+
+      const result = await response.json()
+      console.log('Lead captured:', result)
+
+      setIsSubmitting(false)
+      setIsOpen(false)
+
+      // Reset form
+      setFormData({ name: '', phone: '', city: '', preferredTime: '' })
+
+      // Show success message
+      alert('Teşekkürler! En kısa sürede sizi arayacağız.')
+    } catch (error) {
+      console.error('Error submitting lead:', error)
+      setIsSubmitting(false)
+      alert('Bir hata oluştu. Lütfen tekrar deneyin.')
+    }
   }
 
   return (

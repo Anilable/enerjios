@@ -117,7 +117,7 @@ export function FeaturesSection() {
   ]
 
   return (
-    <section className="py-16 lg:py-24 bg-white">
+    <section className="py-16 lg:py-24 bg-white dark:bg-gray-900">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
@@ -127,12 +127,12 @@ export function FeaturesSection() {
             <span>Güneş Enerjisi Çözümleri</span>
           </div>
           
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6">
             Her İhtiyaca Özel
             <span className="text-primary block">GES Sistemleri</span>
           </h2>
           
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
             Evden fabrikaya, çiftlikten ofise kadar her alan için özel tasarlanmış güneş enerjisi sistemleri. 
             25 yıllık garantili çözümlerle temiz enerjiye geçiş yapın.
           </p>
@@ -143,7 +143,7 @@ export function FeaturesSection() {
           {features.map((feature, index) => {
             const Icon = feature.icon
             return (
-              <Card key={index} className={`group hover:shadow-xl transition-all duration-300 border-0 ${feature.bgColor} hover:scale-105`}>
+              <Card key={index} className={`group hover:shadow-xl transition-all duration-300 border-0 ${feature.bgColor} dark:bg-gray-800 hover:scale-105`}>
                 <CardHeader className="text-center pb-4">
                   <div className="relative inline-block">
                     <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl bg-white shadow-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
@@ -156,11 +156,11 @@ export function FeaturesSection() {
                     )}
                   </div>
                   
-                  <CardTitle className="text-lg font-bold text-gray-900 mb-2">
+                  <CardTitle className="text-lg font-bold text-gray-900 dark:text-white mb-2">
                     {feature.title}
                   </CardTitle>
                   
-                  <CardDescription className="text-gray-600 text-sm">
+                  <CardDescription className="text-gray-600 dark:text-gray-300 text-sm">
                     {feature.description}
                   </CardDescription>
                 </CardHeader>
@@ -168,7 +168,7 @@ export function FeaturesSection() {
                 <CardContent className="pt-0">
                   <ul className="space-y-2 mb-6">
                     {feature.benefits.map((benefit, i) => (
-                      <li key={i} className="flex items-center text-sm text-gray-600">
+                      <li key={i} className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                         <div className="w-1.5 h-1.5 bg-primary rounded-full mr-2" />
                         {benefit}
                       </li>
@@ -177,7 +177,7 @@ export function FeaturesSection() {
 
                   <Button 
                     variant="ghost" 
-                    className="w-full group-hover:bg-white group-hover:text-primary transition-colors"
+                    className="w-full group-hover:bg-white dark:group-hover:bg-gray-700 group-hover:text-primary transition-colors"
                     asChild
                   >
                     <Link href={feature.href}>
@@ -192,12 +192,12 @@ export function FeaturesSection() {
         </div>
 
         {/* Advantages Grid */}
-        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl p-8 lg:p-12">
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-3xl p-8 lg:p-12">
           <div className="text-center mb-12">
-            <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+            <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-4">
               Neden EnerjiOS?
             </h3>
-            <p className="text-gray-600 max-w-2xl mx-auto">
+            <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
               Türkiye'nin en kapsamlı GES platformu ile güneş enerjisinde fark yaratıyoruz
             </p>
           </div>
@@ -211,10 +211,10 @@ export function FeaturesSection() {
                     <Icon className="w-6 h-6 text-primary group-hover:text-white" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
                       {advantage.title}
                     </h4>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
                       {advantage.description}
                     </p>
                   </div>

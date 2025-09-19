@@ -19,7 +19,8 @@ import {
   FileText,
   Users,
   HelpCircle,
-  ArrowLeft
+  ArrowLeft,
+  TrendingUp
 } from 'lucide-react'
 import { getRoleName, getRoleColor } from '@/lib/role-utils'
 import { MobileMenuButton } from '@/components/mobile/MobileMenuButton'
@@ -38,6 +39,7 @@ export function Header({ onSidebarToggle }: HeaderProps) {
     { href: '/calculator', label: 'GES Hesaplayıcı', icon: Calculator },
     { href: '/products', label: 'Ürünler', icon: FileText },
     { href: '/companies', label: 'Firmalar', icon: Users },
+    { href: '/partner/register', label: 'Partner Ol', icon: TrendingUp },
     { href: '/help', label: 'Yardım', icon: HelpCircle },
   ]
 
@@ -84,6 +86,47 @@ export function Header({ onSidebarToggle }: HeaderProps) {
             <nav className="hidden lg:flex items-center space-x-6">
               {publicNavItems.map((item) => {
                 const Icon = item.icon
+
+                // Special handling for "Firmalar" link
+                if (item.href === '/companies') {
+                  return (
+                    <button
+                      key={item.href}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+
+                        console.log('Firmalar clicked, current path:', window.location.pathname)
+
+                        // If we're on homepage, scroll to companies section
+                        if (window.location.pathname === '/') {
+                          const companiesSection = document.querySelector('#companies-section')
+                          console.log('Companies section found:', companiesSection)
+                          if (companiesSection) {
+                            companiesSection.scrollIntoView({ behavior: 'smooth' })
+                          } else {
+                            console.log('Companies section not found, will wait and retry')
+                            setTimeout(() => {
+                              const retrySection = document.querySelector('#companies-section')
+                              if (retrySection) {
+                                retrySection.scrollIntoView({ behavior: 'smooth' })
+                              }
+                            }, 100)
+                          }
+                        } else {
+                          // If we're on another page, go to homepage and then scroll
+                          console.log('Not on homepage, redirecting to /#companies-section')
+                          window.location.href = '/#companies-section'
+                        }
+                      }}
+                      className="flex items-center space-x-1 text-sm font-medium text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </button>
+                  )
+                }
+
                 return (
                   <Link
                     key={item.href}

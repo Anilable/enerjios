@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { ProjectRequest, PROJECT_REQUEST_STATUS_LABELS, PROJECT_TYPE_LABELS } from '@/types/project-request'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
@@ -53,7 +54,11 @@ export function ProjectRequestDetails({
   onAddNote,
   hasQuote = false
 }: ProjectRequestDetailsProps) {
+  const { data: session } = useSession()
   const [newNote, setNewNote] = useState('')
+
+  // Check if user can see financial information
+  const canViewFinancials = session?.user?.role !== 'INSTALLATION_TEAM'
   const [isAddingNote, setIsAddingNote] = useState(false)
 
   if (!request) return null
@@ -192,7 +197,7 @@ export function ProjectRequestDetails({
                       <Target className="w-3 h-3" />
                       <span className="text-xs font-medium">{request.estimatedCapacity} kW</span>
                     </div>
-                    {request.estimatedBudget && (
+                    {request.estimatedBudget && canViewFinancials && (
                       <div className="flex items-center gap-1 text-white/90">
                         <DollarSign className="w-3 h-3" />
                         <span className="text-xs font-medium">{formatCurrency(request.estimatedBudget)}</span>
@@ -333,7 +338,7 @@ export function ProjectRequestDetails({
                   <div className="text-xs text-blue-600">Tahmini güç kapasitesi</div>
                 </div>
                 
-                {request.estimatedBudget && (
+                {request.estimatedBudget && canViewFinancials && (
                   <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 border border-green-100">
                     <div className="flex items-center gap-2 mb-1">
                       <DollarSign className="w-4 h-4 text-green-600" />

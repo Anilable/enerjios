@@ -19,8 +19,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Only allow ADMIN, COMPANY, and assigned engineers to view notes
-    if (!['ADMIN', 'COMPANY'].includes(session.user.role)) {
+    // Only allow ADMIN, COMPANY, and INSTALLATION_TEAM to view notes
+    if (!['ADMIN', 'COMPANY', 'INSTALLATION_TEAM'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -72,8 +72,8 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Only allow ADMIN and COMPANY roles to create notes
-    if (!['ADMIN', 'COMPANY'].includes(session.user.role)) {
+    // Only allow ADMIN, COMPANY, and INSTALLATION_TEAM roles to create notes
+    if (!['ADMIN', 'COMPANY', 'INSTALLATION_TEAM'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

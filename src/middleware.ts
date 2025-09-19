@@ -75,7 +75,7 @@ export default withAuth(
     // Dashboard routes - accessible by all authenticated users
     if (pathname.startsWith("/dashboard")) {
       // All authenticated users with ACTIVE status can access dashboard
-      if (!["ADMIN", "COMPANY", "CUSTOMER", "FARMER"].includes(userRole)) {
+      if (!["ADMIN", "COMPANY", "CUSTOMER", "FARMER", "INSTALLATION_TEAM"].includes(userRole)) {
         return NextResponse.redirect(new URL("/unauthorized", req.url))
       }
     }
