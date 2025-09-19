@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useFinancialRates, useSolarIndustryRates } from '@/hooks/use-exchange-rates'
 import { useSession } from 'next-auth/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { FinancialDataGuard, usePermissions } from '@/components/ui/permission-guard'
 import {
   TrendingUp, TrendingDown, DollarSign, Euro,
   RefreshCw, AlertTriangle, Info, Zap,
@@ -19,7 +21,57 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 export function FinancialOverview() {
   const { data: session } = useSession()
+  const { hasPermission, userRole } = usePermissions()
   const isAdmin = session?.user?.role === 'ADMIN'
+  const canViewFinancialData = hasPermission('finance:read')
+
+  // For Installation Team, show limited technical data only
+  if (!canViewFinancialData) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5" />
+              Teknik Bilgiler
+            </CardTitle>
+            <CardDescription>
+              Kurulum ekibi için teknik veriler
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="p-4 border rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Zap className="w-4 h-4 text-blue-600" />
+                  <span className="font-medium">Sistem Bilgileri</span>
+                </div>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p>• Panel standartları: IEC 61215</p>
+                  <p>• İnverter sertifikası: CE, TÜRKAK</p>
+                  <p>• Kurulum standartı: TSE EN 62446</p>
+                  <p>• Güvenlik: IEC 60364-7-712</p>
+                </div>
+              </div>
+
+              <div className="p-4 border rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Calculator className="w-4 h-4 text-green-600" />
+                  <span className="font-medium">Teknik Gereksinimler</span>
+                </div>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p>• Minimum çatı açısı: 15°</p>
+                  <p>• Azimuth toleransı: ±45°</p>
+                  <p>• Gölgelendirme: %5 max</p>
+                  <p>• Yük kapasitesi: 20 kg/m²</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   const [editMode, setEditMode] = useState(false)
   const [updating, setUpdating] = useState(false)

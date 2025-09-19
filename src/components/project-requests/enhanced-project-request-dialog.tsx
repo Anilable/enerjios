@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { ProjectRequest, ProjectType, PROJECT_TYPE_LABELS, REQUEST_SOURCE_LABELS } from '@/types/project-request'
+import { ProjectRequest, ProjectType, PROJECT_TYPE_LABELS, REQUEST_SOURCE_LABELS, RequestSource } from '@/types/project-request'
 
 // Type for creating a new project request (missing server-generated fields, but making some optional)
 type CreateProjectRequestData = Omit<ProjectRequest, 'id' | 'requestNumber' | 'status' | 'hasPhotos' | 'createdAt' | 'updatedAt' | 'statusHistory' | 'customerPhone' | 'address' | 'description' | 'estimatedCapacity' | 'customerId' | 'estimatedBudget' | 'estimatedRevenue' | 'scheduledVisitDate' | 'assignedEngineerId'> & {
@@ -31,11 +31,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
   Home,
   Building,
   Factory,
@@ -64,7 +64,10 @@ import {
   X,
   CheckCircle,
   AlertTriangle,
-  Info
+  Info,
+  UserCheck,
+  Users,
+  Star
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -87,15 +90,12 @@ const sourceIcons = {
   WEBSITE: Globe,
   PHONE: Phone,
   EMAIL: Mail,
-  REFERRAL: User,
+  REFERRAL: Users,
   SOCIAL_MEDIA: MessageCircle,
-  INSTAGRAM: Instagram,
-  FACEBOOK: Facebook,
-  LINKEDIN: Linkedin,
-  TWITTER: Twitter,
+  WALK_IN: UserCheck,
+  PARTNER_REFERRAL: Star,
   WHATSAPP: MessageCircle,
-  GOOGLE_ADS: Search,
-  YOUTUBE: Youtube
+  OTHER: FileText
 }
 
 

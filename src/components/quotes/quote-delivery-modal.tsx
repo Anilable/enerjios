@@ -75,7 +75,11 @@ export function QuoteDeliveryModal({
   const handleSend = async () => {
     const enabledMethods = deliveryMethods.filter(method => method.enabled && method.recipient.trim())
 
+    console.log('🚀 DELIVERY: All methods:', deliveryMethods)
+    console.log('🚀 DELIVERY: Enabled methods:', enabledMethods)
+
     if (enabledMethods.length === 0) {
+      console.log('❌ DELIVERY: No enabled methods found!')
       return
     }
 

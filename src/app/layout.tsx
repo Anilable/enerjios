@@ -73,7 +73,7 @@ export default function RootLayout({
       <body
         className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
       >
-        <ThemeProvider defaultTheme="light">
+        <ThemeProvider defaultTheme="system">
           <AuthProvider>
             {children}
             <Toaster position="top-right" />

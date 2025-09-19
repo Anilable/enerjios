@@ -80,7 +80,15 @@ export type Permission =
   | 'content:delete'
   | 'content:publish'
 
-export type Role = 'ADMIN' | 'COMPANY' | 'CUSTOMER' | 'FARMER' | 'BANK' | 'SUPPORT'
+  // Installation Management
+  | 'installations:create'
+  | 'installations:read'
+  | 'installations:update'
+  | 'installations:delete'
+  | 'installations:schedule'
+  | 'installations:complete'
+
+export type Role = 'ADMIN' | 'COMPANY' | 'CUSTOMER' | 'FARMER' | 'BANK' | 'SUPPORT' | 'INSTALLATION_TEAM'
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ADMIN: [
@@ -95,7 +103,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'analytics:read', 'analytics:advanced', 'reports:create', 'reports:read', 'reports:export',
     'system:settings', 'system:monitoring', 'system:integrations', 'system:backups', 'system:logs',
     'designer:use', 'designer:advanced', 'calculator:use', 'calculator:advanced',
-    'content:create', 'content:read', 'content:update', 'content:delete', 'content:publish'
+    'content:create', 'content:read', 'content:update', 'content:delete', 'content:publish',
+    'installations:create', 'installations:read', 'installations:update', 'installations:delete', 'installations:schedule', 'installations:complete'
   ],
 
   COMPANY: [
@@ -107,7 +116,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'finance:read', 'finance:reports', 'finance:invoicing', 'finance:payments',
     'analytics:read', 'reports:create', 'reports:read', 'reports:export',
     'designer:use', 'designer:advanced', 'calculator:use', 'calculator:advanced',
-    'content:read'
+    'content:read',
+    'installations:read', 'installations:update', 'installations:schedule', 'installations:complete'
   ],
 
   CUSTOMER: [
@@ -152,6 +162,18 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'products:read',
     'analytics:read', 'reports:read',
     'content:read', 'content:create', 'content:update'
+  ],
+
+  INSTALLATION_TEAM: [
+    // Installation team permissions - restricted financial access
+    'projects:read', 'projects:update', // Can view and update installation status
+    'customers:read', // Can view customer contact information
+    'products:read', // Can view technical specifications
+    'reports:read', 'reports:create', // Can create installation reports
+    'content:read', // Can view documentation
+    'installations:read', 'installations:update', 'installations:schedule', 'installations:complete', // Full installation management
+    'designer:use' // Can use basic design tools for installation planning
+    // Notably excluded: quotes, finance, analytics, user management, pricing
   ]
 }
 
@@ -213,6 +235,14 @@ export class PermissionManager {
     // Customers and farmers can only access their own resources
     if ((this.userRole === 'CUSTOMER' || this.userRole === 'FARMER') && resourceOwnerId) {
       return this.userId === resourceOwnerId
+    }
+
+    // Installation team can access projects and customers but not financial data
+    if (this.userRole === 'INSTALLATION_TEAM') {
+      if (resourceType.includes('finance') || resourceType.includes('quote')) {
+        return false
+      }
+      return this.hasPermission(`${resourceType}:read` as Permission)
     }
 
     // Default permission check

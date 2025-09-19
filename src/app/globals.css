@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "../styles/mobile.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -84,16 +85,16 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: oklch(0.95 0.01 85);
+  background: hsl(var(--muted));
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: oklch(0.75 0.18 55);
+  background: hsl(var(--primary));
   border-radius: 2px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.7 0.2 55);
+  background: hsl(var(--primary) / 0.8);
 }
 
 /* Project card specific fixes */
@@ -481,6 +482,30 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground transition-colors duration-300;
+  }
+
+  /* Smooth theme transitions */
+  *,
+  *::before,
+  *::after {
+    transition:
+      background-color 200ms ease-in-out,
+      border-color 200ms ease-in-out,
+      color 200ms ease-in-out,
+      fill 200ms ease-in-out,
+      stroke 200ms ease-in-out,
+      opacity 200ms ease-in-out,
+      box-shadow 200ms ease-in-out,
+      transform 200ms ease-in-out,
+      filter 200ms ease-in-out,
+      backdrop-filter 200ms ease-in-out;
+  }
+
+  /* Disable transitions during theme change for immediate feedback */
+  html[data-theme-changing] *,
+  html[data-theme-changing] *::before,
+  html[data-theme-changing] *::after {
+    transition: none !important;
   }
 }

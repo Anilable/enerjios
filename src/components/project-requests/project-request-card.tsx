@@ -1,41 +1,49 @@
 'use client'
 
-import { ProjectRequest, PROJECT_TYPE_LABELS } from '@/types/project-request'
+import { ProjectRequest, PROJECT_TYPE_LABELS, REQUEST_SOURCE_LABELS, REQUEST_SOURCE_COLORS, REQUEST_SOURCE_ICONS } from '@/types/project-request'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { 
-  MapPin, 
-  Phone, 
-  Mail, 
-  Calendar, 
-  Zap, 
-  DollarSign, 
-  User, 
+import {
+  MapPin,
+  Phone,
+  Mail,
+  Calendar,
+  Zap,
+  DollarSign,
+  User,
   Camera,
   Clock,
   AlertTriangle,
   CheckCircle,
   MoreHorizontal,
   FileText,
-  Trash2
+  Trash2,
+  Edit
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
+import { useEffect, useState } from 'react'
+import { NotesIndicator } from './notes-indicator'
+import { StatusUpdateDropdown } from './status-update-dropdown'
 
 interface ProjectRequestCardProps {
   request: ProjectRequest
   onClick: () => void
   onDelete?: (id: string) => void
+  onStatusUpdate?: (requestId: string, newStatus: ProjectRequestStatus) => Promise<void>
   isDragging?: boolean
   canDelete?: boolean
 }
 
-export function ProjectRequestCard({ request, onClick, onDelete, isDragging = false, canDelete = false }: ProjectRequestCardProps) {
+export function ProjectRequestCard({ request, onClick, onDelete, onStatusUpdate, isDragging = false, canDelete = false }: ProjectRequestCardProps) {
   const router = useRouter()
+  const [hasQuote, setHasQuote] = useState(false)
+  const [quoteId, setQuoteId] = useState<string | null>(null)
+
   const {
     attributes,
     listeners,
@@ -51,6 +59,47 @@ export function ProjectRequestCard({ request, onClick, onDelete, isDragging = fa
     transition,
     opacity: isDragging || sortableIsDragging ? 0.5 : 1,
   }
+
+  // Check if a quote exists for this project request
+  useEffect(() => {
+    const checkForQuote = async () => {
+      try {
+        // Check for both drafts and real quotes
+        const [draftsResponse, quotesResponse] = await Promise.all([
+          fetch(`/api/quotes/drafts?projectRequestId=${request.id}`),
+          fetch(`/api/quotes?projectRequestId=${request.id}`)
+        ])
+
+        let foundQuote = false
+        let foundQuoteId = null
+
+        // Check drafts first
+        if (draftsResponse.ok) {
+          const drafts = await draftsResponse.json()
+          if (drafts && drafts.length > 0) {
+            foundQuote = true
+            foundQuoteId = drafts[0].id
+          }
+        }
+
+        // If no drafts found, check real quotes
+        if (!foundQuote && quotesResponse.ok) {
+          const quotes = await quotesResponse.json()
+          if (quotes && quotes.length > 0) {
+            foundQuote = true
+            foundQuoteId = quotes[0].id
+          }
+        }
+
+        setHasQuote(foundQuote)
+        setQuoteId(foundQuoteId)
+      } catch (error) {
+        console.error('Error checking for quote:', error)
+      }
+    }
+
+    checkForQuote()
+  }, [request.id])
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -167,20 +216,65 @@ export function ProjectRequestCard({ request, onClick, onDelete, isDragging = fa
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             {request.status !== 'LOST' && request.status !== 'CONVERTED_TO_PROJECT' && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
-                  console.log('Quote button clicked for:', request.id)
-                  router.push(`/dashboard/quotes/create/${request.id}`)
-                }}
-                title="Teklif Oluştur"
-              >
-                <FileText className="h-4 w-4" />
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
+                    if (hasQuote) {
+                      console.log('Edit quote button clicked for:', request.id)
+                      router.push(`/dashboard/quotes/create/${request.id}`)
+                    } else {
+                      console.log('Create quote button clicked for:', request.id)
+                      router.push(`/dashboard/quotes/create/${request.id}`)
+                    }
+                  }}
+                  title={hasQuote ? "Teklifi Düzenle" : "Teklif Oluştur"}
+                >
+                  {hasQuote ? <Edit className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                </Button>
+                {hasQuote && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-orange-50 hover:text-orange-600"
+                    onClick={async (e) => {
+                      e.stopPropagation()
+                      e.preventDefault()
+                      console.log('Request photo button clicked for:', request.id)
+                      // Create photo request for this project
+                      try {
+                        const response = await fetch('/api/photo-request/simple', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            projectRequestId: request.id,
+                            requestType: 'SITE_PHOTOS',
+                            notes: 'Müşteri teklif sonrası fotoğraf talebinde bulundu'
+                          })
+                        })
+                        if (response.ok) {
+                          const data = await response.json()
+                          alert(`Fotoğraf talebi oluşturuldu! Upload linki: ${data.uploadUrl}`)
+                        } else {
+                          alert('Fotoğraf talebi oluşturulamadı!')
+                        }
+                      } catch (error) {
+                        console.error('Error creating photo request:', error)
+                        alert('Hata oluştu!')
+                      }
+                    }}
+                    title="Fotoğraf Talep Et"
+                  >
+                    <Camera className="h-4 w-4" />
+                  </Button>
+                )}
+              </>
             )}
             <Button 
               variant="ghost" 
@@ -200,18 +294,28 @@ export function ProjectRequestCard({ request, onClick, onDelete, isDragging = fa
       </CardHeader>
 
       <CardContent className="project-card-content pt-0 space-y-3">
-        {/* Project Type & Priority */}
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <Badge variant="outline" className="text-xs truncate max-w-[110px] flex-shrink">
+        {/* Project Type, Priority & Source */}
+        <div className="flex items-center justify-between gap-1 mb-3 flex-wrap">
+          <Badge variant="outline" className="text-xs truncate max-w-[90px] flex-shrink">
             {PROJECT_TYPE_LABELS[request.projectType]}
           </Badge>
-          <Badge 
-            variant="outline" 
-            className={`text-xs flex items-center gap-1 flex-shrink-0 ${getPriorityColor(request.priority)}`}
-          >
-            {getPriorityIcon(request.priority)}
-            <span className="hidden sm:inline">{getPriorityLabel(request.priority)}</span>
-          </Badge>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <Badge
+              variant="outline"
+              className={`text-xs flex items-center gap-1 ${getPriorityColor(request.priority)}`}
+            >
+              {getPriorityIcon(request.priority)}
+              <span className="hidden sm:inline">{getPriorityLabel(request.priority)}</span>
+            </Badge>
+            <Badge
+              variant="outline"
+              className={`text-xs flex items-center gap-1 ${REQUEST_SOURCE_COLORS[request.source].badge}`}
+              title={`Kaynak: ${REQUEST_SOURCE_LABELS[request.source]}`}
+            >
+              <span className="text-xs">{REQUEST_SOURCE_ICONS[request.source]}</span>
+              <span className="hidden lg:inline">{REQUEST_SOURCE_LABELS[request.source]}</span>
+            </Badge>
+          </div>
         </div>
 
         {/* Key Details */}
@@ -286,13 +390,42 @@ export function ProjectRequestCard({ request, onClick, onDelete, isDragging = fa
           </div>
         )}
 
-        {/* Tags and Photos */}
+        {/* Status Update and Actions */}
         <div className="flex items-center justify-between gap-2 border-t pt-2">
-          <div className="flex flex-wrap gap-1 min-w-0 flex-1">
+          <div className="flex items-center gap-1">
+            {onStatusUpdate && (
+              <StatusUpdateDropdown
+                request={request}
+                onStatusUpdate={onStatusUpdate}
+                variant="compact"
+                className="h-6"
+              />
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {request.hasPhotos && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
+                <Camera className="w-3 h-3" />
+                <span className="hidden sm:inline">Fotoğraf</span>
+              </div>
+            )}
+            <NotesIndicator
+              projectRequestId={request.id}
+              customerName={request.customerName}
+              compact={true}
+              showCount={true}
+            />
+          </div>
+        </div>
+
+        {/* Tags */}
+        {request.tags && request.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
             {request.tags.slice(0, 2).map((tag, index) => (
-              <Badge 
-                key={index} 
-                variant="secondary" 
+              <Badge
+                key={index}
+                variant="secondary"
                 className="text-xs px-2 py-0.5 bg-primary/5 text-primary truncate max-w-[70px] h-5"
                 title={tag}
               >
@@ -305,14 +438,7 @@ export function ProjectRequestCard({ request, onClick, onDelete, isDragging = fa
               </Badge>
             )}
           </div>
-          
-          {request.hasPhotos && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
-              <Camera className="w-3 h-3" />
-              <span className="hidden sm:inline">Fotoğraf</span>
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-between text-xs text-muted-foreground border-t pt-2 gap-2 mt-auto">

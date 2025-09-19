@@ -3,6 +3,7 @@ import { FeaturesSection } from '@/components/sections/features-section'
 import { CalculatorSection } from '@/components/sections/calculator-section'
 import { TestimonialsSection } from '@/components/sections/testimonials-section'
 import { TrustSection } from '@/components/sections/trust-section'
+import { CompaniesSection } from '@/components/sections/companies-section'
 import { PublicLayout } from '@/components/layout/dashboard-layout'
 
 export default function HomePage() {
@@ -13,6 +14,7 @@ export default function HomePage() {
       <CalculatorSection />
       <TestimonialsSection />
       <TrustSection />
+      <CompaniesSection />
     </PublicLayout>
   )
 }

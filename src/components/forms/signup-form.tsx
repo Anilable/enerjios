@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { AlertCircle, Eye, EyeOff, Sun, Building, User, Tractor } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, Sun, Building, User, Tractor, Factory } from 'lucide-react'
 
 export function SignUpForm() {
   const router = useRouter()
@@ -18,22 +18,36 @@ export function SignUpForm() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: '',
-    companyName: '',
-    taxNumber: '',
+    userType: '',
+    // Personal info
+    firstName: '',
+    lastName: '',
     phone: '',
     city: '',
+    // Corporate info
+    companyName: '',
+    taxNumber: '',
+    sector: '',
+    // GES Company info
+    specializations: [],
+    // Farmer info
+    farmName: '',
+    farmLocation: '',
+    farmSize: '',
+    crops: [],
   })
   
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
+    setSuccess('')
 
     // Validation
     if (formData.password !== formData.confirmPassword) {
@@ -48,8 +62,55 @@ export function SignUpForm() {
       return
     }
 
-    if (!formData.role) {
-      setError('Lütfen hesap tipini seçin')
+    if (!formData.userType) {
+      setError('Lütfen kullanıcı tipini seçin')
+      setIsLoading(false)
+      return
+    }
+
+    // User type specific validation
+    if (formData.userType === 'kurumsal') {
+      if (!formData.companyName || !formData.taxNumber) {
+        setError('Kurumsal hesap için firma adı ve vergi numarası gereklidir')
+        setIsLoading(false)
+        return
+      }
+    }
+
+    if (formData.userType === 'ges-firmasi') {
+      if (!formData.companyName || !formData.taxNumber) {
+        setError('GES firması hesabı için firma adı ve vergi numarası gereklidir')
+        setIsLoading(false)
+        return
+      }
+    }
+
+    if (formData.userType === 'ciftci') {
+      if (!formData.farmName || !formData.farmLocation) {
+        setError('Çiftçi hesabı için çiftlik adı ve lokasyon gereklidir')
+        setIsLoading(false)
+        return
+      }
+    }
+
+    if ((formData.userType === 'bireysel' || formData.userType === 'ciftci') && (!formData.firstName || !formData.lastName)) {
+      setError('Ad ve soyad alanları gereklidir')
+      setIsLoading(false)
+      return
+    }
+
+    // Validate tax number format for companies
+    if ((formData.userType === 'kurumsal' || formData.userType === 'ges-firmasi') && formData.taxNumber) {
+      if (!/^\d{10}$/.test(formData.taxNumber)) {
+        setError('Vergi numarası 10 haneli olmalıdır')
+        setIsLoading(false)
+        return
+      }
+    }
+
+    // Validate phone number format
+    if (formData.phone && !/^[0-9\s\-\+\(\)]{10,}$/.test(formData.phone.replace(/\s/g, ''))) {
+      setError('Geçerli bir telefon numarası girin')
       setIsLoading(false)
       return
     }
@@ -60,7 +121,13 @@ export function SignUpForm() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          // Set name field for API compatibility
+          name: formData.userType === 'bireysel' || formData.userType === 'ciftci'
+            ? `${formData.firstName} ${formData.lastName}`.trim()
+            : formData.name
+        }),
       })
 
       const result = await response.json()
@@ -69,8 +136,11 @@ export function SignUpForm() {
         throw new Error(result.message || 'Kayıt yapılırken bir hata oluştu')
       }
 
-      // Redirect to signin with success message
-      router.push('/auth/signin?message=Kayıt başarılı! Giriş yapabilirsiniz.')
+      // Show success message and redirect
+      setSuccess('Kayıt başarılı! Giriş sayfasına yönlendiriliyorsunuz...')
+      setTimeout(() => {
+        router.push('/auth/signin?message=Kayıt başarılı! Giriş yapabilirsiniz.')
+      }, 2000)
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Kayıt yapılırken bir hata oluştu')
     } finally {
@@ -82,15 +152,41 @@ export function SignUpForm() {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'COMPANY':
+  const getUserTypeIcon = (userType: string) => {
+    switch (userType) {
+      case 'bireysel':
+        return <User className="h-4 w-4" />
+      case 'kurumsal':
         return <Building className="h-4 w-4" />
-      case 'FARMER':
+      case 'ges-firmasi':
+        return <Factory className="h-4 w-4" />
+      case 'ciftci':
         return <Tractor className="h-4 w-4" />
       default:
         return <User className="h-4 w-4" />
     }
+  }
+
+  const getUserTypeDescription = (userType: string) => {
+    switch (userType) {
+      case 'bireysel':
+        return 'Ev güneş enerjisi sistemi için bireysel başvuru'
+      case 'kurumsal':
+        return 'İşletme güneş enerjisi sistemi için kurumsal başvuru'
+      case 'ges-firmasi':
+        return 'GES kurulum ve danışmanlık hizmeti veren firma'
+      case 'ciftci':
+        return 'Tarımsal güneş enerjisi sistemi için çiftçi başvurusu'
+      default:
+        return ''
+    }
+  }
+
+  const handleArrayFieldChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value.split(',').map(item => item.trim()).filter(item => item.length > 0)
+    }))
   }
 
   return (
@@ -116,85 +212,295 @@ export function SignUpForm() {
           </div>
         )}
 
+        {success && (
+          <div className="flex items-center space-x-2 text-sm text-green-600 bg-green-50 p-3 rounded-md">
+            <div className="h-4 w-4 rounded-full bg-green-600 flex items-center justify-center">
+              <div className="h-2 w-2 bg-white rounded-full" />
+            </div>
+            <span>{success}</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="role">Hesap Tipi</Label>
-            <Select
-              value={formData.role}
-              onValueChange={(value) => handleInputChange('role', value)}
-              required
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Hesap tipini seçin" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="CUSTOMER">
-                  <div className="flex items-center space-x-2">
-                    <User className="h-4 w-4" />
-                    <span>Bireysel Müşteri</span>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="userType">Kullanıcı Tipi</Label>
+              <p className="text-sm text-gray-600">Size uygun olan kullanıcı tipini seçin</p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              {[
+                { value: 'bireysel', label: 'Bireysel', icon: <User className="h-5 w-5" /> },
+                { value: 'kurumsal', label: 'Kurumsal', icon: <Building className="h-5 w-5" /> },
+                { value: 'ges-firmasi', label: 'GES Firması', icon: <Factory className="h-5 w-5" /> },
+                { value: 'ciftci', label: 'Çiftçi', icon: <Tractor className="h-5 w-5" /> }
+              ].map((option) => (
+                <div
+                  key={option.value}
+                  className={`relative flex cursor-pointer rounded-lg border p-4 transition-colors ${
+                    formData.userType === option.value
+                      ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                  onClick={() => handleInputChange('userType', option.value)}
+                >
+                  <div className="flex items-start space-x-3">
+                    <div className={`mt-0.5 ${
+                      formData.userType === option.value ? 'text-primary' : 'text-gray-400'
+                    }`}>
+                      {option.icon}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`text-sm font-medium ${
+                        formData.userType === option.value ? 'text-primary' : 'text-gray-900'
+                      }`}>
+                        {option.label}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {getUserTypeDescription(option.value)}
+                      </p>
+                    </div>
+                    <div className={`ml-2 h-5 w-5 rounded-full border-2 flex items-center justify-center ${
+                      formData.userType === option.value
+                        ? 'border-primary bg-primary'
+                        : 'border-gray-300'
+                    }`}>
+                      {formData.userType === option.value && (
+                        <div className="h-2 w-2 rounded-full bg-white" />
+                      )}
+                    </div>
                   </div>
-                </SelectItem>
-                <SelectItem value="COMPANY">
-                  <div className="flex items-center space-x-2">
-                    <Building className="h-4 w-4" />
-                    <span>GES Kurulum Firması</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="FARMER">
-                  <div className="flex items-center space-x-2">
-                    <Tractor className="h-4 w-4" />
-                    <span>Çiftçi / Tarımsal GES</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {formData.role === 'COMPANY' && (
-            <div className="space-y-2">
-              <Label htmlFor="companyName">Firma Adı</Label>
-              <Input
-                id="companyName"
-                type="text"
-                placeholder="ABC GES Enerji Ltd."
-                value={formData.companyName}
-                onChange={(e) => handleInputChange('companyName', e.target.value)}
-                required={formData.role === 'COMPANY'}
-                disabled={isLoading}
-              />
-            </div>
+          {/* Bireysel Fields */}
+          {formData.userType === 'bireysel' && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">Ad</Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="Ahmet"
+                    value={formData.firstName}
+                    onChange={(e) => handleInputChange('firstName', e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Soyad</Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Yılmaz"
+                    value={formData.lastName}
+                    onChange={(e) => handleInputChange('lastName', e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+            </>
           )}
 
-          {formData.role === 'COMPANY' && (
-            <div className="space-y-2">
-              <Label htmlFor="taxNumber">Vergi Numarası</Label>
-              <Input
-                id="taxNumber"
-                type="text"
-                placeholder="1234567890"
-                value={formData.taxNumber}
-                onChange={(e) => handleInputChange('taxNumber', e.target.value)}
-                required={formData.role === 'COMPANY'}
-                disabled={isLoading}
-              />
-            </div>
+          {/* Kurumsal Fields */}
+          {formData.userType === 'kurumsal' && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="companyName">Firma Adı</Label>
+                <Input
+                  id="companyName"
+                  type="text"
+                  placeholder="ABC Enerji Ltd. Şti."
+                  value={formData.companyName}
+                  onChange={(e) => handleInputChange('companyName', e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="taxNumber">Vergi Numarası</Label>
+                  <Input
+                    id="taxNumber"
+                    type="text"
+                    placeholder="1234567890"
+                    value={formData.taxNumber}
+                    onChange={(e) => handleInputChange('taxNumber', e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sector">Sektör</Label>
+                  <Input
+                    id="sector"
+                    type="text"
+                    placeholder="İmalat, Tarım, Hizmet vb."
+                    value={formData.sector}
+                    onChange={(e) => handleInputChange('sector', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Yetkili Kişi</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Ahmet Yılmaz"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+            </>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="name">
-              {formData.role === 'COMPANY' ? 'Yetkili Kişi' : 'Ad Soyad'}
-            </Label>
-            <Input
-              id="name"
-              type="text"
-              placeholder={formData.role === 'COMPANY' ? 'Ahmet Yılmaz' : 'Ad Soyad'}
-              value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-              required
-              disabled={isLoading}
-            />
-          </div>
-          
+          {/* GES Firması Fields */}
+          {formData.userType === 'ges-firmasi' && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="companyName">Firma Adı</Label>
+                <Input
+                  id="companyName"
+                  type="text"
+                  placeholder="XYZ GES Kurulum Ltd."
+                  value={formData.companyName}
+                  onChange={(e) => handleInputChange('companyName', e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="taxNumber">Vergi Numarası</Label>
+                  <Input
+                    id="taxNumber"
+                    type="text"
+                    placeholder="1234567890"
+                    value={formData.taxNumber}
+                    onChange={(e) => handleInputChange('taxNumber', e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="specializations">Uzmanlık Alanları</Label>
+                  <Input
+                    id="specializations"
+                    type="text"
+                    placeholder="Çatı GES, Arazi GES, Tarımsal GES"
+                    value={Array.isArray(formData.specializations) ? formData.specializations.join(', ') : ''}
+                    onChange={(e) => handleArrayFieldChange('specializations', e.target.value)}
+                    disabled={isLoading}
+                  />
+                  <p className="text-xs text-gray-500">Virgülle ayırarak yazın</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Yetkili Kişi</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Ahmet Yılmaz"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Çiftçi Fields */}
+          {formData.userType === 'ciftci' && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">Ad</Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="Ahmet"
+                    value={formData.firstName}
+                    onChange={(e) => handleInputChange('firstName', e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Soyad</Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Yılmaz"
+                    value={formData.lastName}
+                    onChange={(e) => handleInputChange('lastName', e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="farmName">Çiftlik Adı</Label>
+                <Input
+                  id="farmName"
+                  type="text"
+                  placeholder="Yılmaz Çiftliği"
+                  value={formData.farmName}
+                  onChange={(e) => handleInputChange('farmName', e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="farmLocation">Çiftlik Lokasyonu</Label>
+                  <Input
+                    id="farmLocation"
+                    type="text"
+                    placeholder="Edirne/Merkez"
+                    value={formData.farmLocation}
+                    onChange={(e) => handleInputChange('farmLocation', e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="farmSize">Çiftlik Büyüklüğü (Dönüm)</Label>
+                  <Input
+                    id="farmSize"
+                    type="number"
+                    placeholder="100"
+                    min="0"
+                    step="0.1"
+                    value={formData.farmSize}
+                    onChange={(e) => handleInputChange('farmSize', e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="crops">Yetiştirilen Ürünler</Label>
+                <Input
+                  id="crops"
+                  type="text"
+                  placeholder="Buğday, Mısır, Ayçiçeği"
+                  value={Array.isArray(formData.crops) ? formData.crops.join(', ') : ''}
+                  onChange={(e) => handleArrayFieldChange('crops', e.target.value)}
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-gray-500">Virgülle ayırarak yazın</p>
+              </div>
+            </>
+          )}
+          {/* Common Fields for All User Types */}
           <div className="space-y-2">
             <Label htmlFor="email">E-posta</Label>
             <Input
@@ -208,28 +514,30 @@ export function SignUpForm() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone">Telefon</Label>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder="0555 123 45 67"
-              value={formData.phone}
-              onChange={(e) => handleInputChange('phone', e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="city">Şehir</Label>
-            <Input
-              id="city"
-              type="text"
-              placeholder="İstanbul"
-              value={formData.city}
-              onChange={(e) => handleInputChange('city', e.target.value)}
-              disabled={isLoading}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefon</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="0555 123 45 67"
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                required
+                disabled={isLoading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="city">Şehir</Label>
+              <Input
+                id="city"
+                type="text"
+                placeholder="İstanbul"
+                value={formData.city}
+                onChange={(e) => handleInputChange('city', e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
           </div>
           
           <div className="space-y-2">

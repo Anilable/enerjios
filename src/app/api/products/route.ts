@@ -48,6 +48,20 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true
           }
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        updatedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
         }
       }
     })
@@ -62,6 +76,8 @@ export async function GET(request: NextRequest) {
       model: product.model,
       power: product.power ? `${product.power}W` : '-',
       price: product.price,
+      purchasePrice: product.purchasePrice,
+      purchaseDate: product.purchaseDate,
       stock: product.stock,
       status: getStockStatus(product.stock),
       warranty: product.warranty ? `${product.warranty} yıl` : '-',
@@ -69,9 +85,12 @@ export async function GET(request: NextRequest) {
       specifications: product.specifications,
       images: product.images,
       datasheet: product.datasheet,
+      manual: product.manual,
       isAvailable: product.isAvailable,
       companyId: product.companyId,
       companyName: product.company?.name,
+      createdBy: product.createdBy,
+      updatedBy: product.updatedBy,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt
     }))
@@ -138,6 +157,8 @@ export async function POST(request: NextRequest) {
         model: body.model || '',
         description: body.description,
         price: parseFloat(body.price.toString()),
+        purchasePrice: body.purchasePrice ? parseFloat(body.purchasePrice.toString()) : null,
+        purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : null,
         stock: stock,
         power: body.power ? parseFloat(body.power.toString()) : null,
         warranty: body.warranty ? parseInt(body.warranty.toString()) : null,
@@ -145,14 +166,31 @@ export async function POST(request: NextRequest) {
         specifications: body.specifications || {},
         images: body.images || '[]',
         datasheet: body.datasheet,
+        manual: body.manual,
         unitType: body.unitType || 'adet',
-        companyId: body.companyId
+        companyId: body.companyId,
+        createdById: session.user.id,
+        updatedById: session.user.id
       },
       include: {
         company: {
           select: {
             id: true,
             name: true
+          }
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        updatedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true
           }
         }
       }
@@ -168,6 +206,8 @@ export async function POST(request: NextRequest) {
       model: product.model,
       power: product.power ? `${product.power}W` : '-',
       price: product.price,
+      purchasePrice: product.purchasePrice,
+      purchaseDate: product.purchaseDate,
       stock: product.stock,
       status: getStockStatus(product.stock),
       warranty: product.warranty ? `${product.warranty} yıl` : '-',
@@ -175,9 +215,12 @@ export async function POST(request: NextRequest) {
       specifications: product.specifications,
       images: product.images,
       datasheet: product.datasheet,
+      manual: product.manual,
       isAvailable: product.isAvailable,
       companyId: product.companyId,
       companyName: product.company?.name,
+      createdBy: product.createdBy,
+      updatedBy: product.updatedBy,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt
     }
@@ -195,10 +238,10 @@ export async function POST(request: NextRequest) {
 // Helper functions
 function getCategoryFromType(type: ProductType): string {
   const categoryMap: Record<ProductType, string> = {
-    SOLAR_PANEL: 'Solar Paneller',
-    INVERTER: 'İnverterler',
-    BATTERY: 'Bataryalar',
-    MOUNTING_SYSTEM: 'Montaj Malzemeleri',
+    SOLAR_PANEL: 'Panel',              // ✅ Match QUOTE_CATEGORIES.PANEL
+    INVERTER: 'İnverter',             // ✅ Match QUOTE_CATEGORIES.INVERTER
+    BATTERY: 'Batarya',               // ✅ Match QUOTE_CATEGORIES.BATTERY
+    MOUNTING_SYSTEM: 'Konstrüksiyon', // ✅ Match QUOTE_CATEGORIES.MOUNTING
     CABLE: 'Kablolar',
     MONITORING: 'İzleme Sistemleri',
     ACCESSORY: 'Aksesuarlar'
@@ -208,13 +251,19 @@ function getCategoryFromType(type: ProductType): string {
 
 function getTypeFromCategory(category: string): ProductType | null {
   const typeMap: Record<string, ProductType> = {
+    // Updated to match new category names
+    'Panel': ProductType.SOLAR_PANEL,              // ✅ Match QUOTE_CATEGORIES.PANEL
+    'İnverter': ProductType.INVERTER,             // ✅ Match QUOTE_CATEGORIES.INVERTER
+    'Batarya': ProductType.BATTERY,               // ✅ Match QUOTE_CATEGORIES.BATTERY
+    'Konstrüksiyon': ProductType.MOUNTING_SYSTEM, // ✅ Match QUOTE_CATEGORIES.MOUNTING
+    'Kablolar': ProductType.CABLE,
+    'İzleme Sistemleri': ProductType.MONITORING,
+    'Aksesuarlar': ProductType.ACCESSORY,
+    // Keep old category names for backward compatibility
     'Solar Paneller': ProductType.SOLAR_PANEL,
     'İnverterler': ProductType.INVERTER,
     'Bataryalar': ProductType.BATTERY,
     'Montaj Malzemeleri': ProductType.MOUNTING_SYSTEM,
-    'Kablolar': ProductType.CABLE,
-    'İzleme Sistemleri': ProductType.MONITORING,
-    'Aksesuarlar': ProductType.ACCESSORY,
     // Also handle enum values directly
     'SOLAR_PANEL': ProductType.SOLAR_PANEL,
     'INVERTER': ProductType.INVERTER,

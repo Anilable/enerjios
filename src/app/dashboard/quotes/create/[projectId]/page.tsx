@@ -38,6 +38,7 @@ import { formatCurrency } from '@/lib/utils'
 import { QuotePreview } from '@/components/quotes/quote-preview'
 import { QuoteDeliveryModal } from '@/components/quotes/quote-delivery-modal'
 import html2canvas from 'html2canvas'
+import { ProductType } from '@prisma/client'
 
 // Quote item categories
 const QUOTE_CATEGORIES = {
@@ -49,6 +50,20 @@ const QUOTE_CATEGORIES = {
   LABOR: 'İşçilik',
   TRANSPORT: 'Nakliye',
   OTHER: 'Diğer'
+}
+
+// Helper function to map ProductType to category
+function getCategoryFromType(type: ProductType): string {
+  const categoryMap: Record<ProductType, string> = {
+    SOLAR_PANEL: 'Panel',              // ✅ Match QUOTE_CATEGORIES.PANEL
+    INVERTER: 'İnverter',             // ✅ Match QUOTE_CATEGORIES.INVERTER
+    BATTERY: 'Batarya',               // ✅ Match QUOTE_CATEGORIES.BATTERY
+    MOUNTING_SYSTEM: 'Konstrüksiyon', // ✅ Match QUOTE_CATEGORIES.MOUNTING
+    CABLE: 'Kablolar',
+    MONITORING: 'İzleme Sistemleri',
+    ACCESSORY: 'Aksesuarlar'
+  }
+  return categoryMap[type] || 'Diğer'
 }
 
 // Ready-made solar packages
@@ -252,6 +267,14 @@ interface ExtendedQuoteItem extends QuoteItem {
   }
 }
 
+// Generate unique quote number with higher entropy
+const generateUniqueQuoteNumber = () => {
+  const timestamp = Date.now()
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase()
+  const uuid = crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()
+  return `Q-${timestamp}-${random}-${uuid}`
+}
+
 export default function CreateQuotePage() {
   const params = useParams()
   const router = useRouter()
@@ -322,12 +345,19 @@ export default function CreateQuotePage() {
                 parsedDescription = { name: item.description || '', category: 'OTHER' }
               }
               
+              console.log('🔧 DRAFT LOAD: Item data:', {
+                itemId: item.id,
+                productId: item.productId,
+                parsedName: parsedDescription.name,
+                originalDesc: item.description
+              })
+
               return {
                 id: item.id,
                 category: parsedDescription.category || 'OTHER',
-                productId: item.productId,
-                name: parsedDescription.name || '',
-                description: parsedDescription.description || '',
+                productId: item.productId || '',
+                name: parsedDescription.name || item.name || '',
+                description: parsedDescription.description || item.description || '',
                 pricingType: parsedDescription.pricingType || 'UNIT',
                 unitPrice: item.unitPrice,
                 quantity: item.quantity,
@@ -441,14 +471,26 @@ export default function CreateQuotePage() {
   // Calculate totals
   const calculateTotals = (items: QuoteItem[]) => {
     const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0)
-    const taxAmount = subtotal * (quoteData.tax / 100)
     const discountAmount = subtotal * (quoteData.discount / 100)
-    const total = subtotal - discountAmount + taxAmount
+    const subtotalAfterDiscount = subtotal - discountAmount
+    const taxAmount = subtotalAfterDiscount * (20 / 100) // Fixed 20% tax rate
+    const total = subtotalAfterDiscount + taxAmount
+
+    console.log('💰 CALCULATION DEBUG:', {
+      itemCount: items.length,
+      rawSubtotal: subtotal,
+      discountPercent: quoteData.discount,
+      discountAmount,
+      subtotalAfterDiscount,
+      taxAmount,
+      total
+    })
 
     setQuoteData(prev => ({
       ...prev,
       subtotal: subtotal,
-      total: total
+      total: total,
+      tax: 20 // Ensure tax rate stays at 20%
     }))
   }
 
@@ -560,33 +602,25 @@ export default function CreateQuotePage() {
       setSaving(true)
       
       // Prepare quote data for API
+      // Generate new quote number only if creating new quote (no existing ID)
+      const finalQuoteNumber = quoteData.id ? quoteData.quoteNumber : generateUniqueQuoteNumber()
+      console.log('📤 Save Quote - Using quote number:', finalQuoteNumber)
+
       const quotePayload = {
         ...quoteData,
         status: status,
-        quoteNumber: quoteData.quoteNumber || `Q-${Date.now().toString().slice(-8)}`,
+        quoteNumber: finalQuoteNumber,
         createdAt: new Date().toISOString()
       }
 
-      let response
-      if (status === 'DRAFT') {
-        // Save as draft
-        response = await fetch('/api/quotes/drafts', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(quotePayload)
-        })
-      } else {
-        // Send quote
-        response = await fetch('/api/quotes', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(quotePayload)
-        })
-      }
+      // Use the same endpoint for both draft and sent quotes
+      const response = await fetch('/api/quotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(quotePayload)
+      })
 
       if (!response.ok) {
         console.error('Response not OK:', response.status, response.statusText)
@@ -642,27 +676,48 @@ export default function CreateQuotePage() {
   // Handle quote delivery
   const handleQuoteDelivery = async (deliveryMethods: any[]) => {
     try {
-      // First save the quote as SENT
-      const quotePayload = {
-        ...quoteData,
-        status: 'SENT',
-        quoteNumber: quoteData.quoteNumber || `Q-${Date.now().toString().slice(-8)}`,
-        createdAt: new Date().toISOString()
+      let savedQuote
+
+      // If quote doesn't have an ID, save it first as DRAFT
+      if (!quoteData.id) {
+        // Generate new quote number for new draft
+        const draftQuoteNumber = generateUniqueQuoteNumber()
+        console.log('📝 Draft Save - Generated quote number:', draftQuoteNumber)
+
+        const draftPayload = {
+          ...quoteData,
+          status: 'DRAFT',
+          quoteNumber: draftQuoteNumber,
+          createdAt: new Date().toISOString()
+        }
+
+        const draftResponse = await fetch('/api/quotes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(draftPayload)
+        })
+
+        if (!draftResponse.ok) {
+          throw new Error('Failed to save quote as draft')
+        }
+
+        savedQuote = await draftResponse.json()
+
+        // Update local state with saved quote data
+        setQuoteData(prev => ({
+          ...prev,
+          id: savedQuote.id,
+          quoteNumber: savedQuote.quoteNumber
+        }))
+      } else {
+        // Quote exists, just use current data
+        savedQuote = {
+          ...quoteData,
+          status: 'SENT'
+        }
       }
-
-      const response = await fetch('/api/quotes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(quotePayload)
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to save quote')
-      }
-
-      const savedQuote = await response.json()
 
       // Now send via selected delivery methods
       const deliveryPromises = deliveryMethods.map(async (method) => {
@@ -672,10 +727,12 @@ export default function CreateQuotePage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            quoteId: savedQuote.id,
-            method: method.type,
-            recipient: method.recipient,
-            quoteData: generatePreviewData()
+            quoteData: generatePreviewData(),
+            deliveryMethod: {
+              type: method.type,
+              email: method.recipient,
+              phone: method.recipient
+            }
           })
         })
       })
@@ -752,7 +809,7 @@ export default function CreateQuotePage() {
 
     return {
       id: quoteData.id || 'preview',
-      quoteNumber: quoteData.quoteNumber || `Q-${Date.now().toString().slice(-8)}`,
+      quoteNumber: quoteData.quoteNumber || generateUniqueQuoteNumber(),
       customerName: quoteData.customerName,
       customerEmail: quoteData.customerEmail,
       customerPhone: quoteData.customerPhone,
@@ -775,7 +832,7 @@ export default function CreateQuotePage() {
       })),
       laborCost: quoteData.items.filter(item => item.category === 'LABOR').reduce((sum, item) => sum + item.total, 0) || 15000,
       subtotal: quoteData.subtotal,
-      tax: quoteData.subtotal * (quoteData.tax / 100),
+      tax: (quoteData.subtotal - (quoteData.subtotal * (quoteData.discount / 100))) * 0.20,
       total: quoteData.total,
       status: quoteData.status,
       createdAt: new Date(),
@@ -802,13 +859,21 @@ export default function CreateQuotePage() {
   // Professional PDF Generation
   const generateProfessionalPDF = async () => {
     try {
+      console.log('🎯 PDF GENERATION: Starting PDF generation')
+      console.log('📋 PDF GENERATION: Quote data:', quoteData)
+
       // Save quote as draft first using existing working logic
       setSaving(true)
       
+      // Always generate new quote number for drafts to avoid collisions
+      const newQuoteNumber = generateUniqueQuoteNumber()
+      console.log('🆔 Generated new quote number:', newQuoteNumber)
+      console.log('📋 Existing quoteData.quoteNumber:', quoteData.quoteNumber)
+
       const quotePayload = {
         ...quoteData,
         status: 'DRAFT',
-        quoteNumber: quoteData.quoteNumber || `Q-${Date.now().toString().slice(-8)}`,
+        quoteNumber: newQuoteNumber, // Always use fresh quote number
         createdAt: new Date().toISOString()
       }
 
@@ -1214,18 +1279,16 @@ export default function CreateQuotePage() {
                                 <SelectValue placeholder="Malzeme seçin" />
                               </SelectTrigger>
                               <SelectContent>
-                                {products
-                                  .filter((product) => {
-                                    // Filter products by category
-                                    if (item.category === 'PANEL' && product.type === 'SOLAR_PANEL') return true
-                                    if (item.category === 'INVERTER' && product.type === 'INVERTER') return true
-                                    if (item.category === 'BATTERY' && product.type === 'BATTERY') return true
-                                    if (item.category === 'MOUNTING' && product.type === 'MOUNTING_SYSTEM') return true
-                                    if (item.category === 'OTHER' &&
-                                        (product.type === 'CABLE' ||
-                                         product.type === 'MONITORING' ||
-                                         product.type === 'ACCESSORY')) return true
-                                    return false
+                                {console.log('🔍 PRODUCTS: Filtering by category:', item.category) || products
+                                  .filter(product => {
+                                    // If category is OTHER, show all products
+                                    if (item.category === 'OTHER') return true
+                                    // Otherwise filter by category match
+                                    const productCategory = getCategoryFromType(product.type as any)
+                                    // Convert enum key to display value for comparison
+                                    const categoryDisplayValue = QUOTE_CATEGORIES[item.category as keyof typeof QUOTE_CATEGORIES]
+                                    console.log(`🧪 FILTER DEBUG: Product "${product.name}" type="${product.type}" → category="${productCategory}" vs looking for "${categoryDisplayValue}" → ${productCategory === categoryDisplayValue ? '✅ MATCH' : '❌ NO MATCH'}`)
+                                    return productCategory === categoryDisplayValue
                                   })
                                   .map((product) => (
                                   <SelectItem
@@ -1365,9 +1428,9 @@ export default function CreateQuotePage() {
                         </div>
                       </div>
                       <div className="flex justify-between">
-                        <span>KDV ({quoteData.tax}%):</span>
+                        <span>KDV (20%):</span>
                         <span className="font-medium">
-                          {formatCurrency(quoteData.subtotal * (quoteData.tax / 100))}
+                          {formatCurrency((quoteData.subtotal - (quoteData.subtotal * (quoteData.discount / 100))) * 0.20)}
                         </span>
                       </div>
                       <div className="flex justify-between text-xl font-bold border-t pt-2">
@@ -1449,7 +1512,7 @@ export default function CreateQuotePage() {
           onSend={handleQuoteDelivery}
           customerEmail={quoteData.customerEmail}
           customerPhone={quoteData.customerPhone}
-          quoteNumber={quoteData.quoteNumber || `Q-${Date.now().toString().slice(-8)}`}
+          quoteNumber={quoteData.quoteNumber || generateUniqueQuoteNumber()}
         />
       </div>
     </DashboardLayout>

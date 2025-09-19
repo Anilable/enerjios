@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { EmailService } from '@/lib/email'
 import { nanoid } from 'nanoid'
 import crypto from 'crypto'
+import { prisma } from '@/lib/prisma'
 
 interface QuoteDeliveryRequest {
   deliveryChannel: 'EMAIL' | 'WHATSAPP' | 'SMS'
@@ -38,25 +39,115 @@ export async function POST(
       return NextResponse.json({ error: 'Phone number is required for WhatsApp delivery' }, { status: 400 })
     }
 
-    // Mock quote data (in real app, fetch from database)
-    // Here you would fetch the actual quote from your database
+    // Fetch quote with products and their files from database
+    const quoteWithProducts = await prisma.quote.findUnique({
+      where: { id: quoteId },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                brand: true,
+                images: true,
+                datasheet: true,
+                manual: true
+              }
+            }
+          }
+        },
+        customer: true,
+        createdBy: true
+      }
+    })
+
+    if (!quoteWithProducts) {
+      return NextResponse.json({ error: 'Quote not found' }, { status: 404 })
+    }
+
+    // Transform quote data for email
     const mockQuote = {
       id: quoteId,
-      quoteNumber: `Q-${Date.now().toString().slice(-8)}`,
-      projectTitle: '10 kW Ev GES Sistemi',
-      customerName: 'Test Müşteri',
-      customerEmail: deliveryEmail || 'test@example.com',
-      totalAmount: 85000,
-      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      quoteNumber: quoteWithProducts.quoteNumber || `Q-${Date.now().toString().slice(-8)}`,
+      projectTitle: quoteWithProducts.projectTitle || '10 kW Ev GES Sistemi',
+      customerName: quoteWithProducts.customer?.name || quoteWithProducts.customerName || deliveryEmail?.split('@')[0] || 'Test Müşteri',
+      customerEmail: deliveryEmail || quoteWithProducts.customer?.email || quoteWithProducts.customerEmail || 'test@example.com',
+      totalAmount: quoteWithProducts.total || 85000,
+      validUntil: quoteWithProducts.validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       systemDetails: {
-        capacity: 10,
-        panelCount: 18,
-        estimatedProduction: 14500,
-        paybackPeriod: 8
+        capacity: quoteWithProducts.capacity || 10,
+        panelCount: quoteWithProducts.panelCount || 18,
+        estimatedProduction: quoteWithProducts.estimatedProduction || 14500,
+        paybackPeriod: quoteWithProducts.paybackPeriod || 8
       },
       companyName: process.env.COMPANY_NAME || 'EnerjiOS',
-      engineerName: session.user.name || 'Proje Uzmanı',
-      engineerTitle: 'Güneş Enerji Uzmanı'
+      engineerName: quoteWithProducts.createdBy?.name || session.user.name || 'Proje Uzmanı',
+      engineerTitle: 'Güneş Enerji Uzmanı',
+      products: quoteWithProducts.items?.map(item => {
+        console.log('Processing item:', item.id, 'Product:', item.product?.name)
+        const product = item.product
+        if (!product) return null
+
+        const files: Array<{url: string, type: 'image' | 'datasheet' | 'manual', filename: string}> = []
+
+        // Add images
+        console.log('Product images:', product.images)
+        if (product.images) {
+          try {
+            const imageUrls = JSON.parse(product.images)
+            console.log('Parsed image URLs:', imageUrls)
+            if (Array.isArray(imageUrls)) {
+              imageUrls.forEach(url => {
+                console.log('Adding image:', url)
+                files.push({
+                  url,
+                  type: 'image',
+                  filename: url.split('/').pop() || 'image'
+                })
+              })
+            }
+          } catch (e) {
+            console.error('Error parsing product images:', e)
+          }
+        }
+
+        // Add datasheet
+        console.log('Product datasheet:', product.datasheet)
+        if (product.datasheet) {
+          console.log('Adding datasheet:', product.datasheet)
+          files.push({
+            url: product.datasheet,
+            type: 'datasheet',
+            filename: product.datasheet.split('/').pop() || 'datasheet.pdf'
+          })
+        }
+
+        // Add manual
+        console.log('Product manual:', product.manual)
+        if (product.manual) {
+          console.log('Adding manual:', product.manual)
+          files.push({
+            url: product.manual,
+            type: 'manual',
+            filename: product.manual.split('/').pop() || 'manual.pdf'
+          })
+        }
+
+        console.log('Total files for product:', files.length, files)
+
+        return {
+          id: product.id,
+          name: product.name,
+          brand: product.brand,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          files
+        }
+      }).filter(Boolean) || []
+
+    console.log('Final products with files:', mockQuote.products?.length || 0)
+    console.log('Products details:', JSON.stringify(mockQuote.products, null, 2))
     }
 
     // Generate delivery token
@@ -80,7 +171,8 @@ export async function POST(
         engineerName: mockQuote.engineerName,
         engineerTitle: mockQuote.engineerTitle,
         deliveryToken,
-        systemDetails: mockQuote.systemDetails
+        systemDetails: mockQuote.systemDetails,
+        products: mockQuote.products
       })
 
       if (!emailResult.success) {

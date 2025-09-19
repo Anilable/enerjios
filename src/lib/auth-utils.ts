@@ -43,5 +43,13 @@ export async function requireCustomer() {
   return await requireRole(["ADMIN", "CUSTOMER", "FARMER"])
 }
 
+export async function requireInstallationTeam() {
+  return await requireRole(["ADMIN", "INSTALLATION_TEAM"])
+}
+
+export async function requireInstallationAccess() {
+  return await requireRole(["ADMIN", "COMPANY", "INSTALLATION_TEAM"])
+}
+
 // Re-export client-safe role utilities for backward compatibility
 export { hasRole, getRoleName, getRoleColor } from './role-utils'

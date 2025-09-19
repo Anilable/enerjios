@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ProjectRequest, ProjectType } from '@/types/project-request'
+import { ProjectRequest, ProjectType, REQUEST_SOURCE_LABELS, RequestSource } from '@/types/project-request'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,7 +27,7 @@ export function NewProjectRequestDialog({ isOpen, onClose, onSubmit }: NewProjec
     estimatedBudget: '',
     description: '',
     priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH',
-    source: 'WEBSITE' as 'WEBSITE' | 'PHONE' | 'EMAIL' | 'REFERRAL' | 'SOCIAL_MEDIA',
+    source: 'WEBSITE' as RequestSource,
     tags: ''
   })
 
@@ -250,11 +250,11 @@ export function NewProjectRequestDialog({ isOpen, onClose, onSubmit }: NewProjec
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="WEBSITE">Website</SelectItem>
-                  <SelectItem value="PHONE">Telefon</SelectItem>
-                  <SelectItem value="EMAIL">E-posta</SelectItem>
-                  <SelectItem value="REFERRAL">Referans</SelectItem>
-                  <SelectItem value="SOCIAL_MEDIA">Sosyal Medya</SelectItem>
+                  {Object.entries(REQUEST_SOURCE_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

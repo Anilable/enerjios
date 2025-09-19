@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { PricingGuard, FinancialDataGuard, usePermissions } from '@/components/ui/permission-guard'
 import { 
   Plus,
   Trash2,
@@ -213,6 +214,9 @@ function getCategoryFromType(type: string): string {
 }
 
 export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
+  const { hasPermission } = usePermissions()
+  const canManagePricing = hasPermission('products:manage_pricing') || hasPermission('finance:read')
+
   const [formData, setFormData] = useState({
     customerName: '',
     customerEmail: '',
@@ -412,19 +416,21 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
     setItems(prev => prev.filter(item => item.id !== id))
   }
 
-  const selectProduct = (itemId: string, productId: string, type: 'panel' | 'inverter' | 'accessory') => {
+  const selectProduct = (itemId: string, productId: string, itemType: string) => {
     let product
+    // Normalize type for comparison (handle both PANEL and panel)
+    const type = itemType.toLowerCase()
 
-    console.log('selectProduct called:', { itemId, productId, type })
+    console.log('selectProduct called:', { itemId, productId, itemType, normalizedType: type })
     console.log('Current productCatalog:', productCatalog)
 
-    if (type === 'panel') {
+    if (type === 'panel' || type === 'solar_panel') {
       product = productCatalog.panels.find(p => p.id === productId)
       console.log('Found panel:', product)
     } else if (type === 'inverter') {
       product = productCatalog.inverters.find(p => p.id === productId)
       console.log('Found inverter:', product)
-    } else if (type === 'accessory') {
+    } else if (type === 'accessory' || type === 'mounting_system' || type === 'cable' || type === 'monitoring' || type === 'battery') {
       product = productCatalog.accessories.find(p => p.id === productId)
       console.log('Found accessory:', product)
     }
@@ -564,8 +570,12 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
         <TabsList>
           <TabsTrigger value="customer">Müşteri Bilgileri</TabsTrigger>
           <TabsTrigger value="system">Sistem Detayları</TabsTrigger>
-          <TabsTrigger value="pricing">Fiyatlandırma</TabsTrigger>
-          <TabsTrigger value="financial">Finansal Analiz</TabsTrigger>
+          <PricingGuard fallback={null}>
+            <TabsTrigger value="pricing">Fiyatlandırma</TabsTrigger>
+          </PricingGuard>
+          <FinancialDataGuard fallback={null}>
+            <TabsTrigger value="financial">Finansal Analiz</TabsTrigger>
+          </FinancialDataGuard>
         </TabsList>
 
         {/* Customer Info Tab */}
@@ -774,9 +784,9 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
                       
                       <div className="col-span-3">
                         {item.type === 'PANEL' ? (
-                          <Select 
-                            value={item.specifications?.id || ''} 
-                            onValueChange={(value) => selectProduct(item.id, value, 'panel')}
+                          <Select
+                            value={item.productId || ''}
+                            onValueChange={(value) => selectProduct(item.id, value, item.type)}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Panel seçin" />
@@ -790,9 +800,9 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
                             </SelectContent>
                           </Select>
                         ) : item.type === 'INVERTER' ? (
-                          <Select 
-                            value={item.specifications?.id || ''} 
-                            onValueChange={(value) => selectProduct(item.id, value, 'inverter')}
+                          <Select
+                            value={item.productId || ''}
+                            onValueChange={(value) => selectProduct(item.id, value, item.type)}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="İnverter seçin" />
@@ -807,8 +817,8 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
                           </Select>
                         ) : item.type === 'ACCESSORY' ? (
                           <Select
-                            value={item.specifications?.id || ''}
-                            onValueChange={(value) => selectProduct(item.id, value, 'accessory')}
+                            value={item.productId || ''}
+                            onValueChange={(value) => selectProduct(item.id, value, item.type)}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Aksesuar seçin" />
@@ -839,20 +849,39 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
                         />
                       </div>
                       
-                      <div className="col-span-2">
-                        <Input
-                          type="number"
-                          placeholder="Birim Fiyat"
-                          value={item.unitPrice}
-                          onChange={(e) => updateItem(item.id, { unitPrice: Number(e.target.value) })}
-                        />
-                      </div>
-                      
-                      <div className="col-span-3">
-                        <div className="font-medium text-right">
-                          ₺{(item.totalPrice || item.total || 0).toLocaleString()}
+                      <PricingGuard fallback={
+                        <div className="col-span-2">
+                          <Input
+                            type="text"
+                            value="Gizli"
+                            disabled
+                            className="text-gray-400"
+                          />
                         </div>
-                      </div>
+                      }>
+                        <div className="col-span-2">
+                          <Input
+                            type="number"
+                            placeholder="Birim Fiyat"
+                            value={item.unitPrice}
+                            onChange={(e) => updateItem(item.id, { unitPrice: Number(e.target.value) })}
+                          />
+                        </div>
+                      </PricingGuard>
+
+                      <PricingGuard fallback={
+                        <div className="col-span-3">
+                          <div className="font-medium text-right text-gray-400">
+                            Gizli
+                          </div>
+                        </div>
+                      }>
+                        <div className="col-span-3">
+                          <div className="font-medium text-right">
+                            ₺{(item.totalPrice || item.total || 0).toLocaleString()}
+                          </div>
+                        </div>
+                      </PricingGuard>
                       
                       <div className="col-span-1">
                         <Button 
@@ -872,7 +901,8 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
         </TabsContent>
 
         {/* Pricing Tab */}
-        <TabsContent value="pricing" className="space-y-6">
+        <PricingGuard>
+          <TabsContent value="pricing" className="space-y-6">
           <div className="grid lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
@@ -939,10 +969,12 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
+          </TabsContent>
+        </PricingGuard>
 
         {/* Financial Analysis Tab */}
-        <TabsContent value="financial" className="space-y-6">
+        <FinancialDataGuard>
+          <TabsContent value="financial" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -986,7 +1018,8 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+          </TabsContent>
+        </FinancialDataGuard>
       </Tabs>
     </div>
   )

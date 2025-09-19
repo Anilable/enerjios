@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { 
+import { PricingGuard, FinancialDataGuard } from '@/components/ui/permission-guard'
+import {
   Download,
   Send,
   Edit,
@@ -352,8 +353,12 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
                         {item.brand || '-'}
                       </td>
                       <td className="px-4 py-3 text-center">{item.quantity}</td>
-                      <td className="px-4 py-3 text-right">₺{item.unitPrice.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right font-medium">₺{item.totalPrice.toLocaleString()}</td>
+                      <PricingGuard fallback={<td className="px-4 py-3 text-right text-gray-400">-</td>}>
+                        <td className="px-4 py-3 text-right">₺{item.unitPrice.toLocaleString()}</td>
+                      </PricingGuard>
+                      <PricingGuard fallback={<td className="px-4 py-3 text-right text-gray-400">-</td>}>
+                        <td className="px-4 py-3 text-right font-medium">₺{item.totalPrice.toLocaleString()}</td>
+                      </PricingGuard>
                     </tr>
                   ))}
                   
@@ -365,8 +370,12 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
                     </td>
                     <td className="px-4 py-3 text-center">-</td>
                     <td className="px-4 py-3 text-center">1</td>
-                    <td className="px-4 py-3 text-right">₺{quote.laborCost?.toLocaleString() || '0'}</td>
-                    <td className="px-4 py-3 text-right font-medium">₺{quote.laborCost?.toLocaleString() || '0'}</td>
+                    <PricingGuard fallback={<td className="px-4 py-3 text-right text-gray-400">-</td>}>
+                      <td className="px-4 py-3 text-right">₺{quote.laborCost?.toLocaleString() || '0'}</td>
+                    </PricingGuard>
+                    <PricingGuard fallback={<td className="px-4 py-3 text-right text-gray-400">-</td>}>
+                      <td className="px-4 py-3 text-right font-medium">₺{quote.laborCost?.toLocaleString() || '0'}</td>
+                    </PricingGuard>
                   </tr>
                 </tbody>
               </table>
@@ -374,79 +383,139 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
           </div>
 
           {/* Pricing Summary */}
-          <div className="bg-gray-50 rounded-lg p-6 mb-8">
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span>Alt Toplam:</span>
-                <span>₺{quote.subtotal.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>İşçilik:</span>
-                <span>₺{quote.laborCost?.toLocaleString() || '0'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>KDV (%{quote.taxPercent || 1}):</span>
-                <span>₺{quote.tax.toLocaleString()}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between text-lg font-bold text-primary">
-                <span>TOPLAM TUTAR:</span>
-                <span>₺{quote.total.toLocaleString()}</span>
+          <PricingGuard fallback={
+            <div className="bg-gray-50 rounded-lg p-6 mb-8">
+              <div className="text-center text-gray-500">
+                <p className="text-sm">Fiyat bilgileri kurulum ekibi için gizlenmiştir.</p>
+                <p className="text-xs text-gray-400 mt-1">Teknik özellikler ve kurulum detayları görüntülenebilir.</p>
               </div>
             </div>
-          </div>
+          }>
+            <div className="bg-gray-50 rounded-lg p-6 mb-8">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Alt Toplam:</span>
+                  <span>₺{quote.subtotal.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>İşçilik:</span>
+                  <span>₺{quote.laborCost?.toLocaleString() || '0'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>KDV (%{quote.taxPercent || 1}):</span>
+                  <span>₺{quote.tax.toLocaleString()}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between text-lg font-bold text-primary">
+                  <span>TOPLAM TUTAR:</span>
+                  <span>₺{quote.total.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </PricingGuard>
 
           {/* Financial Analysis */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2 text-primary" />
-              Finansal Analiz & Getiri Hesaplaması
-            </h3>
-            
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="bg-green-50 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-green-600">
-                    ₺{quote.financialAnalysis?.annualSavings?.toLocaleString() || '0'}
+          <FinancialDataGuard fallback={
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold mb-4 flex items-center">
+                <TrendingUp className="w-5 h-5 mr-2 text-primary" />
+                Sistem Performans Analizi
+              </h3>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-green-600">
+                      {quote.financialAnalysis?.annualProduction?.toLocaleString() || '0'} kWh
+                    </div>
+                    <div className="text-sm text-green-800">Yıllık Enerji Üretimi</div>
                   </div>
-                  <div className="text-sm text-green-800">Yıllık Elektrik Tasarrufu</div>
-                </div>
-                
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-blue-600">
-                    ₺{quote.financialAnalysis?.npv25?.toLocaleString() || '0'}
-                  </div>
-                  <div className="text-sm text-blue-800">25 Yıllık Net Bugünkü Değer</div>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="bg-orange-50 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-orange-600">
-                    {quote.financialAnalysis?.paybackPeriod || '0'} Yıl
-                  </div>
-                  <div className="text-sm text-orange-800">Yatırım Geri Ödeme Süresi</div>
-                </div>
-                
-                <div className="bg-purple-50 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-purple-600">
-                    %{quote.financialAnalysis?.irr || '0'}
-                  </div>
-                  <div className="text-sm text-purple-800">İç Karlılık Oranı (IRR)</div>
-                </div>
-              </div>
-            </div>
 
-            <div className="mt-4 text-xs text-gray-600 bg-gray-50 p-3 rounded">
-              <p><strong>Hesaplama Notları:</strong></p>
-              <ul className="mt-1 space-y-1 list-disc list-inside">
-                <li>Elektrik fiyatı 2.20 TL/kWh baz alınmıştır</li>
-                <li>Yıllık %5 elektrik fiyat artışı hesaplanmıştır</li>
-                <li>Sistem verimliliği %90 olarak kabul edilmiştir</li>
-                <li>Panel performansı 25 yılda %80'e düşer varsayımı kullanılmıştır</li>
-              </ul>
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-blue-600">
+                      %90
+                    </div>
+                    <div className="text-sm text-blue-800">Sistem Verimliliği</div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-orange-50 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-orange-600">
+                      25 Yıl
+                    </div>
+                    <div className="text-sm text-orange-800">Panel Garanti Süresi</div>
+                  </div>
+
+                  <div className="bg-purple-50 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {quote.systemSize} kW
+                    </div>
+                    <div className="text-sm text-purple-800">Kurulu Güç</div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 text-xs text-gray-600 bg-gray-50 p-3 rounded">
+                <p><strong>Teknik Notlar:</strong></p>
+                <ul className="mt-1 space-y-1 list-disc list-inside">
+                  <li>Sistem verimliliği %90 olarak kabul edilmiştir</li>
+                  <li>Panel performansı 25 yılda %80'e düşer varsayımı kullanılmıştır</li>
+                  <li>Kurulum standartları TSE EN 62446 uyumludur</li>
+                  <li>Bakım periyodu yılda 2 kez önerilmektedir</li>
+                </ul>
+              </div>
             </div>
-          </div>
+          }>
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold mb-4 flex items-center">
+                <TrendingUp className="w-5 h-5 mr-2 text-primary" />
+                Finansal Analiz & Getiri Hesaplaması
+              </h3>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-green-600">
+                      ₺{quote.financialAnalysis?.annualSavings?.toLocaleString() || '0'}
+                    </div>
+                    <div className="text-sm text-green-800">Yıllık Elektrik Tasarrufu</div>
+                  </div>
+
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-blue-600">
+                      ₺{quote.financialAnalysis?.npv25?.toLocaleString() || '0'}
+                    </div>
+                    <div className="text-sm text-blue-800">25 Yıllık Net Bugünkü Değer</div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-orange-50 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-orange-600">
+                      {quote.financialAnalysis?.paybackPeriod || '0'} Yıl
+                    </div>
+                    <div className="text-sm text-orange-800">Yatırım Geri Ödeme Süresi</div>
+                  </div>
+
+                  <div className="bg-purple-50 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-purple-600">
+                      %{quote.financialAnalysis?.irr || '0'}
+                    </div>
+                    <div className="text-sm text-purple-800">İç Karlılık Oranı (IRR)</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 text-xs text-gray-600 bg-gray-50 p-3 rounded">
+                <p><strong>Hesaplama Notları:</strong></p>
+                <ul className="mt-1 space-y-1 list-disc list-inside">
+                  <li>Elektrik fiyatı 2.20 TL/kWh baz alınmıştır</li>
+                  <li>Yıllık %5 elektrik fiyat artışı hesaplanmıştır</li>
+                  <li>Sistem verimliliği %90 olarak kabul edilmiştir</li>
+                  <li>Panel performansı 25 yılda %80'e düşer varsayımı kullanılmıştır</li>
+                </ul>
+              </div>
+            </div>
+          </FinancialDataGuard>
 
           {/* Terms & Conditions */}
           <div className="mb-8">

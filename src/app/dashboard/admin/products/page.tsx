@@ -54,6 +54,16 @@ interface ProductWithStats extends Product {
   stockValue: number
   monthlyTrend: 'up' | 'down' | 'stable'
   popularityScore: number
+  createdBy?: {
+    id: string
+    name: string | null
+    email: string
+  } | null
+  updatedBy?: {
+    id: string
+    name: string | null
+    email: string
+  } | null
 }
 
 export default function ProductManagementPage() {
@@ -67,11 +77,23 @@ export default function ProductManagementPage() {
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [stockFilter, setStockFilter] = useState('all')
+  const [activeTab, setActiveTab] = useState('products')
 
-  const categories = ProductCategoryManager.getCategories()
+  // Category management states
+  const [categories, setCategories] = useState<any[]>([])
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState<any>(null)
+  const [categoryFormData, setCategoryFormData] = useState({
+    name: '',
+    slug: '',
+    description: '',
+    icon: 'Package',
+    color: 'bg-gray-500'
+  })
 
   useEffect(() => {
     fetchProducts()
+    fetchCategories()
   }, [])
 
   useEffect(() => {
@@ -139,7 +161,10 @@ export default function ProductManagementPage() {
         },
         status: product.isAvailable ? 'ACTIVE' : 'INACTIVE',
         createdAt: product.createdAt || new Date().toISOString(),
-        updatedAt: product.updatedAt || new Date().toISOString()
+        updatedAt: product.updatedAt || new Date().toISOString(),
+        // Include creator/updater metadata
+        createdBy: product.createdBy,
+        updatedBy: product.updatedBy
       }))
 
       setProducts(transformedProducts)
@@ -546,6 +571,96 @@ export default function ProductManagementPage() {
     })
   }
 
+  // Category management functions
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories')
+      if (response.ok) {
+        const data = await response.json()
+        setCategories(data)
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+    }
+  }
+
+  const handleCreateCategory = async () => {
+    try {
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(categoryFormData)
+      })
+
+      if (response.ok) {
+        await fetchCategories()
+        setIsCategoryModalOpen(false)
+        setCategoryFormData({
+          name: '',
+          slug: '',
+          description: '',
+          icon: 'Package',
+          color: 'bg-gray-500'
+        })
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Kategori oluşturulamadı')
+      }
+    } catch (error) {
+      console.error('Error creating category:', error)
+      alert('Kategori oluşturulamadı')
+    }
+  }
+
+  const handleUpdateCategory = async () => {
+    try {
+      const response = await fetch('/api/categories', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: selectedCategory.id, ...categoryFormData })
+      })
+
+      if (response.ok) {
+        await fetchCategories()
+        setIsCategoryModalOpen(false)
+        setSelectedCategory(null)
+        setCategoryFormData({
+          name: '',
+          slug: '',
+          description: '',
+          icon: 'Package',
+          color: 'bg-gray-500'
+        })
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Kategori güncellenemedi')
+      }
+    } catch (error) {
+      console.error('Error updating category:', error)
+      alert('Kategori güncellenemedi')
+    }
+  }
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (!confirm('Bu kategoriyi silmek istediğinizden emin misiniz?')) return
+
+    try {
+      const response = await fetch(`/api/categories?id=${categoryId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        await fetchCategories()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Kategori silinemedi')
+      }
+    } catch (error) {
+      console.error('Error deleting category:', error)
+      alert('Kategori silinemedi')
+    }
+  }
+
   // Calculate summary statistics
   const totalProducts = products.length
   const activeProducts = products.filter(p => p.status === 'ACTIVE').length
@@ -553,6 +668,17 @@ export default function ProductManagementPage() {
   const outOfStockProducts = products.filter(p => p.inventory.availableQuantity === 0).length
   const totalStockValue = products.reduce((sum, p) => sum + p.stockValue, 0)
   const avgPopularity = products.reduce((sum, p) => sum + p.popularityScore, 0) / products.length || 0
+
+  // Enhanced pricing statistics
+  const totalPurchaseValue = products.reduce((sum, p) => sum + ((p.pricing.costPrice || 0) * p.inventory.stockQuantity), 0)
+  const totalSalesValue = products.reduce((sum, p) => sum + (p.pricing.basePrice * p.inventory.stockQuantity), 0)
+  const totalPotentialProfit = totalSalesValue - totalPurchaseValue
+  const avgMargin = products.length > 0
+    ? products
+        .filter(p => p.pricing.costPrice && p.pricing.basePrice > 0)
+        .reduce((sum, p) => sum + (((p.pricing.basePrice - (p.pricing.costPrice || 0)) / p.pricing.basePrice) * 100), 0) /
+        products.filter(p => p.pricing.costPrice && p.pricing.basePrice > 0).length
+    : 0
 
   return (
     <DashboardLayout>
@@ -574,6 +700,10 @@ export default function ProductManagementPage() {
               <Upload className="w-4 h-4 mr-2" />
               Import
             </Button>
+            <Button variant="outline" onClick={() => setIsCategoryModalOpen(true)}>
+              <Grid3x3 className="w-4 h-4 mr-2" />
+              Kategoriler
+            </Button>
             <Button onClick={() => setIsCreateModalOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Yeni Ürün
@@ -582,7 +712,7 @@ export default function ProductManagementPage() {
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -656,6 +786,65 @@ export default function ProductManagementPage() {
           </Card>
         </div>
 
+        {/* Enhanced Pricing Analytics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Toplam Alış Değeri</p>
+                  <p className="text-2xl font-bold">₺{(totalPurchaseValue / 1000000).toFixed(1)}M</p>
+                  <p className="text-xs text-muted-foreground">{products.filter(p => p.pricing.costPrice > 0).length} ürün</p>
+                </div>
+                <Warehouse className="w-8 h-8 text-blue-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Toplam Satış Değeri</p>
+                  <p className="text-2xl font-bold">₺{(totalSalesValue / 1000000).toFixed(1)}M</p>
+                  <p className="text-xs text-muted-foreground">Mevcut stok bazında</p>
+                </div>
+                <Target className="w-8 h-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Potansiyel Kar</p>
+                  <p className="text-2xl font-bold">₺{(totalPotentialProfit / 1000000).toFixed(1)}M</p>
+                  <p className="text-xs text-muted-foreground">
+                    {totalSalesValue > 0 ? ((totalPotentialProfit / totalSalesValue) * 100).toFixed(1) : 0}% marj
+                  </p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-emerald-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Ortalama Marj</p>
+                  <p className="text-2xl font-bold">{avgMargin.toFixed(1)}%</p>
+                  <p className="text-xs text-muted-foreground">
+                    {products.filter(p => p.pricing.costPrice && p.pricing.basePrice > 0).length} ürün bazında
+                  </p>
+                </div>
+                <BarChart3 className="w-8 h-8 text-purple-600" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Filters */}
         <Card>
           <CardContent className="p-4">
@@ -723,6 +912,7 @@ export default function ProductManagementPage() {
                 <TableHead>Satış</TableHead>
                 <TableHead>Trend</TableHead>
                 <TableHead>Durum</TableHead>
+                <TableHead>Oluşturan</TableHead>
                 <TableHead>İşlemler</TableHead>
               </TableRow>
             </TableHeader>
@@ -755,11 +945,18 @@ export default function ProductManagementPage() {
                     <TableCell>
                       <div>
                         <div className="font-medium">
-                          {product.pricing.basePrice.toLocaleString()} ₺
+                          Satış: {product.pricing.basePrice.toLocaleString()} ₺
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          Margin: %{product.profitMargin.toFixed(1)}
-                        </div>
+                        {product.pricing.costPrice && (
+                          <div className="text-sm text-muted-foreground">
+                            Alış: {product.pricing.costPrice.toLocaleString()} ₺
+                          </div>
+                        )}
+                        {product.pricing.purchaseDate && (
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(product.pricing.purchaseDate).toLocaleDateString('tr-TR')}
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -795,6 +992,30 @@ export default function ProductManagementPage() {
                       <Badge variant={product.status === 'ACTIVE' ? 'default' : 'secondary'}>
                         {product.status === 'ACTIVE' ? 'Aktif' : product.status === 'INACTIVE' ? 'Pasif' : 'Üretimi Durmuş'}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        {product.createdBy ? (
+                          <div className="text-sm">
+                            <div className="font-medium">{product.createdBy.name || 'İsimsiz'}</div>
+                            <div className="text-muted-foreground text-xs">
+                              {new Date(product.createdAt).toLocaleDateString('tr-TR')}
+                            </div>
+                            {product.updatedBy && product.updatedBy.id !== product.createdBy.id && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Son güncelleme: {product.updatedBy.name || 'İsimsiz'}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">
+                            <div>Sistem</div>
+                            <div className="text-xs">
+                              {new Date(product.createdAt).toLocaleDateString('tr-TR')}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -854,6 +1075,210 @@ export default function ProductManagementPage() {
                 setSelectedProduct(null)
               }}
             />
+          </DialogContent>
+        </Dialog>
+
+        {/* Category Management Modal */}
+        <Dialog open={isCategoryModalOpen} onOpenChange={setIsCategoryModalOpen}>
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Kategori Yönetimi</DialogTitle>
+              <DialogDescription>
+                Ürün kategorilerini yönetin
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Category Form */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">
+                    {selectedCategory ? 'Kategori Düzenle' : 'Yeni Kategori'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Kategori Adı</Label>
+                      <Input
+                        value={categoryFormData.name}
+                        onChange={(e) => setCategoryFormData(prev => ({
+                          ...prev,
+                          name: e.target.value,
+                          slug: e.target.value.toLowerCase().replace(/\s+/g, '-')
+                        }))}
+                        placeholder="Güneş Panelleri"
+                      />
+                    </div>
+                    <div>
+                      <Label>Slug</Label>
+                      <Input
+                        value={categoryFormData.slug}
+                        onChange={(e) => setCategoryFormData(prev => ({
+                          ...prev,
+                          slug: e.target.value
+                        }))}
+                        placeholder="gunes-panelleri"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Açıklama</Label>
+                    <Input
+                      value={categoryFormData.description}
+                      onChange={(e) => setCategoryFormData(prev => ({
+                        ...prev,
+                        description: e.target.value
+                      }))}
+                      placeholder="Kategori açıklaması"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>İkon</Label>
+                      <Select
+                        value={categoryFormData.icon}
+                        onValueChange={(value) => setCategoryFormData(prev => ({
+                          ...prev,
+                          icon: value
+                        }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Sun">Güneş</SelectItem>
+                          <SelectItem value="Zap">Şimşek</SelectItem>
+                          <SelectItem value="Battery">Batarya</SelectItem>
+                          <SelectItem value="Package">Paket</SelectItem>
+                          <SelectItem value="Cable">Kablo</SelectItem>
+                          <SelectItem value="Settings">Ayarlar</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Renk</Label>
+                      <Select
+                        value={categoryFormData.color}
+                        onValueChange={(value) => setCategoryFormData(prev => ({
+                          ...prev,
+                          color: value
+                        }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="bg-yellow-500">Sarı</SelectItem>
+                          <SelectItem value="bg-blue-500">Mavi</SelectItem>
+                          <SelectItem value="bg-green-500">Yeşil</SelectItem>
+                          <SelectItem value="bg-red-500">Kırmızı</SelectItem>
+                          <SelectItem value="bg-purple-500">Mor</SelectItem>
+                          <SelectItem value="bg-gray-500">Gri</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedCategory(null)
+                        setCategoryFormData({
+                          name: '',
+                          slug: '',
+                          description: '',
+                          icon: 'Package',
+                          color: 'bg-gray-500'
+                        })
+                      }}
+                    >
+                      İptal
+                    </Button>
+                    <Button
+                      onClick={selectedCategory ? handleUpdateCategory : handleCreateCategory}
+                    >
+                      {selectedCategory ? 'Güncelle' : 'Oluştur'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Categories List */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Mevcut Kategoriler</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Kategori</TableHead>
+                        <TableHead>Slug</TableHead>
+                        <TableHead>Ürün Sayısı</TableHead>
+                        <TableHead>Durum</TableHead>
+                        <TableHead>İşlemler</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {categories.map((category) => (
+                        <TableRow key={category.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className={`w-8 h-8 rounded ${category.color} flex items-center justify-center`}>
+                                <Package className="w-4 h-4 text-white" />
+                              </div>
+                              <div>
+                                <div className="font-medium">{category.name}</div>
+                                <div className="text-sm text-muted-foreground">{category.description}</div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{category.slug}</TableCell>
+                          <TableCell>{category._count?.products || 0}</TableCell>
+                          <TableCell>
+                            <Badge variant={category.isActive ? 'default' : 'secondary'}>
+                              {category.isActive ? 'Aktif' : 'Pasif'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedCategory(category)
+                                  setCategoryFormData({
+                                    name: category.name,
+                                    slug: category.slug,
+                                    description: category.description || '',
+                                    icon: category.icon || 'Package',
+                                    color: category.color || 'bg-gray-500'
+                                  })
+                                }}
+                              >
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteCategory(category.id)}
+                                disabled={category._count?.products > 0}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

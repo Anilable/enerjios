@@ -20,49 +20,116 @@ interface Designer3DProps {
   }
 }
 
-// 3D Roof Component
-function Roof3D({ roofPoints, showRoof }: { roofPoints: Array<{ x: number; y: number; z: number }>, showRoof: boolean }) {
-  const meshRef = useRef<THREE.Mesh>(null)
-  
+// 3D House Component with South-Facing Roof
+function House3D({ roofPoints, showRoof }: { roofPoints: Array<{ x: number; y: number; z: number }>, showRoof: boolean }) {
+  const houseRef = useRef<THREE.Group>(null)
+
   if (!showRoof) return null
 
-  // Default rectangular roof if no points defined
-  const defaultRoof = [
-    { x: -5, y: 0, z: -6 },
-    { x: 5, y: 0, z: -6 },
-    { x: 5, y: 0, z: 6 },
-    { x: -5, y: 0, z: 6 }
-  ]
+  // House dimensions
+  const houseWidth = 12
+  const houseDepth = 8
+  const houseHeight = 3
+  const roofHeight = 2.5
 
-  const points = roofPoints.length > 0 ? roofPoints : defaultRoof
+  // Calculate roof angles for south-facing orientation
+  const roofAngle = Math.PI / 6 // 30 degrees for optimal solar panel angle
 
   return (
-    <group>
-      {/* Roof Surface */}
-      <mesh ref={meshRef} position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[10, 12]} />
-        <meshLambertMaterial 
-          color="#8b4513" 
-          transparent 
-          opacity={0.8}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      
-      {/* Roof Edges */}
-      <Line
-        points={[
-          ...points.map(p => [p.x, p.y + 0.01, p.z] as [number, number, number]),
-          [points[0].x, points[0].y + 0.01, points[0].z] as [number, number, number] // Close the loop
-        ]}
-        color="#654321"
-        lineWidth={3}
-      />
-      
+    <group ref={houseRef}>
+      {/* Main House Structure */}
+      <group>
+        {/* House Walls */}
+        <Box args={[houseWidth, houseHeight, houseDepth]} position={[0, houseHeight/2, 0]}>
+          <meshLambertMaterial
+            color="#f5f5dc"
+            transparent
+            opacity={0.9}
+          />
+        </Box>
+
+        {/* House Foundation */}
+        <Box args={[houseWidth + 0.5, 0.3, houseDepth + 0.5]} position={[0, 0.15, 0]}>
+          <meshLambertMaterial color="#696969" />
+        </Box>
+
+        {/* Windows */}
+        {[-3, 3].map((x, i) => (
+          <Box key={`window-front-${i}`} args={[1.5, 1.2, 0.1]} position={[x, houseHeight/2 + 0.3, houseDepth/2 + 0.05]}>
+            <meshLambertMaterial color="#87ceeb" transparent opacity={0.7} />
+          </Box>
+        ))}
+
+        {/* Door */}
+        <Box args={[1, 2, 0.1]} position={[0, 1, houseDepth/2 + 0.05]}>
+          <meshLambertMaterial color="#8b4513" />
+        </Box>
+      </group>
+
+      {/* South-Facing Gabled Roof */}
+      <group position={[0, houseHeight, 0]}>
+        {/* South-facing roof surface (main solar panel area) */}
+        <mesh
+          position={[0, roofHeight/2 * Math.sin(roofAngle), -houseDepth/4]}
+          rotation={[roofAngle, 0, 0]}
+        >
+          <planeGeometry args={[houseWidth + 1, houseDepth/2 + 0.5]} />
+          <meshLambertMaterial
+            color="#cd853f"
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        {/* North-facing roof surface */}
+        <mesh
+          position={[0, roofHeight/2 * Math.sin(roofAngle), houseDepth/4]}
+          rotation={[-roofAngle, 0, 0]}
+        >
+          <planeGeometry args={[houseWidth + 1, houseDepth/2 + 0.5]} />
+          <meshLambertMaterial
+            color="#a0522d"
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        {/* Roof ridge */}
+        <Box args={[houseWidth + 1, 0.1, 0.2]} position={[0, roofHeight/2 * Math.sin(roofAngle) + 0.05, 0]}>
+          <meshLambertMaterial color="#8b4513" />
+        </Box>
+
+        {/* Roof edges/gutters */}
+        <Box args={[houseWidth + 1.2, 0.05, 0.1]} position={[0, 0, -houseDepth/2 - 0.2]}>
+          <meshLambertMaterial color="#708090" />
+        </Box>
+        <Box args={[houseWidth + 1.2, 0.05, 0.1]} position={[0, 0, houseDepth/2 + 0.2]}>
+          <meshLambertMaterial color="#708090" />
+        </Box>
+      </group>
+
+      {/* Chimney */}
+      <Box args={[0.8, 2, 0.8]} position={[houseWidth/3, houseHeight + roofHeight/2 + 1, 0]}>
+        <meshLambertMaterial color="#8b0000" />
+      </Box>
+
       {/* Roof Area Label */}
-      <Html position={[0, 0.1, 0]} center>
-        <div className="bg-white/90 px-2 py-1 rounded text-xs font-medium shadow-sm">
-          120 m² Çatı Alanı
+      <Html position={[0, houseHeight + roofHeight + 0.5, -2]} center>
+        <div className="bg-white/90 px-3 py-2 rounded-lg text-sm font-medium shadow-lg border">
+          <div className="text-center">
+            <div className="font-bold text-primary">Güney Yönlü Çatı</div>
+            <div className="text-xs text-gray-600 mt-1">
+              {((houseWidth + 1) * (houseDepth/2 + 0.5)).toFixed(0)} m² Solar Alan
+            </div>
+            <div className="text-xs text-green-600 mt-1">
+              ⭐ Optimal Güneş Konumu
+            </div>
+          </div>
+        </div>
+      </Html>
+
+      {/* Compass indicator */}
+      <Html position={[houseWidth/2 + 2, houseHeight + 1, 0]} center>
+        <div className="bg-primary text-white px-2 py-1 rounded text-xs font-bold">
+          🧭 G
         </div>
       </Html>
     </group>
@@ -147,30 +214,72 @@ function SolarPanel3D({
   )
 }
 
-// Shadow Analysis Component
-function ShadowAnalysis({ showShadows, sunAngle = 45 }: { showShadows: boolean, sunAngle?: number }) {
+// Enhanced Shadow Analysis Component
+function ShadowAnalysis({ showShadows, sunAngle = 45, time = 12 }: { showShadows: boolean, sunAngle?: number, time?: number }) {
   if (!showShadows) return null
 
-  const shadowLength = 5
-  const shadowPositions = [
-    [2, 0.01, 2],
-    [2, 0.01, -2],
-    [-2, 0.01, 2],
-    [-2, 0.01, -2],
-  ]
+  // Calculate shadow parameters based on sun position and house dimensions
+  const houseWidth = 12
+  const houseDepth = 8
+  const houseHeight = 3
+  const roofHeight = 2.5
+  const totalHeight = houseHeight + roofHeight
+
+  // Calculate shadow length based on sun angle
+  const shadowLength = totalHeight / Math.tan((sunAngle * Math.PI) / 180)
+
+  // Calculate shadow direction based on time of day
+  const sunAzimuth = ((time - 12) / 12) * Math.PI // Sun moves east to west
+  const shadowOffsetX = Math.sin(sunAzimuth) * shadowLength
+  const shadowOffsetZ = Math.cos(sunAzimuth) * shadowLength
 
   return (
     <group>
-      {shadowPositions.map((pos, index) => (
-        <mesh key={index} position={pos as [number, number, number]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[1, shadowLength]} />
-          <meshBasicMaterial 
-            color="#000000" 
-            transparent 
-            opacity={0.3}
-          />
-        </mesh>
-      ))}
+      {/* House shadow */}
+      <mesh
+        position={[shadowOffsetX, 0.02, shadowOffsetZ]}
+        rotation={[-Math.PI / 2, sunAzimuth, 0]}
+      >
+        <planeGeometry args={[houseWidth * 1.2, shadowLength]} />
+        <meshBasicMaterial
+          color="#1a1a1a"
+          transparent
+          opacity={0.4}
+        />
+      </mesh>
+
+      {/* Roof shadow (more pronounced) */}
+      <mesh
+        position={[shadowOffsetX * 0.8, 0.03, shadowOffsetZ * 0.8]}
+        rotation={[-Math.PI / 2, sunAzimuth, 0]}
+      >
+        <planeGeometry args={[houseWidth * 0.8, shadowLength * 0.7]} />
+        <meshBasicMaterial
+          color="#000000"
+          transparent
+          opacity={0.2}
+        />
+      </mesh>
+
+      {/* Chimney shadow */}
+      <mesh
+        position={[houseWidth/3 + shadowOffsetX * 0.6, 0.04, shadowOffsetZ * 0.6]}
+        rotation={[-Math.PI / 2, sunAzimuth, 0]}
+      >
+        <planeGeometry args={[0.8, shadowLength * 0.4]} />
+        <meshBasicMaterial
+          color="#000000"
+          transparent
+          opacity={0.3}
+        />
+      </mesh>
+
+      {/* Shadow info */}
+      <Html position={[shadowOffsetX + 2, 0.5, shadowOffsetZ]} center>
+        <div className="bg-black/70 text-white px-2 py-1 rounded text-xs">
+          Saat {time}:00 Gölgesi
+        </div>
+      </Html>
     </group>
   )
 }
@@ -218,40 +327,50 @@ function CameraControls() {
 }
 
 // Main 3D Scene
-function Scene3D({ designerState, updateDesignerState, showLayers }: Designer3DProps) {
-  const [selectedPanel, setSelectedPanel] = useState<string | null>(null)
-  const [sunTime, setSunTime] = useState(12)
+interface Scene3DProps extends Designer3DProps {
+  sunTime: number
+  selectedPanel: string | null
+  setSelectedPanel: (id: string | null) => void
+}
 
+function Scene3D({ designerState, updateDesignerState, showLayers, sunTime, selectedPanel, setSelectedPanel }: Scene3DProps) {
   const handlePanelClick = (panelId: string) => {
     setSelectedPanel(panelId === selectedPanel ? null : panelId)
   }
 
-  const addPanel = (position: [number, number, number]) => {
-    const newPanel = {
-      id: `panel_${Date.now()}`,
-      position: { x: position[0], y: position[1], z: position[2] },
-      rotation: { x: 0, y: 0, z: 0 },
-      type: 'JINKO_540W',
-      power: 540
-    }
-
-    updateDesignerState({
-      panels: [...designerState.panels, newPanel]
-    })
-  }
-
   return (
     <>
-      {/* Lighting */}
-      <ambientLight intensity={0.6} />
-      <directionalLight 
-        position={[20, 20, 5]} 
-        intensity={1} 
+      {/* Enhanced Lighting */}
+      <ambientLight intensity={0.4} color="#ffffff" />
+
+      {/* Main directional light (sun) */}
+      <directionalLight
+        position={[20, 25, -10]}
+        intensity={1.2}
+        color="#ffeaa7"
         castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
+        shadow-mapSize-width={4096}
+        shadow-mapSize-height={4096}
+        shadow-camera-far={100}
+        shadow-camera-left={-50}
+        shadow-camera-right={50}
+        shadow-camera-top={50}
+        shadow-camera-bottom={-50}
       />
-      <pointLight position={[0, 10, 0]} intensity={0.5} color="#fbbf24" />
+
+      {/* Sky hemisphere light */}
+      <hemisphereLight
+        skyColor="#87ceeb"
+        groundColor="#8fbc8f"
+        intensity={0.6}
+      />
+
+      {/* Rim lighting for depth */}
+      <directionalLight
+        position={[-15, 10, 15]}
+        intensity={0.3}
+        color="#74b9ff"
+      />
 
       {/* Grid */}
       <Grid 
@@ -267,10 +386,10 @@ function Scene3D({ designerState, updateDesignerState, showLayers }: Designer3DP
         fadeStrength={1}
       />
 
-      {/* Roof */}
+      {/* House with South-Facing Roof */}
       {showLayers.roof && (
-        <Roof3D 
-          roofPoints={designerState.roofPoints} 
+        <House3D
+          roofPoints={designerState.roofPoints}
           showRoof={true}
         />
       )}
@@ -279,8 +398,8 @@ function Scene3D({ designerState, updateDesignerState, showLayers }: Designer3DP
       {showLayers.panels && designerState.panels.map((panel) => (
         <SolarPanel3D
           key={panel.id}
-          position={[panel.position.x, panel.position.y + 0.1, panel.position.z]}
-          rotation={[panel.rotation.x, panel.rotation.y, panel.rotation.z]}
+          position={[panel.position.x, panel.position.y + 3.5, panel.position.z]} // Adjusted for house roof height
+          rotation={[Math.PI / 6, panel.rotation.y, panel.rotation.z]} // Match roof angle
           panelType={panel.type}
           selected={selectedPanel === panel.id}
           onClick={() => handlePanelClick(panel.id)}
@@ -289,9 +408,10 @@ function Scene3D({ designerState, updateDesignerState, showLayers }: Designer3DP
 
       {/* Shadow Analysis */}
       {showLayers.shadows && (
-        <ShadowAnalysis 
-          showShadows={true} 
+        <ShadowAnalysis
+          showShadows={true}
           sunAngle={45}
+          time={sunTime}
         />
       )}
 
@@ -301,22 +421,95 @@ function Scene3D({ designerState, updateDesignerState, showLayers }: Designer3DP
       {/* Camera Controls */}
       <CameraControls />
 
-      {/* Ground Plane */}
+      {/* Enhanced Ground Plane */}
       <mesh position={[0, -0.1, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[100, 100]} />
-        <meshLambertMaterial color="#22c55e" transparent opacity={0.1} />
+        <meshLambertMaterial color="#4ade80" transparent opacity={0.3} />
       </mesh>
+
+      {/* Property boundary indication */}
+      <Line
+        points={[
+          [-20, 0, -15], [20, 0, -15], [20, 0, 15], [-20, 0, 15], [-20, 0, -15]
+        ]}
+        color="#6b7280"
+        lineWidth={2}
+        dashed
+        dashScale={2}
+        gapSize={1}
+      />
     </>
   )
 }
 
 export function Designer3D(props: Designer3DProps) {
   const [isLoading, setIsLoading] = useState(true)
+  const [sunTime, setSunTime] = useState(14) // Start at 2 PM for good lighting
+  const [selectedPanel, setSelectedPanel] = useState<string | null>(null)
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 2000)
     return () => clearTimeout(timer)
   }, [])
+
+  const addPanel = (position: [number, number, number]) => {
+    // Auto-position panels on south-facing roof
+    const houseHeight = 3
+    const roofHeight = 2.5
+    const roofAngle = Math.PI / 6
+    const adjustedY = houseHeight + (roofHeight / 2) * Math.sin(roofAngle)
+    const adjustedZ = position[2] < 0 ? position[2] : -2 // Keep on south side
+
+    const newPanel = {
+      id: `panel_${Date.now()}`,
+      position: { x: position[0], y: adjustedY, z: adjustedZ },
+      rotation: { x: Math.PI / 6, y: 0, z: 0 }, // Match roof angle
+      type: 'JINKO_540W',
+      power: 540
+    }
+
+    props.updateDesignerState({
+      panels: [...props.designerState.panels, newPanel]
+    })
+  }
+
+  const autoArrangePanels = () => {
+    const panelWidth = 1
+    const panelHeight = 2
+    const spacing = 0.2
+    const roofWidth = 6
+    const roofDepth = 4
+
+    const cols = Math.floor(roofWidth / (panelWidth + spacing))
+    const rows = Math.floor(roofDepth / (panelHeight + spacing))
+
+    const newPanels = []
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const x = -roofWidth/2 + col * (panelWidth + spacing) + panelWidth/2
+        const z = -4 + row * (panelHeight + spacing) + panelHeight/2
+        const y = 3.5 + (z + 2) * Math.tan(Math.PI / 6)
+
+        newPanels.push({
+          id: `panel_auto_${row}_${col}`,
+          position: { x, y, z },
+          rotation: { x: Math.PI / 6, y: 0, z: 0 },
+          type: 'JINKO_540W',
+          power: 540
+        })
+      }
+    }
+
+    props.updateDesignerState({
+      panels: newPanels
+    })
+  }
+
+  const clearPanels = () => {
+    props.updateDesignerState({
+      panels: []
+    })
+  }
 
   return (
     <div className="w-full h-full relative bg-gradient-to-b from-sky-100 to-green-50">
@@ -341,7 +534,12 @@ export function Designer3D(props: Designer3DProps) {
               state.gl.setClearColor('#f0f9ff')
             }}
           >
-            <Scene3D {...props} />
+            <Scene3D
+              {...props}
+              sunTime={sunTime}
+              selectedPanel={selectedPanel}
+              setSelectedPanel={setSelectedPanel}
+            />
           </Canvas>
         </Suspense>
       )}
@@ -349,24 +547,58 @@ export function Designer3D(props: Designer3DProps) {
       {/* 3D Controls Overlay */}
       {!isLoading && (
         <div className="absolute bottom-4 left-4 flex flex-col space-y-2">
-          <Button size="sm" variant="outline" className="bg-white/90">
+          <Button
+            size="sm"
+            variant="outline"
+            className="bg-white/90 hover:bg-white"
+            onClick={() => setSunTime(sunTime >= 18 ? 8 : sunTime + 2)}
+          >
             <Sun className="w-3 h-3 mr-2" />
-            Güneş Analizi
+            Saat: {sunTime}:00
           </Button>
-          <Button size="sm" variant="outline" className="bg-white/90">
-            Panel Ekle
+          <Button
+            size="sm"
+            variant="outline"
+            className="bg-white/90 hover:bg-white"
+            onClick={() => addPanel([0, 3.5, -2])}
+          >
+            🔋 Panel Ekle
           </Button>
+          <Button
+            size="sm"
+            variant="default"
+            className="bg-primary/90 hover:bg-primary"
+            onClick={autoArrangePanels}
+          >
+            ✨ Otomatik Yerleştir
+          </Button>
+          {props.designerState.panels.length > 0 && (
+            <Button
+              size="sm"
+              variant="destructive"
+              className="bg-red-500/90 hover:bg-red-500"
+              onClick={clearPanels}
+            >
+              🗑 Temizle
+            </Button>
+          )}
         </div>
       )}
 
       {/* View Information */}
-      <div className="absolute top-4 right-4 bg-white/90 rounded-lg p-3 text-sm">
-        <div className="flex items-center space-x-2 mb-1">
+      <div className="absolute top-4 right-4 bg-white/90 rounded-lg p-3 text-sm max-w-xs">
+        <div className="flex items-center space-x-2 mb-2">
           <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-          <span>3D Tasarım Modu</span>
+          <span className="font-medium">3D Güneş Evi Tasarımı</span>
         </div>
-        <div className="text-xs text-gray-600">
-          Farenizi hareket ettirin • Tekerleği çevirin • Sağ tıklayın
+        <div className="text-xs text-gray-600 space-y-1">
+          <div>🏠 Güney yönlü optimum çatı</div>
+          <div>☀️ Gerçek zaman gölge analizi</div>
+          <div>🔄 Farenizi hareket ettirin</div>
+        </div>
+        <div className="mt-2 p-2 bg-green-50 rounded text-xs">
+          <div className="font-medium text-green-800">Panel Alanı:</div>
+          <div className="text-green-600">Güney çatı - 65 m²</div>
         </div>
       </div>
     </div>

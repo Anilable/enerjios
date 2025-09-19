@@ -4,6 +4,14 @@ import type { QuoteStatus } from '@prisma/client'
 import { getServerSession } from '@/lib/get-session'
 import { prisma } from '@/lib/prisma'
 
+// Generate unique quote number with higher entropy
+const generateUniqueQuoteNumber = () => {
+  const timestamp = Date.now()
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase()
+  const uuid = crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()
+  return `Q-${timestamp}-${random}-${uuid}`
+}
+
 /**
  * Quote item interface for type safety
  */
@@ -59,6 +67,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     
     const {
+      id: quoteId, // Extract quote ID for update operations
       projectRequestId,
       capacity,
       items,
@@ -131,10 +140,78 @@ export async function POST(request: NextRequest) {
       projectId = newProject.id
     }
 
-    // Create quote in database
-    const quote = await prisma.quote.create({
+    // Determine if this is an update or create operation
+    const isUpdate = !!quoteId
+
+    console.log(`🔄 Quote Operation: ${isUpdate ? 'UPDATE' : 'CREATE'}`, { quoteId, quoteNumber })
+
+    let quote
+
+    if (isUpdate) {
+      // Update existing quote
+      console.log(`📝 Updating quote ${quoteId}`)
+
+      // First, delete existing quote items
+      await prisma.quoteItem.deleteMany({
+        where: { quoteId }
+      })
+
+      // Update quote
+      quote = await prisma.quote.update({
+        where: { id: quoteId },
+        data: {
+          // Don't update quoteNumber on existing quotes
+          projectId: projectId,
+          status,
+          subtotal: parseFloat(subtotal) || 0,
+          discount: parseFloat(discount) || 0,
+          tax: parseFloat(tax) || 0,
+          total: parseFloat(total) || 0,
+          validUntil: new Date(Date.now() + (validity || 30) * 24 * 60 * 60 * 1000),
+          notes: notes || '',
+          terms: terms || '',
+          updatedAt: new Date(),
+          items: {
+            create: await Promise.all((items || []).map(async (item: QuoteItemInput) => {
+              let productId = item.productId
+
+              // If no productId provided, create a placeholder ID for non-product items (like labor, mounting)
+              if (!productId) {
+                // Use a deterministic ID based on item name/category
+                productId = `temp_${item.category}_${item.name?.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`
+                console.log(`Creating placeholder productId for non-catalog item: ${item.name}`)
+              }
+
+              return {
+                productId: productId,
+                description: JSON.stringify({
+                  name: item.name || '',
+                  description: item.description || '',
+                  category: item.category || 'ACCESSORY',
+                  pricingType: item.pricingType || 'UNIT',
+                  discount: item.discount || 0,
+                  tax: item.tax || 0
+                }),
+                quantity: parseFloat(item.quantity.toString()) || 0,
+                unitPrice: parseFloat(item.unitPrice.toString()) || 0,
+                total: parseFloat(item.total.toString()) || 0
+              }
+            }))
+          }
+        },
+        include: {
+          items: true,
+          customer: true,
+          project: true
+        }
+      })
+    } else {
+      // Create new quote
+      console.log(`🆕 Creating new quote`)
+
+      quote = await prisma.quote.create({
       data: {
-        quoteNumber: quoteNumber || `Q-${Date.now().toString().slice(-8)}`,
+        quoteNumber: quoteNumber || generateUniqueQuoteNumber(),
         projectId: projectId,
         customerId: projectRequest.customerId,
         status,
@@ -174,12 +251,13 @@ export async function POST(request: NextRequest) {
           }))
         }
       },
-      include: {
-        items: true,
-        customer: true,
-        project: true
-      }
-    })
+        include: {
+          items: true,
+          customer: true,
+          project: true
+        }
+      })
+    }
 
     return NextResponse.json(quote)
   } catch (error) {
@@ -213,6 +291,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const projectRequestId = searchParams.get('projectRequestId')
+    const include = searchParams.get('include')
 
     const where: {
       status?: QuoteStatus
@@ -239,13 +318,33 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Build include object based on query parameter
+    const includeOptions: any = {}
+    if (include) {
+      const includeFields = include.split(',')
+      if (includeFields.includes('items')) {
+        includeOptions.items = {
+          include: {
+            product: true
+          }
+        }
+      }
+      if (includeFields.includes('customer')) {
+        includeOptions.customer = true
+      }
+      if (includeFields.includes('project')) {
+        includeOptions.project = true
+      }
+    } else {
+      // Default includes
+      includeOptions.items = true
+      includeOptions.customer = true
+      includeOptions.project = true
+    }
+
     const quotes = await prisma.quote.findMany({
       where,
-      include: {
-        items: true,
-        customer: true,
-        project: true
-      },
+      include: includeOptions,
       orderBy: {
         createdAt: 'desc'
       }

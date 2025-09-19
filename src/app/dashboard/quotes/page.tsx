@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { 
+import {
   Plus,
   Search,
   Filter,
@@ -22,11 +22,13 @@ import {
   Download,
   Edit,
   Copy,
-  MoreHorizontal
+  MoreHorizontal,
+  Trash2
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
+import { AdminQuoteApprovalDialog } from '@/components/quotes/AdminQuoteApprovalDialog'
 
 interface Quote {
   id: string
@@ -46,6 +48,11 @@ interface Quote {
   sentAt?: string
   viewedAt?: string
   respondedAt?: string
+  approvedAt?: string
+  approvedById?: string
+  items?: any[]
+  customer?: any
+  project?: any
 }
 
 // Mock data
@@ -109,6 +116,8 @@ export default function QuotesPage() {
   const { toast } = useToast()
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false)
+  const [selectedQuoteForApproval, setSelectedQuoteForApproval] = useState<Quote | null>(null)
 
   // Load quotes from API
   useEffect(() => {
@@ -259,6 +268,76 @@ export default function QuotesPage() {
       toast({
         title: "Hata",
         description: error instanceof Error ? error.message : "Teklif gönderilirken bir hata oluştu",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleAdminApprove = async (quote: Quote) => {
+    console.log('🔵 Dashboard: Opening approval dialog for quote:', quote.id)
+    try {
+      // Load full quote data with items and relations
+      console.log('🔵 Dashboard: Loading quote details...')
+      const response = await fetch(`/api/quotes/${quote.id}`)
+      if (response.ok) {
+        const fullQuote = await response.json()
+        console.log('🔵 Dashboard: Quote loaded, opening dialog:', fullQuote)
+        setSelectedQuoteForApproval(fullQuote)
+        setApprovalDialogOpen(true)
+      } else {
+        toast({
+          title: "Hata",
+          description: "Teklif detayları yüklenemedi",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error('Error loading quote for approval:', error)
+      toast({
+        title: "Hata",
+        description: "Teklif detayları yüklenirken bir hata oluştu",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleApprovalSuccess = () => {
+    // Reload quotes to get updated status
+    setQuotes(prev =>
+      prev.map(q =>
+        q.id === selectedQuoteForApproval?.id
+          ? { ...q, status: 'APPROVED' as Quote['status'], approvedAt: new Date().toISOString() }
+          : q
+      )
+    )
+  }
+
+  const handleDeleteQuote = async (quote: Quote) => {
+    if (!confirm(`"${quote.quoteNumber}" numaralı teklifi silmek istediğinizden emin misiniz?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/quotes/${quote.id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Teklif Silindi",
+          description: `${quote.quoteNumber} numaralı teklif başarıyla silindi`,
+        })
+        // Remove from list
+        setQuotes(prev => prev.filter(q => q.id !== quote.id))
+      } else {
+        const error = await response.json()
+        throw new Error(error.error || 'Silme işlemi başarısız')
+      }
+    } catch (error) {
+      console.error('Delete quote error:', error)
+      toast({
+        title: "Hata",
+        description: error instanceof Error ? error.message : "Teklif silinirken bir hata oluştu",
         variant: "destructive"
       })
     }
@@ -436,9 +515,56 @@ export default function QuotesPage() {
                   placeholder="Teklif no, müşteri adı veya email ara..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 pr-20"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      // Search is already happening live, but this gives feedback
+                      toast({
+                        title: "Arama Yapılıyor",
+                        description: `"${searchQuery}" için ${filteredQuotes.length} sonuç bulundu`,
+                      })
+                    }
+                  }}
                 />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 px-2"
+                    onClick={() => {
+                      setSearchQuery('')
+                      toast({
+                        title: "Arama Temizlendi",
+                        description: "Tüm teklifler gösteriliyor",
+                      })
+                    }}
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
+
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (searchQuery.trim()) {
+                    toast({
+                      title: "Arama Sonuçları",
+                      description: `"${searchQuery}" için ${filteredQuotes.length} teklif bulundu`,
+                    })
+                  } else {
+                    toast({
+                      title: "Arama Yapılamadı",
+                      description: "Lütfen arama terimi girin",
+                      variant: "destructive"
+                    })
+                  }
+                }}
+                className="whitespace-nowrap"
+              >
+                <Search className="w-4 h-4 mr-2" />
+                Ara
+              </Button>
               
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-40">
@@ -473,151 +599,154 @@ export default function QuotesPage() {
         <div className="space-y-4">
           {filteredQuotes.map((quote) => {
             const daysUntilExpiry = getDaysUntilExpiry(quote.validUntil)
-            
+
             return (
               <Card key={quote.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 space-y-3">
-                      {/* Header */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div>
-                            <h3 className="font-semibold text-lg">
-                              {quote.quoteNumber}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              {quote.customerName} - {quote.customerEmail}
-                            </p>
-                          </div>
-                          <Badge className={`${getStatusColor(quote.status)} flex items-center gap-1`}>
-                            {getStatusIcon(quote.status)}
-                            {getStatusLabel(quote.status)}
-                          </Badge>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    {/* Sol taraf - Ana bilgiler */}
+                    <div className="flex items-center space-x-6 flex-1 cursor-pointer" onClick={() => router.push(`/dashboard/quotes/${quote.id}`)}>
+                      {/* Teklif Numarası ve Müşteri */}
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-base text-gray-900">
+                          {quote.quoteNumber}
+                        </h3>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {quote.customerName}
+                        </p>
+                      </div>
+
+                      {/* Durum */}
+                      <div className="flex-shrink-0">
+                        <Badge className={`${getStatusColor(quote.status)} flex items-center gap-1 text-xs`}>
+                          {getStatusIcon(quote.status)}
+                          {getStatusLabel(quote.status)}
+                        </Badge>
+                      </div>
+
+                      {/* Fiyat */}
+                      <div className="flex-shrink-0 text-right">
+                        <div className="text-lg font-bold text-primary">
+                          {formatCurrency(quote.total)}
                         </div>
-                        
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-primary">
-                            {formatCurrency(quote.total)}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {quote.capacity} kW {quote.projectType}
-                          </p>
+                        <div className="text-sm text-muted-foreground">
+                          {quote.capacity} kW
                         </div>
                       </div>
 
-                      {/* Details */}
-                      <div className="grid md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Oluşturma:</span>
-                          <span className="ml-2 font-medium">{formatDate(quote.createdAt)}</span>
+                      {/* Tarihler */}
+                      <div className="flex-shrink-0 text-right">
+                        <div className="text-sm text-gray-600">
+                          {formatDate(quote.createdAt)}
                         </div>
-                        <div>
-                          <span className="text-muted-foreground">Geçerlilik:</span>
-                          <span className="ml-2 font-medium">
-                            {formatDate(quote.validUntil)}
-                            {quote.status === 'SENT' && daysUntilExpiry > 0 && (
-                              <span className={`ml-1 text-xs ${daysUntilExpiry < 7 ? 'text-orange-600' : 'text-green-600'}`}>
-                                ({daysUntilExpiry} gün)
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                        {quote.sentAt && (
-                          <div>
-                            <span className="text-muted-foreground">Gönderim:</span>
-                            <span className="ml-2 font-medium">{formatDate(quote.sentAt)}</span>
-                          </div>
-                        )}
-                        {quote.viewedAt && (
-                          <div>
-                            <span className="text-muted-foreground">Görüntülenme:</span>
-                            <span className="ml-2 font-medium">{formatDate(quote.viewedAt)}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Pricing Breakdown */}
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <div className="grid md:grid-cols-4 gap-2 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Ara Toplam:</span>
-                            <span className="ml-2 font-medium">{formatCurrency(quote.subtotal)}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">İndirim:</span>
-                            <span className="ml-2 font-medium text-green-600">-{formatCurrency(quote.discount)}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">KDV (20%):</span>
-                            <span className="ml-2 font-medium">{formatCurrency(quote.tax)}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Toplam:</span>
-                            <span className="ml-2 font-bold text-primary">{formatCurrency(quote.total)}</span>
-                          </div>
+                        <div className="text-xs text-muted-foreground">
+                          Geçerlik: {formatDate(quote.validUntil)}
+                          {quote.status === 'SENT' && daysUntilExpiry > 0 && (
+                            <span className={`ml-1 ${daysUntilExpiry < 7 ? 'text-orange-600' : 'text-green-600'}`}>
+                              ({daysUntilExpiry}g)
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex flex-col space-y-2 ml-6">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => router.push(`/dashboard/quotes/${quote.id}`)}
-                      >
-                        <Eye className="w-3 h-3 mr-1" />
-                        Görüntüle
-                      </Button>
-                      
+                    {/* Sağ taraf - Action Buttons */}
+                    <div className="flex items-center gap-2 ml-4" onClick={(e) => e.stopPropagation()}>
+
+                      {/* DRAFT durumu butonları */}
                       {quote.status === 'DRAFT' && (
                         <>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleEditDraft(quote)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleEditDraft(quote)
+                            }}
                           >
-                            <Edit className="w-3 h-3 mr-1" />
-                            Düzenle
+                            <Edit className="w-4 h-4" />
                           </Button>
                           <Button
                             size="sm"
-                            onClick={() => handleSendQuote(quote)}
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleSendQuote(quote)
+                            }}
                           >
-                            <Send className="w-3 h-3 mr-1" />
-                            Gönder
+                            <Send className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleAdminApprove(quote)
+                            }}
+                          >
+                            <CheckCircle className="w-4 h-4" />
                           </Button>
                         </>
                       )}
-                      
+
+                      {/* SENT/VIEWED durumu butonları */}
                       {(quote.status === 'SENT' || quote.status === 'VIEWED') && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleSendReminder(quote)}
-                        >
-                          <Clock className="w-3 h-3 mr-1" />
-                          Hatırlat
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleSendReminder(quote)
+                            }}
+                          >
+                            <Clock className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleAdminApprove(quote)
+                            }}
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </Button>
+                        </>
                       )}
-                      
+
+                      {/* APPROVED durumu göstergesi */}
+                      {quote.status === 'APPROVED' && (
+                        <div className="text-center">
+                          <span className="text-sm text-green-600 font-medium">
+                            ✓ Onaylandı
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Ortak butonlar */}
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleCopyLink(quote)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDownloadPDF(quote)
+                        }}
                       >
-                        <Copy className="w-3 h-3 mr-1" />
-                        Kopyala
+                        <Download className="w-4 h-4" />
                       </Button>
-                      
+
+                      {/* Silme butonu */}
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleDownloadPDF(quote)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteQuote(quote)
+                        }}
                       >
-                        <Download className="w-3 h-3 mr-1" />
-                        PDF İndir
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
@@ -646,6 +775,19 @@ export default function QuotesPage() {
           </Card>
         )}
       </div>
+
+      {/* Admin Quote Approval Dialog */}
+      {selectedQuoteForApproval && (
+        <AdminQuoteApprovalDialog
+          quote={selectedQuoteForApproval}
+          isOpen={approvalDialogOpen}
+          onClose={() => {
+            setApprovalDialogOpen(false)
+            setSelectedQuoteForApproval(null)
+          }}
+          onSuccess={handleApprovalSuccess}
+        />
+      )}
     </DashboardLayout>
   )
 }

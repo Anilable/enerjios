@@ -51,6 +51,7 @@ export interface ProductPricing {
   currency: 'TRY' | 'USD' | 'EUR'
   costPrice?: number
   margin?: number
+  purchaseDate?: string
   discountTiers: Array<{
     minQuantity: number
     discount: number

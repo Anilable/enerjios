@@ -1,4 +1,5 @@
   import { Resend } from 'resend'
+import { generateFileToken } from '@/app/api/files/[token]/route'
 
   // Initialize Resend with proper error handling
   const resend = new Resend(process.env.RESEND_API_KEY)
@@ -13,6 +14,22 @@
     uploadUrl: string
     expiryDays: number
     token: string
+  }
+
+  interface ProductFile {
+    url: string
+    type: 'image' | 'datasheet' | 'manual'
+    filename: string
+    token?: string
+  }
+
+  interface QuoteProduct {
+    id: string
+    name: string
+    brand: string
+    quantity: number
+    unitPrice: number
+    files: ProductFile[]
   }
 
   export interface QuoteEmailData {
@@ -34,6 +51,7 @@
       estimatedProduction: number
       paybackPeriod: number
     }
+    products?: QuoteProduct[]
   }
 
   export class EmailService {
@@ -410,6 +428,8 @@
                 </p>
               </div>
               
+              ${this.generateProductsSection(data)}
+
               <!-- Features -->
               <div style="background: #f8fafc; border-left: 4px solid #3b82f6; padding: 25px; border-radius: 0 8px 8px 0; margin: 30px 0;">
                 <h3 style="margin: 0 0 15px 0; color: #1f2937; font-size: 18px;">✨ Teklifimize Dahil Olanlar</h3>
@@ -468,6 +488,11 @@
   • Geri Ödeme Süresi: ${data.systemDetails.paybackPeriod} yıl
 
   TOPLAM YATIRIM: ${data.totalAmount.toLocaleString('tr-TR')} ₺ (KDV Dahil)
+
+  ${data.products && data.products.length > 0 ? `
+  ÜRÜN DOSYALARI:
+  Teklifimizde yer alan ürünlerin görselleri ve teknik dökümanları e-posta içeriğinde yer almaktadır.
+  ` : ''}
 
   TEKLİF İNCELEME LİNKİ:
   ${data.quoteViewUrl}
@@ -584,7 +609,7 @@
     }
 
     private static generateQuoteStatusText(
-      data: QuoteEmailData, 
+      data: QuoteEmailData,
       status: 'APPROVED' | 'REJECTED' | 'EXPIRED',
       customerComments?: string
     ): string {
@@ -611,5 +636,103 @@
 
   Token: ${data.deliveryToken}
       `.trim()
+    }
+
+    private static generateProductsSection(data: QuoteEmailData): string {
+      if (!data.products || data.products.length === 0) {
+        return ''
+      }
+
+      const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3002'
+
+      const productsWithFiles = data.products.filter(product =>
+        product.files && product.files.length > 0
+      )
+
+      if (productsWithFiles.length === 0) {
+        return ''
+      }
+
+      return `
+              <!-- Product Files Section -->
+              <div style="background: linear-gradient(135deg, #fef3e2 0%, #fef7ed 100%); border-left: 5px solid #f59e0b; padding: 30px; border-radius: 12px; margin: 30px 0; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+                <div style="text-align: center; margin-bottom: 25px;">
+                  <div style="display: inline-block; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 12px 20px; border-radius: 25px; font-weight: bold; font-size: 16px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);">
+                    🎯 Ürün Detayları ve Dökümanlar
+                  </div>
+                  <p style="margin: 0; color: #78716c; font-size: 14px; line-height: 1.5;">Teklifimizde yer alan ürünlerin görselleri ve teknik dökümanları</p>
+                </div>
+
+                <div style="display: grid; gap: 20px;">
+                  ${productsWithFiles.map(product => {
+                    const images = product.files.filter(f => f.type === 'image')
+                    const datasheets = product.files.filter(f => f.type === 'datasheet')
+                    const manuals = product.files.filter(f => f.type === 'manual')
+
+                    return `
+                    <div style="background: white; border-radius: 16px; padding: 25px; margin: 10px 0; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08); border: 1px solid #f3f4f6; transition: all 0.3s ease;">
+                      <!-- Product Header -->
+                      <div style="border-bottom: 2px solid #f3f4f6; padding-bottom: 20px; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 8px 0; color: #1f2937; font-size: 20px; font-weight: 700; line-height: 1.3;">
+                          ${product.brand} ${product.name}
+                        </h3>
+                        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 8px 16px; border-radius: 20px; display: inline-block; font-size: 14px; font-weight: 600;">
+                          ${product.quantity} adet × ${product.unitPrice.toLocaleString('tr-TR')} ₺ = ${(product.quantity * product.unitPrice).toLocaleString('tr-TR')} ₺
+                        </div>
+                      </div>
+
+                      ${images.length > 0 ? `
+                      <div style="margin-bottom: 20px;">
+                        <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                          <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 6px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">
+                            📸 Ürün Görselleri
+                          </div>
+                        </div>
+                        <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+                          ${images.slice(0, 3).map(image => {
+                            const token = generateFileToken(image.url, 720)
+                            return `<div style="position: relative; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); border: 3px solid #f3f4f6;">
+                              <img src="${baseUrl}/api/files/${token}" alt="${product.name}" style="width: 120px; height: 120px; object-fit: cover; display: block;" />
+                            </div>`
+                          }).join('')}
+                          ${images.length > 3 ? `
+                          <div style="width: 120px; height: 120px; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); border: 2px dashed #d1d5db; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #6b7280; font-size: 14px; font-weight: 600;">
+                            +${images.length - 3} daha
+                          </div>
+                          ` : ''}
+                        </div>
+                      </div>
+                      ` : ''}
+
+                      <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-start;">
+                        ${datasheets.length > 0 ? `
+                        <a href="${baseUrl}/api/files/${generateFileToken(datasheets[0].url, 720)}"
+                           style="display: inline-flex; align-items: center; background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; padding: 12px 20px; text-decoration: none; border-radius: 25px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3); transition: all 0.3s ease;">
+                          <span style="margin-right: 8px; font-size: 16px;">📋</span>
+                          Teknik Döküman İndir
+                        </a>
+                        ` : ''}
+                        ${manuals.length > 0 ? `
+                        <a href="${baseUrl}/api/files/${generateFileToken(manuals[0].url, 720)}"
+                           style="display: inline-flex; align-items: center; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 12px 20px; text-decoration: none; border-radius: 25px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3); transition: all 0.3s ease;">
+                          <span style="margin-right: 8px; font-size: 16px;">📖</span>
+                          Kullanım Kılavuzu İndir
+                        </a>
+                        ` : ''}
+                      </div>
+                    </div>
+                    `
+                  }).join('')}
+                </div>
+
+                <!-- Security Notice -->
+                <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; border-radius: 12px; padding: 20px; margin-top: 25px; text-align: center;">
+                  <div style="color: #92400e; font-size: 16px; margin-bottom: 5px;">🔐</div>
+                  <p style="margin: 0; color: #92400e; font-size: 14px; font-weight: 600; line-height: 1.5;">
+                    <strong>Güvenlik Bildirimi:</strong> Döküman indirme linkleri 30 gün boyunca geçerlidir. Güvenliğiniz için linkleri başkalarıyla paylaşmayın.
+                  </p>
+                </div>
+              </div>
+              `
     }
   }

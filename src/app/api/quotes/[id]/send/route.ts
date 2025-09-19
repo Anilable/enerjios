@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { emailService } from '@/lib/email-service';
+import { EmailService } from '@/lib/email';
 import { WhatsAppService } from '@/lib/whatsapp-service';
 import { z } from 'zod';
 import crypto from 'crypto';
@@ -104,21 +104,101 @@ export async function POST(
     // Send via Email
     if (channels.includes('EMAIL') && finalCustomerEmail) {
       try {
-        const emailSent = await emailService.sendQuoteDeliveryEmail(
-          quote,
-          finalCustomerEmail,
-          finalCustomerName,
+        console.log('Processing item for email delivery...')
+
+        // Transform quote data for new email service
+        const emailData = {
+          customerName: finalCustomerName,
+          customerEmail: finalCustomerEmail,
+          quoteNumber: quote.quoteNumber,
+          projectTitle: quote.project?.title || `${companyName} Güneş Enerji Sistemi`,
+          totalAmount: quote.total,
+          validUntil: quote.validUntil,
+          quoteViewUrl: `${process.env.NEXT_PUBLIC_APP_URL}/quotes/public/${deliveryToken}`,
           companyName,
-          quote.pdfUrl || undefined
-        );
+          engineerName: quote.createdBy?.name || 'Proje Uzmanı',
+          engineerTitle: 'Güneş Enerji Uzmanı',
+          deliveryToken,
+          systemDetails: {
+            capacity: quote.capacity || 0,
+            panelCount: quote.panelCount || 0,
+            estimatedProduction: quote.estimatedProduction || 0,
+            paybackPeriod: quote.paybackPeriod || 0
+          },
+          products: quote.items?.map(item => {
+            console.log('Processing item:', item.id, 'Product:', item.product?.name)
+            const product = item.product
+            if (!product) return null
+
+            const files: Array<{url: string, type: 'image' | 'datasheet' | 'manual', filename: string}> = []
+
+            // Add images
+            console.log('Product images:', product.images)
+            if (product.images) {
+              try {
+                const imageUrls = JSON.parse(product.images)
+                console.log('Parsed image URLs:', imageUrls)
+                if (Array.isArray(imageUrls)) {
+                  imageUrls.forEach(url => {
+                    console.log('Adding image:', url)
+                    files.push({
+                      url,
+                      type: 'image',
+                      filename: url.split('/').pop() || 'image'
+                    })
+                  })
+                }
+              } catch (e) {
+                console.error('Error parsing product images:', e)
+              }
+            }
+
+            // Add datasheet
+            console.log('Product datasheet:', product.datasheet)
+            if (product.datasheet) {
+              console.log('Adding datasheet:', product.datasheet)
+              files.push({
+                url: product.datasheet,
+                type: 'datasheet',
+                filename: product.datasheet.split('/').pop() || 'datasheet.pdf'
+              })
+            }
+
+            // Add manual
+            console.log('Product manual:', product.manual)
+            if (product.manual) {
+              console.log('Adding manual:', product.manual)
+              files.push({
+                url: product.manual,
+                type: 'manual',
+                filename: product.manual.split('/').pop() || 'manual.pdf'
+              })
+            }
+
+            console.log('Total files for product:', files.length, files)
+
+            return {
+              id: product.id,
+              name: product.name,
+              brand: product.brand,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              files
+            }
+          }).filter(Boolean) || []
+        }
+
+        console.log('Final products with files:', emailData.products?.length || 0)
+
+        const emailResult = await EmailService.sendQuoteDelivery(emailData);
 
         results.push({
           channel: 'EMAIL',
-          success: emailSent,
-          error: emailSent ? undefined : 'Email gönderimi başarısız'
+          success: emailResult.success,
+          error: emailResult.success ? undefined : emailResult.error || 'Email gönderimi başarısız'
         });
 
-        if (emailSent) {
+        if (emailResult.success) {
           await prisma.quote.update({
             where: { id: quote.id },
             data: {

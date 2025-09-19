@@ -1,10 +1,13 @@
 import { requireAuth } from '@/lib/auth-utils'
+import { checkApiPermissions } from '@/lib/permissions'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/utils'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Shield } from 'lucide-react'
 import { 
   DollarSign, 
   TrendingUp, 
@@ -103,6 +106,27 @@ const expenses = [
 
 export default async function FinancePage() {
   const user = await requireAuth()
+
+  // Check if user has permission to access financial data
+  const hasFinanceAccess = checkApiPermissions(
+    user.role as any,
+    user.id,
+    ['finance:read'],
+    user.companyId
+  )
+
+  if (!hasFinanceAccess) {
+    return (
+      <DashboardLayout title="Finans Yönetimi">
+        <Alert>
+          <Shield className="h-4 w-4" />
+          <AlertDescription>
+            Bu sayfaya erişim yetkiniz bulunmamaktadır. Finansal verileri görüntülemek için gerekli izinlere sahip değilsiniz.
+          </AlertDescription>
+        </Alert>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout title="Finans Yönetimi">

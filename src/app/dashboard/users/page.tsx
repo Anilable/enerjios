@@ -317,6 +317,7 @@ export default function UsersPage() {
                       <SelectItem value="COMPANY">Şirket</SelectItem>
                       <SelectItem value="FARMER">Çiftçi</SelectItem>
                       <SelectItem value="BANK">Banka</SelectItem>
+                      <SelectItem value="INSTALLATION_TEAM">Kurulum Ekibi</SelectItem>
                       <SelectItem value="ADMIN">Admin</SelectItem>
                     </SelectContent>
                   </Select>
@@ -454,13 +455,15 @@ export default function UsersPage() {
                         <td className="py-3 px-4">
                           <Badge variant={
                             user.role === 'ADMIN' ? 'default' :
-                            user.role === 'COMPANY' ? 'secondary' : 'outline'
+                            user.role === 'COMPANY' ? 'secondary' :
+                            user.role === 'INSTALLATION_TEAM' ? 'secondary' : 'outline'
                           }>
                             {user.role === 'ADMIN' ? 'Admin' :
                              user.role === 'COMPANY' ? 'Şirket' :
                              user.role === 'CUSTOMER' ? 'Müşteri' :
                              user.role === 'FARMER' ? 'Çiftçi' :
-                             user.role === 'BANK' ? 'Banka' : user.role}
+                             user.role === 'BANK' ? 'Banka' :
+                             user.role === 'INSTALLATION_TEAM' ? 'Kurulum Ekibi' : user.role}
                           </Badge>
                         </td>
                         <td className="py-3 px-4">

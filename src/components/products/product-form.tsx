@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Checkbox } from '@/components/ui/checkbox'
+import { PricingGuard } from '@/components/ui/permission-guard'
 import {
   Dialog,
   DialogContent,
@@ -414,7 +415,9 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="general">Genel</TabsTrigger>
           <TabsTrigger value="specifications">Özellikler</TabsTrigger>
-          <TabsTrigger value="pricing">Fiyatlandırma</TabsTrigger>
+          <PricingGuard fallback={null}>
+            <TabsTrigger value="pricing">Fiyatlandırma</TabsTrigger>
+          </PricingGuard>
           <TabsTrigger value="inventory">Stok</TabsTrigger>
           <TabsTrigger value="documents">Belgeler</TabsTrigger>
           <TabsTrigger value="warranty">Garanti</TabsTrigger>
@@ -493,8 +496,8 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
               <div className="flex items-center justify-between">
                 <div>
                   <Label htmlFor="status">Durum</Label>
-                  <Select 
-                    value={formData.status} 
+                  <Select
+                    value={formData.status}
                     onValueChange={(value) => handleInputChange('status', value)}
                   >
                     <SelectTrigger className="w-[180px]">
@@ -508,6 +511,75 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
                   </Select>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Product Images Card */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Ürün Görselleri</CardTitle>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const input = document.createElement('input')
+                    input.type = 'file'
+                    input.accept = 'image/*'
+                    input.multiple = true
+                    input.onchange = (e) => {
+                      const files = (e.target as HTMLInputElement).files
+                      if (files) {
+                        // In a real implementation, you would upload these files to a server
+                        // For now, we'll create local URLs for preview
+                        const newImages = Array.from(files).map(file => URL.createObjectURL(file))
+                        setFormData(prev => ({
+                          ...prev,
+                          images: [...(prev.images || []), ...newImages]
+                        }))
+                      }
+                    }
+                    input.click()
+                  }}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Görsel Yükle
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {formData.images && formData.images.length > 0 ? (
+                <div className="grid grid-cols-4 gap-4">
+                  {formData.images.map((image, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={image}
+                        alt={`Product ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg border"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 p-0"
+                        onClick={() => {
+                          const updatedImages = formData.images?.filter((_, i) => i !== index) || []
+                          setFormData(prev => ({ ...prev, images: updatedImages }))
+                        }}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                  <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-sm text-gray-500 mb-2">Henüz görsel eklenmemiş</p>
+                  <p className="text-xs text-gray-400">Görsel yüklemek için yukarıdaki butonu kullanın</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -546,22 +618,23 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
         </TabsContent>
 
         {/* Pricing Tab */}
-        <TabsContent value="pricing" className="space-y-6">
+        <PricingGuard>
+          <TabsContent value="pricing" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Temel Fiyatlandırma</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="basePrice">Temel Fiyat *</Label>
+                  <Label htmlFor="costPrice">Alış Fiyatı</Label>
                   <div className="flex gap-2">
                     <Input
-                      id="basePrice"
+                      id="costPrice"
                       type="number"
                       step="0.01"
-                      value={formData.pricing?.basePrice || 0}
-                      onChange={(e) => handleNestedInputChange('pricing', 'basePrice', parseFloat(e.target.value) || 0)}
+                      value={formData.pricing?.costPrice || 0}
+                      onChange={(e) => handleNestedInputChange('pricing', 'costPrice', parseFloat(e.target.value) || 0)}
                     />
                     <Select
                       value={formData.pricing?.currency}
@@ -579,16 +652,43 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="costPrice">Maliyet Fiyatı</Label>
+                  <Label htmlFor="basePrice">Satış Fiyatı *</Label>
                   <Input
-                    id="costPrice"
+                    id="basePrice"
                     type="number"
                     step="0.01"
-                    value={formData.pricing?.costPrice || 0}
-                    onChange={(e) => handleNestedInputChange('pricing', 'costPrice', parseFloat(e.target.value) || 0)}
+                    value={formData.pricing?.basePrice || 0}
+                    onChange={(e) => handleNestedInputChange('pricing', 'basePrice', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="purchaseDate">Alış Tarihi</Label>
+                  <Input
+                    id="purchaseDate"
+                    type="date"
+                    value={formData.pricing?.purchaseDate ? new Date(formData.pricing.purchaseDate).toISOString().split('T')[0] : ''}
+                    onChange={(e) => handleNestedInputChange('pricing', 'purchaseDate', e.target.value ? new Date(e.target.value).toISOString() : null)}
                   />
                 </div>
               </div>
+
+              {/* Margin calculation display */}
+              {formData.pricing?.basePrice > 0 && formData.pricing?.costPrice > 0 && (
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Kar Marjı:</span>
+                    <span className="font-medium">
+                      {(((formData.pricing.basePrice - formData.pricing.costPrice) / formData.pricing.basePrice) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Kar Miktarı:</span>
+                    <span className="font-medium">
+                      {(formData.pricing.basePrice - formData.pricing.costPrice).toFixed(2)} {formData.pricing?.currency || 'TRY'}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -673,7 +773,8 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+          </TabsContent>
+        </PricingGuard>
 
         {/* Inventory Tab */}
         <TabsContent value="inventory" className="space-y-6">
@@ -806,6 +907,74 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
                   onChange={(e) => handleNestedInputChange('inventory', 'leadTime', parseInt(e.target.value) || 0)}
                 />
               </div>
+
+              {/* Quick Stock Update */}
+              <Card className="bg-blue-50 border-blue-200">
+                <CardHeader>
+                  <CardTitle className="text-lg text-blue-800 flex items-center gap-2">
+                    <Package className="w-5 h-5" />
+                    Hızlı Stok Güncelleme
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label>Yeni Stok Miktarı</Label>
+                      <Input
+                        type="number"
+                        id="quickStockUpdate"
+                        placeholder="Yeni stok adedi"
+                      />
+                    </div>
+                    <div>
+                      <Label>Alış Tarihi</Label>
+                      <Input
+                        type="date"
+                        id="quickStockDate"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        type="button"
+                        className="w-full"
+                        onClick={() => {
+                          const stockInput = document.getElementById('quickStockUpdate') as HTMLInputElement
+                          const dateInput = document.getElementById('quickStockDate') as HTMLInputElement
+
+                          if (stockInput?.value) {
+                            const newStock = parseInt(stockInput.value)
+                            handleNestedInputChange('inventory', 'stockQuantity', newStock)
+                            handleNestedInputChange('inventory', 'availableQuantity',
+                              newStock - (formData.inventory?.reservedQuantity || 0))
+                            handleNestedInputChange('inventory', 'lastStockUpdate', new Date().toISOString())
+
+                            // Update purchase date if provided
+                            if (dateInput?.value) {
+                              handleNestedInputChange('pricing', 'purchaseDate', new Date(dateInput.value).toISOString())
+                            }
+
+                            // Clear inputs
+                            stockInput.value = ''
+                            if (dateInput) dateInput.value = ''
+
+                            alert('Stok başarıyla güncellendi!')
+                          }
+                        }}
+                      >
+                        <Warehouse className="w-4 h-4 mr-2" />
+                        Stok Güncelle
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="text-sm text-blue-700 bg-blue-100 p-3 rounded">
+                    <strong>Mevcut Stok:</strong> {formData.inventory?.stockQuantity || 0} adet
+                    <br />
+                    <strong>Son Güncelleme:</strong> {formData.inventory?.lastStockUpdate ?
+                      new Date(formData.inventory.lastStockUpdate).toLocaleDateString('tr-TR') : 'Bilinmiyor'}
+                  </div>
+                </CardContent>
+              </Card>
             </CardContent>
           </Card>
         </TabsContent>
@@ -836,17 +1005,46 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
               {formData.documents?.map((doc, index) => (
                 <div key={doc.id} className="flex gap-4 items-center p-4 border rounded mb-4">
                   <FileText className="w-6 h-6 text-muted-foreground" />
-                  <div className="flex-1 grid grid-cols-3 gap-4">
+                  <div className="flex-1 grid grid-cols-4 gap-4">
                     <Input
                       placeholder="Belge adı"
                       value={doc.name}
                       onChange={(e) => updateDocument(index, 'name', e.target.value)}
                     />
-                    <Input
-                      placeholder="URL veya dosya yolu"
-                      value={doc.url}
-                      onChange={(e) => updateDocument(index, 'url', e.target.value)}
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="URL veya dosya yolu"
+                        value={doc.url}
+                        onChange={(e) => updateDocument(index, 'url', e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const input = document.createElement('input')
+                          input.type = 'file'
+                          input.accept = doc.type === 'DATASHEET' || doc.type === 'MANUAL' || doc.type === 'CERTIFICATE' ? '.pdf,.doc,.docx' : '*/*'
+                          input.onchange = (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0]
+                            if (file) {
+                              // In a real implementation, you would upload this file to a server
+                              // For now, we'll create a local URL
+                              const fileUrl = URL.createObjectURL(file)
+                              updateDocument(index, 'url', fileUrl)
+                              if (!doc.name) {
+                                updateDocument(index, 'name', file.name)
+                              }
+                            }
+                          }
+                          input.click()
+                        }}
+                        title="Dosya Yükle"
+                      >
+                        <Upload className="w-3 h-3" />
+                      </Button>
+                    </div>
                     <Select
                       value={doc.language}
                       onValueChange={(value) => updateDocument(index, 'language', value)}
@@ -860,9 +1058,23 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
                         <SelectItem value="de">Deutsch</SelectItem>
                       </SelectContent>
                     </Select>
+                    <div className="flex gap-2">
+                      <Badge variant="outline">{doc.type}</Badge>
+                      {doc.url && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(doc.url, '_blank')}
+                          title="Dosyayı Görüntüle"
+                        >
+                          <Eye className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <Badge variant="outline">{doc.type}</Badge>
                   <Button
+                    type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => removeDocument(index)}

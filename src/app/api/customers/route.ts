@@ -1,13 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/db'
-import { requireAuth, getCustomersFilter } from '@/lib/multi-tenant'
+import { getServerSession } from '@/lib/get-session'
+import { prisma } from '@/lib/prisma'
 
 export async function POST(req: NextRequest) {
   try {
-    const session = requireAuth(await getServerSession(authOptions))
+    console.log('🎯 CUSTOMER CREATE: Starting customer creation')
+    const session = await getServerSession()
+
+    if (!session?.user?.id) {
+      console.log('❌ CUSTOMER CREATE: No session found')
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    console.log('✅ CUSTOMER CREATE: Session authenticated:', session.user.email)
+
     const body = await req.json()
+    console.log('📋 CUSTOMER CREATE: Request body:', body)
     
     const {
       firstName,
@@ -28,6 +39,34 @@ export async function POST(req: NextRequest) {
         error: 'Missing required fields: firstName, lastName, email, customerType'
       }, { status: 400 })
     }
+
+    // Check if email already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    })
+
+    if (existingUser) {
+      console.log('❌ CUSTOMER CREATE: Email already exists:', email)
+      return NextResponse.json({
+        error: 'Bu email adresi ile zaten bir kullanıcı kayıtlı'
+      }, { status: 400 })
+    }
+
+    // Check if phone already exists (if phone is provided)
+    if (phone) {
+      const existingPhoneUser = await prisma.user.findFirst({
+        where: { phone }
+      })
+
+      if (existingPhoneUser) {
+        console.log('❌ CUSTOMER CREATE: Phone already exists:', phone)
+        return NextResponse.json({
+          error: 'Bu telefon numarası ile zaten bir kullanıcı kayıtlı'
+        }, { status: 400 })
+      }
+    }
+
+    console.log('✅ CUSTOMER CREATE: Email and phone are unique, creating user')
 
     // Create user first (customers are linked to users)
     const user = await prisma.user.create({
@@ -147,17 +186,16 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const session = requireAuth(await getServerSession(authOptions))
-    const isAdmin = session.user.role === 'ADMIN'
-    
-    // Multi-tenant filtering
-    const tenantOptions = {
-      session,
-      allowGlobalAccess: isAdmin
+    const session = await getServerSession()
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
     const customers = await prisma.customer.findMany({
-      where: getCustomersFilter(tenantOptions),
       include: {
         user: {
           select: {

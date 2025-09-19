@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,11 +25,24 @@ import {
   Camera,
   FolderPlus,
   Download,
-  RefreshCw
+  RefreshCw,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react'
 import type { CustomerData } from '@/app/dashboard/customers/page'
 import { PhotoRequestButton } from '@/components/admin/photo-request-button'
 import { ProjectRequestButton } from '@/components/admin/project-request-button'
+import { useToast } from '@/hooks/use-toast'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface CustomerListProps {
   customers: CustomerData[]
@@ -39,15 +53,17 @@ interface CustomerListProps {
   getPriorityColor: (priority: CustomerData['priority']) => string
 }
 
-export function CustomerList({ 
-  customers, 
-  onViewCustomer, 
-  onEditCustomer, 
-  getStatusColor, 
+export function CustomerList({
+  customers,
+  onViewCustomer,
+  onEditCustomer,
+  getStatusColor,
   getStatusLabel,
-  getPriorityColor 
+  getPriorityColor
 }: CustomerListProps) {
   const router = useRouter()
+  const { data: session } = useSession()
+  const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [priorityFilter, setPriorityFilter] = useState<string>('all')
@@ -55,6 +71,13 @@ export function CustomerList({
   const [sortBy, setSortBy] = useState<string>('lastContact')
   const [isExporting, setIsExporting] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [deleteCustomerId, setDeleteCustomerId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showForceDeleteDialog, setShowForceDeleteDialog] = useState(false)
+  const [forceDeleteData, setForceDeleteData] = useState<any>(null)
+
+  // Check if user is admin - this will be verified on the backend
+  const isAdmin = true // For now, show the button to all users, backend will handle authorization
 
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch = searchQuery === '' || 
@@ -222,6 +245,91 @@ export function CustomerList({
     } finally {
       setIsRefreshing(false)
     }
+  }
+
+  const handleDeleteCustomer = async (forceDelete = false) => {
+    if (!deleteCustomerId) return
+
+    console.log('🔥 Frontend: Starting delete for customer:', deleteCustomerId, 'Force:', forceDelete)
+    setIsDeleting(true)
+    try {
+      const url = forceDelete
+        ? `/api/customers/${deleteCustomerId}?force=true`
+        : `/api/customers/${deleteCustomerId}`
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+      })
+
+      console.log('🔥 Frontend: API response status:', response.status)
+      const data = await response.json()
+      console.log('🔥 Frontend: API response data:', data)
+
+      if (response.ok) {
+        toast({
+          title: 'Müşteri Silindi',
+          description: 'Müşteri başarıyla silindi.',
+        })
+        // Refresh the page to update the list
+        window.location.reload()
+      } else if (response.status === 400 && data.canForceDelete && !forceDelete) {
+        // Show force delete confirmation
+        setIsDeleting(false)
+        setDeleteCustomerId(null)
+        setForceDeleteData(data)
+        setShowForceDeleteDialog(true)
+        return
+      } else {
+        // Check if there's associated data
+        if (data.details) {
+          let errorMessage = 'Bu müşteri silinemez çünkü ilişkili veriler var:\n'
+          if (data.details.quotes > 0) {
+            errorMessage += `\n• ${data.details.quotes} teklif`
+          }
+          if (data.details.projectRequests > 0) {
+            errorMessage += `\n• ${data.details.projectRequests} proje talebi`
+          }
+          if (data.details.photoRequests > 0) {
+            errorMessage += `\n• ${data.details.photoRequests} fotoğraf talebi`
+          }
+          toast({
+            title: 'Silme Başarısız',
+            description: errorMessage,
+            variant: 'destructive',
+          })
+        } else {
+          toast({
+            title: 'Silme Başarısız',
+            description: data.error || 'Müşteri silinirken bir hata oluştu.',
+            variant: 'destructive',
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Delete failed:', error)
+      toast({
+        title: 'Hata',
+        description: 'Bağlantı hatası. Lütfen tekrar deneyin.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsDeleting(false)
+      setDeleteCustomerId(null)
+    }
+  }
+
+  const handleForceDeleteCustomer = async () => {
+    if (!forceDeleteData) return
+
+    console.log('🔥 Frontend: Starting FORCE delete for customer:', deleteCustomerId)
+
+    // Set the delete customer ID for the force delete
+    const customerIdToDelete = deleteCustomerId || forceDeleteData.customerId
+    setDeleteCustomerId(customerIdToDelete)
+
+    await handleDeleteCustomer(true)
+    setShowForceDeleteDialog(false)
+    setForceDeleteData(null)
   }
 
   return (
@@ -489,23 +597,34 @@ export function CustomerList({
 
                   {/* Actions */}
                   <div className="flex flex-col space-y-2 ml-6">
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       onClick={() => onViewCustomer(customer)}
                     >
                       <Eye className="w-3 h-3 mr-1" />
                       Detay
                     </Button>
-                    
-                    <Button 
-                      size="sm" 
+
+                    <Button
+                      size="sm"
                       variant="outline"
                       onClick={() => onEditCustomer(customer)}
                     >
                       <Edit className="w-3 h-3 mr-1" />
                       Düzenle
                     </Button>
+
+                    {isAdmin && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => setDeleteCustomerId(customer.id)}
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        Sil
+                      </Button>
+                    )}
                     
                     <Button
                       size="sm"
@@ -583,6 +702,103 @@ export function CustomerList({
           )}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteCustomerId} onOpenChange={() => setDeleteCustomerId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              Müşteri Silme Onayı
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu müşteriyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+              {deleteCustomerId && (
+                <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                  <strong>
+                    {customers.find(c => c.id === deleteCustomerId)?.fullName}
+                  </strong>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              İptal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteCustomer}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? 'Siliniyor...' : 'Müşteriyi Sil'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Force Delete Confirmation Dialog */}
+      <AlertDialog open={showForceDeleteDialog} onOpenChange={setShowForceDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              Zorla Silme Onayı
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-3">
+                <p className="text-red-700 font-medium">
+                  ⚠️ Bu müşterinin aşağıdaki bağlı verileri bulunmaktadır:
+                </p>
+
+                {forceDeleteData && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-3 space-y-2">
+                    {forceDeleteData.details.quotes > 0 && (
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-red-600" />
+                        <span>{forceDeleteData.details.quotes} adet teklif</span>
+                      </div>
+                    )}
+                    {forceDeleteData.details.projectRequests > 0 && (
+                      <div className="flex items-center gap-2">
+                        <FolderPlus className="w-4 h-4 text-red-600" />
+                        <span>{forceDeleteData.details.projectRequests} adet proje talebi</span>
+                      </div>
+                    )}
+                    {forceDeleteData.details.photoRequests > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Camera className="w-4 h-4 text-red-600" />
+                        <span>{forceDeleteData.details.photoRequests} adet fotoğraf talebi</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <p className="text-gray-700">
+                  Bu müşteriyi silmek, yukarıdaki tüm bağlı verileri de kalıcı olarak silecektir.
+                  <strong className="text-red-700"> Bu işlem geri alınamaz.</strong>
+                </p>
+
+                <p className="text-red-700 font-medium">
+                  Yine de silmek istiyor musunuz?
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              İptal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleForceDeleteCustomer}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? 'Siliniyor...' : 'Zorla Sil'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

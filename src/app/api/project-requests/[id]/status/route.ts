@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { NextStepAutomationService } from '@/lib/services/next-step-automation'
 
 interface Params {
   id: string
@@ -117,6 +118,13 @@ export async function PATCH(
         note: note || `Durum ${getStatusLabel(status)} olarak güncellendi`
       }
     })
+
+    // Create next steps based on automation rules
+    const nextSteps = await NextStepAutomationService.handleStatusChange(
+      id,
+      status as any,
+      session.user.id
+    )
 
     // Transform response
     const response = {

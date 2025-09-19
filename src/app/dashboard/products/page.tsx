@@ -31,7 +31,13 @@ import {
   Cable,
   Monitor,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Camera,
+  FileText,
+  BookOpen,
+  Eye,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 
 type Product = {
@@ -48,6 +54,21 @@ type Product = {
   warranty: string
   description?: string
   specifications?: any
+  images?: string
+  datasheet?: string
+  manual?: string
+  createdBy?: {
+    id: string
+    name: string | null
+    email: string
+  } | null
+  updatedBy?: {
+    id: string
+    name: string | null
+    email: string
+  } | null
+  createdAt: string
+  updatedAt: string
 }
 
 type Category = {
@@ -86,11 +107,21 @@ export default function ProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [formData, setFormData] = useState<Partial<Product>>({})
   const [saving, setSaving] = useState(false)
+  const [uploadingFiles, setUploadingFiles] = useState(false)
+  const [selectedFiles, setSelectedFiles] = useState<{
+    images: FileList | null
+    datasheet: File | null
+    manual: File | null
+  }>({ images: null, datasheet: null, manual: null })
+  const [showFileModal, setShowFileModal] = useState(false)
+  const [currentFile, setCurrentFile] = useState<{type: string, url: string, name: string, images?: string[]} | null>(null)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [showCategoryDialog, setShowCategoryDialog] = useState(false)
   const [showCategoryManagementDialog, setShowCategoryManagementDialog] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [categoryFormData, setCategoryFormData] = useState<{name: string, color: string}>({name: '', color: ''})
   const [newCategoryFormData, setNewCategoryFormData] = useState<{name: string, color: string, icon: string}>({name: '', color: 'blue', icon: 'Package'})
+  const [currentUser, setCurrentUser] = useState<{id: string, email: string, role: string, name: string} | null>(null)
 
   // Fetch products from database
   const fetchProducts = async () => {
@@ -117,26 +148,49 @@ export default function ProductsPage() {
   // Fetch categories from database
   const fetchCategories = async () => {
     try {
+      console.log('🔄 Fetching categories from API...')
       const response = await fetch('/api/products/categories')
+      console.log('📥 Categories API response:', response.status, response.statusText)
+
       if (!response.ok) {
-        throw new Error('Failed to fetch categories')
+        throw new Error(`Failed to fetch categories: ${response.status} ${response.statusText}`)
       }
       const data = await response.json()
-      
+      console.log('📊 Categories data received:', data)
+
       // Map icons from string to component
       const mappedCategories = data.map((cat: any) => ({
         ...cat,
         icon: iconMap[cat.icon] || Package
       }))
-      
+
       setCategories(mappedCategories)
+      console.log('✅ Categories updated successfully')
     } catch (error) {
-      console.error('Error fetching categories:', error)
+      console.error('❌ Error fetching categories:', error)
       toast({
         title: "Hata",
-        description: "Kategoriler yüklenirken bir hata oluştu.",
+        description: "Kategoriler yüklenirken bir hata oluştu: " + (error instanceof Error ? error.message : 'Bilinmeyen hata'),
         variant: "destructive"
       })
+      // Re-throw the error so it can be caught by calling functions
+      throw error
+    }
+  }
+
+  // Fetch current user info
+  const fetchUser = async () => {
+    try {
+      const response = await fetch('/api/user')
+      if (response.ok) {
+        const userData = await response.json()
+        setCurrentUser(userData)
+        console.log('👤 User info loaded:', userData)
+      } else {
+        console.error('Failed to fetch user info:', response.statusText)
+      }
+    } catch (error) {
+      console.error('Error fetching user info:', error)
     }
   }
 
@@ -144,13 +198,77 @@ export default function ProductsPage() {
   useEffect(() => {
     fetchProducts()
     fetchCategories()
+    fetchUser()
   }, [])
 
   const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchTerm.toLowerCase())
+    (product.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (product.brand || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (product.category || '').toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  // File upload helper function
+  const uploadFile = async (file: File): Promise<string> => {
+    console.log('📤 Uploading file:', file.name, 'Type:', file.type, 'Size:', file.size)
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    })
+
+    console.log('📨 Upload response status:', response.status)
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error('❌ Upload error:', error)
+      throw new Error('File upload failed: ' + error)
+    }
+
+    const result = await response.json()
+    console.log('✅ Upload successful, URL:', result.url)
+    return result.url
+  }
+
+  // Upload multiple files and return their URLs
+  const uploadFiles = async () => {
+    console.log('🚀 Starting file upload process...')
+    console.log('Selected files:', selectedFiles)
+
+    const uploadedFiles: { images: string[], datasheet?: string, manual?: string } = { images: [] }
+
+    try {
+      // Upload images
+      if (selectedFiles.images && selectedFiles.images.length > 0) {
+        console.log(`📸 Uploading ${selectedFiles.images.length} images...`)
+        for (let i = 0; i < selectedFiles.images.length; i++) {
+          const imageUrl = await uploadFile(selectedFiles.images[i])
+          uploadedFiles.images.push(imageUrl)
+        }
+      }
+
+      // Upload datasheet
+      if (selectedFiles.datasheet) {
+        console.log('📄 Uploading datasheet...')
+        uploadedFiles.datasheet = await uploadFile(selectedFiles.datasheet)
+      }
+
+      // Upload manual
+      if (selectedFiles.manual) {
+        console.log('📖 Uploading manual...')
+        uploadedFiles.manual = await uploadFile(selectedFiles.manual)
+      }
+
+      console.log('✨ All files uploaded successfully:', uploadedFiles)
+      return uploadedFiles
+    } catch (error) {
+      console.error('❌ File upload error:', error)
+      toast.error('Dosya yükleme başarısız!')
+      throw error
+    }
+  }
 
   const handleAddProduct = async () => {
     if (!formData.name || !formData.category || !formData.price || !formData.brand) {
@@ -164,7 +282,25 @@ export default function ProductsPage() {
 
     try {
       setSaving(true)
-      
+      setUploadingFiles(true)
+
+      // Upload files first
+      let uploadedFiles = { images: [], datasheet: undefined, manual: undefined }
+      try {
+        uploadedFiles = await uploadFiles()
+        toast({
+          title: "Dosyalar yüklendi",
+          description: "Dosyalar başarıyla yüklendi, ürün kaydediliyor..."
+        })
+      } catch (error) {
+        toast({
+          title: "Dosya yükleme hatası",
+          description: "Bazı dosyalar yüklenirken hata oluştu.",
+          variant: "destructive"
+        })
+      }
+      setUploadingFiles(false)
+
       console.log('Sending product data:', {
         name: formData.name,
         category: formData.category,
@@ -174,7 +310,10 @@ export default function ProductsPage() {
         price: Number(formData.price),
         stock: Number(formData.stock) || 0,
         warranty: formData.warranty,
-        description: formData.description
+        description: formData.description,
+        images: JSON.stringify(uploadedFiles.images),
+        datasheet: uploadedFiles.datasheet,
+        manual: uploadedFiles.manual
       })
 
       const response = await fetch('/api/products', {
@@ -189,9 +328,14 @@ export default function ProductsPage() {
           model: formData.model || '',
           power: formData.power,
           price: Number(formData.price),
+          purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : null,
+          purchaseDate: formData.purchaseDate || null,
           stock: Number(formData.stock) || 0,
           warranty: formData.warranty,
-          description: formData.description
+          description: formData.description,
+          images: JSON.stringify(uploadedFiles.images),
+          datasheet: uploadedFiles.datasheet,
+          manual: uploadedFiles.manual
         })
       })
 
@@ -249,8 +393,36 @@ export default function ProductsPage() {
     }
 
     try {
+      console.log('🔄 Starting edit product process...')
+      console.log('Selected files state:', selectedFiles)
+
       setSaving(true)
-      
+      setUploadingFiles(true)
+
+      // Upload files first if any selected
+      let uploadedFiles = { images: [], datasheet: undefined, manual: undefined }
+      try {
+        if (selectedFiles.images || selectedFiles.datasheet || selectedFiles.manual) {
+          console.log('📁 Files detected, starting upload...')
+          uploadedFiles = await uploadFiles()
+          toast({
+            title: "Dosyalar yüklendi",
+            description: "Dosyalar başarıyla yüklendi, ürün güncelleniyor..."
+          })
+        } else {
+          console.log('📂 No files selected for upload')
+        }
+      } catch (error) {
+        console.error('❌ File upload error in handleEditProduct:', error)
+        // Continue with update even if file upload fails
+      } finally {
+        setUploadingFiles(false)
+      }
+
+      // Merge uploaded files with existing data
+      const existingImages = selectedProduct.images ? JSON.parse(selectedProduct.images) : []
+      const allImages = [...existingImages, ...uploadedFiles.images]
+
       const response = await fetch(`/api/products/${selectedProduct.id}`, {
         method: 'PUT',
         headers: {
@@ -263,9 +435,15 @@ export default function ProductsPage() {
           model: formData.model,
           power: formData.power,
           price: Number(formData.price),
+          purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : null,
+          purchaseDate: formData.purchaseDate || null,
+          editDate: formData.editDate || new Date(),
           stock: Number(formData.stock),
           warranty: formData.warranty,
-          description: formData.description
+          description: formData.description,
+          images: JSON.stringify(allImages),
+          datasheet: uploadedFiles.datasheet || selectedProduct.datasheet,
+          manual: uploadedFiles.manual || selectedProduct.manual
         })
       })
 
@@ -462,10 +640,23 @@ export default function ProductsPage() {
       return
     }
 
+    // Add timeout protection to prevent button from getting stuck
+    const timeoutId = setTimeout(() => {
+      console.warn('⚠️ Category creation timeout after 30 seconds')
+      setSaving(false)
+      toast({
+        title: "Hata",
+        description: "İşlem zaman aşımına uğradı. Lütfen tekrar deneyin.",
+        variant: "destructive"
+      })
+    }, 30000) // 30 second timeout
+
     try {
+      console.log('🚀 Starting category creation:', newCategoryFormData)
       setSaving(true)
 
       // Create new category via API (simulated for now)
+      console.log('📡 Sending POST request to /api/products/categories')
       const response = await fetch('/api/products/categories', {
         method: 'POST',
         headers: {
@@ -478,63 +669,140 @@ export default function ProductsPage() {
         })
       })
 
+      console.log('📥 API response received:', response.status, response.statusText)
+      const result = await response.json()
+      console.log('📊 API response data:', result)
+
       if (!response.ok) {
-        throw new Error('Failed to create category')
+        throw new Error(result.error || result.details || 'Failed to create category')
       }
 
-      toast({
-        title: "Başarılı",
-        description: "Yeni kategori başarıyla eklendi."
-      })
+      // Check if category was actually created (new system)
+      if (result.category) {
+        // Category was successfully created!
+        console.log('🎉 Showing success toast for category creation')
+        toast({
+          title: "✅ Başarılı!",
+          description: result.message || `"${newCategoryFormData.name}" kategorisi eklendi.`,
+          variant: "default"
+        })
 
-      setNewCategoryFormData({name: '', color: 'blue', icon: 'Package'})
+        // Reset form
+        setNewCategoryFormData({name: '', color: 'blue', icon: 'Package'})
 
-      // Refresh categories
-      fetchCategories()
+        // Close modal
+        setShowCategoryManagementDialog(false)
+
+        // Refresh categories to show the new one
+        console.log('📂 Refreshing categories to show new category')
+        try {
+          await fetchCategories()
+          console.log('✅ Categories refreshed, new category should be visible')
+        } catch (refreshError) {
+          console.error('⚠️ Category refresh failed:', refreshError)
+        }
+      } else {
+        // Legacy response (old enum system message)
+        console.log('ℹ️ Showing info toast for legacy response')
+        toast({
+          title: "ℹ️ Bilgi",
+          description: result.message || "İşlem tamamlandı.",
+          variant: "default"
+        })
+
+        // Still close the modal but don't refresh
+        setNewCategoryFormData({name: '', color: 'blue', icon: 'Package'})
+        setShowCategoryManagementDialog(false)
+      }
+
+      console.log('✅ Category operation completed successfully')
     } catch (error) {
-      console.error('Error creating category:', error)
+      console.error('❌ Error creating category:', error)
       toast({
-        title: "Başarılı", // Simulating success for demo
-        description: "Yeni kategori başarıyla eklendi."
+        title: "Hata",
+        description: "Kategori ekleme sırasında bir hata oluştu: " + (error instanceof Error ? error.message : 'Bilinmeyen hata'),
+        variant: "destructive"
       })
+      // Close modal even on error after showing error message
+      setShowCategoryManagementDialog(false)
     } finally {
+      clearTimeout(timeoutId) // Clear the timeout
       setSaving(false)
+      console.log('🔄 Save button re-enabled')
     }
   }
 
   // Delete category
   const handleDeleteCategory = async (categoryId: string) => {
-    try {
-      setSaving(true)
+    // Find category info for better messaging
+    const category = categories.find(cat => cat.id === categoryId)
+    const categoryName = category?.name || 'kategori'
+    const productCount = category?.count || 0
 
-      // Check if category has products
-      const categoryProducts = products.filter(p => p.category === categories.find(c => c.id === categoryId)?.name)
-      if (categoryProducts.length > 0) {
-        toast({
-          title: "Hata",
-          description: `Bu kategoride ${categoryProducts.length} ürün bulunmaktadır. Önce ürünleri başka kategoriye taşıyın.`,
-          variant: "destructive"
-        })
+    // Different confirmation messages for admin and regular users
+    let confirmMessage = `"${categoryName}" kategorisini silmek istediğinizden emin misiniz?`
+
+    if (productCount > 0) {
+      if (currentUser?.role === 'ADMIN') {
+        confirmMessage += `\n\n⚠️ Admin yetkisiyle siliyorsunuz:\n• Bu kategoride ${productCount} ürün bulunmaktadır\n• Ürünler otomatik olarak "Diğer" kategorisine taşınacaktır\n• Bu işlem geri alınamaz`
+      } else {
+        confirmMessage += `\n\nBu kategoride ${productCount} ürün bulunmaktadır. Önce ürünleri başka kategoriye taşıyın.`
+        alert(confirmMessage)
         return
       }
+    }
 
-      // Delete category via API (simulated for now)
-      toast({
-        title: "Başarılı",
-        description: "Kategori başarıyla silindi."
+    if (!confirm(confirmMessage)) {
+      return
+    }
+
+    try {
+      setSaving(true)
+      console.log('🗑️ Starting category deletion:', categoryId)
+
+      // Make API call to delete category
+      const response = await fetch(`/api/products/categories?id=${encodeURIComponent(categoryId)}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
       })
 
-      // Refresh categories
-      fetchCategories()
+      console.log('📥 Delete response status:', response.status, response.statusText)
+      const result = await response.json()
+      console.log('📊 Delete response data:', result)
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete category')
+      }
+
+      // Success
+      console.log('🎉 Showing success toast for category deletion')
+      toast({
+        title: "✅ Başarılı!",
+        description: result.message || "Kategori başarıyla silindi.",
+        variant: "default"
+      })
+
+      // Refresh categories to remove the deleted one
+      console.log('📂 Refreshing categories after deletion')
+      try {
+        await fetchCategories()
+        console.log('✅ Categories refreshed after deletion')
+      } catch (refreshError) {
+        console.error('⚠️ Category refresh failed after deletion:', refreshError)
+      }
+
     } catch (error) {
-      console.error('Error deleting category:', error)
+      console.error('❌ Error deleting category:', error)
       toast({
         title: "Hata",
-        description: "Kategori silinirken bir hata oluştu.",
+        description: error instanceof Error ? error.message : "Kategori silinirken bir hata oluştu.",
         variant: "destructive"
       })
     } finally {
       setSaving(false)
+      console.log('🔄 Delete operation completed')
     }
   }
 
@@ -545,6 +813,8 @@ export default function ProductsPage() {
       power: product.power.replace(/[^0-9.]/g, ''), // Extract numeric value
       warranty: product.warranty.replace(/[^0-9]/g, '') // Extract numeric value
     })
+    // Clear selected files when opening edit dialog
+    setSelectedFiles({ images: null, datasheet: null, manual: null })
     setShowEditDialog(true)
   }
 
@@ -602,7 +872,7 @@ export default function ProductsPage() {
                 Yeni Ürün Ekle
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Yeni Ürün Ekle</DialogTitle>
                 <DialogDescription>
@@ -678,13 +948,34 @@ export default function ProductsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="grid gap-2">
-                    <Label htmlFor="price">Fiyat (₺) *</Label>
+                    <Label htmlFor="purchasePrice">Alış Fiyatı (₺)</Label>
+                    <Input
+                      id="purchasePrice"
+                      type="number"
+                      value={formData.purchasePrice || ''}
+                      onChange={(e) => setFormData({...formData, purchasePrice: Number(e.target.value)})}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="price">Satış Fiyatı (₺) *</Label>
                     <Input
                       id="price"
                       type="number"
                       value={formData.price || ''}
                       onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
                       placeholder="0"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="purchaseDate">Alış Tarihi</Label>
+                    <Input
+                      id="purchaseDate"
+                      type="date"
+                      value={formData.purchaseDate ? new Date(formData.purchaseDate).toISOString().split('T')[0] : ''}
+                      onChange={(e) => setFormData({...formData, purchaseDate: e.target.value ? new Date(e.target.value) : undefined})}
                     />
                   </div>
                   <div className="grid gap-2">
@@ -707,6 +998,55 @@ export default function ProductsPage() {
                     placeholder="Ürün açıklaması"
                   />
                 </div>
+
+                {/* File Upload Section */}
+                <div className="space-y-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="images">Ürün Görselleri</Label>
+                    <Input
+                      id="images"
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={(e) => {
+                        setSelectedFiles({...selectedFiles, images: e.target.files})
+                        console.log('Selected images:', e.target.files)
+                      }}
+                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    <p className="text-xs text-muted-foreground">PNG, JPG, JPEG dosyaları desteklenir (Maksimum 5 dosya)</p>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="datasheet">Teknik Döküman (PDF)</Label>
+                    <Input
+                      id="datasheet"
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => {
+                        setSelectedFiles({...selectedFiles, datasheet: e.target.files?.[0] || null})
+                        console.log('Selected datasheet:', e.target.files?.[0])
+                      }}
+                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                    />
+                    <p className="text-xs text-muted-foreground">Sadece PDF dosyaları desteklenir</p>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="manual">Kullanım Kılavuzu (PDF)</Label>
+                    <Input
+                      id="manual"
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => {
+                        setSelectedFiles({...selectedFiles, manual: e.target.files?.[0] || null})
+                        console.log('Selected manual:', e.target.files?.[0])
+                      }}
+                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                    />
+                    <p className="text-xs text-muted-foreground">Sadece PDF dosyaları desteklenir</p>
+                  </div>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowAddDialog(false)} disabled={saving}>
@@ -716,7 +1056,7 @@ export default function ProductsPage() {
                   {saving ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Ekleniyor...
+                      {uploadingFiles ? 'Dosyalar yükleniyor...' : 'Ürün kaydediliyor...'}
                     </>
                   ) : (
                     'Ürün Ekle'
@@ -798,6 +1138,7 @@ export default function ProductsPage() {
                       <th className="text-left py-3 px-4">Fiyat</th>
                       <th className="text-left py-3 px-4">Stok</th>
                       <th className="text-left py-3 px-4">Durum</th>
+                      <th className="text-left py-3 px-4">Oluşturan</th>
                       <th className="text-left py-3 px-4">İşlemler</th>
                     </tr>
                   </thead>
@@ -805,11 +1146,62 @@ export default function ProductsPage() {
                     {filteredProducts.map((product) => (
                       <tr key={product.id} className="border-b hover:bg-gray-50">
                         <td className="py-3 px-4">
-                          <div>
-                            <p className="font-medium">{product.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {product.brand} {product.model && `- ${product.model}`}
-                            </p>
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <p className="font-medium">{product.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {product.brand} {product.model && `- ${product.model}`}
+                              </p>
+                            </div>
+                            {/* File indicators */}
+                            <div className="flex gap-1">
+                              {product.images && JSON.parse(product.images).length > 0 && (
+                                <div className="group relative">
+                                  <Camera
+                                    className="w-4 h-4 text-blue-600 cursor-pointer hover:text-blue-800"
+                                    onClick={() => {
+                                      const images = JSON.parse(product.images || '[]')
+                                      if (images.length > 0) {
+                                        setCurrentFile({type: 'image', url: images[0], name: 'Ürün Görselleri', images: images})
+                                        setCurrentImageIndex(0)
+                                        setShowFileModal(true)
+                                      }
+                                    }}
+                                  />
+                                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                    {JSON.parse(product.images).length} görsel
+                                  </div>
+                                </div>
+                              )}
+                              {product.datasheet && (
+                                <div className="group relative">
+                                  <FileText
+                                    className="w-4 h-4 text-red-600 cursor-pointer hover:text-red-800"
+                                    onClick={() => {
+                                      setCurrentFile({type: 'pdf', url: product.datasheet, name: 'Teknik Döküman'})
+                                      setShowFileModal(true)
+                                    }}
+                                  />
+                                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                    Teknik döküman
+                                  </div>
+                                </div>
+                              )}
+                              {product.manual && (
+                                <div className="group relative">
+                                  <BookOpen
+                                    className="w-4 h-4 text-green-600 cursor-pointer hover:text-green-800"
+                                    onClick={() => {
+                                      setCurrentFile({type: 'pdf', url: product.manual, name: 'Kullanım Kılavuzu'})
+                                      setShowFileModal(true)
+                                    }}
+                                  />
+                                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                    Kullanım kılavuzu
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="py-3 px-4">
@@ -843,6 +1235,25 @@ export default function ProductsPage() {
                           >
                             {product.status}
                           </Badge>
+                        </td>
+                        <td className="py-3 px-4">
+                          {product.createdBy ? (
+                            <div className="text-sm">
+                              <div className="font-medium">{product.createdBy.name || 'İsimsiz'}</div>
+                              <div className="text-muted-foreground text-xs">
+                                {new Date(product.createdAt).toLocaleDateString('tr-TR')}
+                              </div>
+                              {product.updatedBy && product.updatedBy.id !== product.createdBy.id && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  Son güncelleme: {product.updatedBy.name || 'İsimsiz'}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">
+                              Sistem
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 px-4">
                           <DropdownMenu>
@@ -996,16 +1407,57 @@ export default function ProductsPage() {
                 </div>
               </div>
               
-              <div className="mt-4 pt-4 border-t">
-                <p className="text-sm text-muted-foreground mb-2">Toplam Stok Değeri</p>
-                <p className="text-2xl font-bold">
-                  {formatCurrency(
-                    products.reduce((sum, p) => sum + (p.price * p.stock), 0)
-                  )}
-                </p>
-                <p className="text-sm text-green-600">
-                  {products.reduce((sum, p) => sum + p.stock, 0)} toplam adet
-                </p>
+              <div className="mt-4 pt-4 border-t space-y-4">
+                {/* Sales Value */}
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Toplam Satış Değeri</p>
+                  <p className="text-2xl font-bold">
+                    {formatCurrency(
+                      products.reduce((sum, p) => sum + (p.price * p.stock), 0)
+                    )}
+                  </p>
+                  <p className="text-sm text-green-600">
+                    {products.reduce((sum, p) => sum + p.stock, 0)} toplam adet
+                  </p>
+                </div>
+
+                {/* Purchase Value */}
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Toplam Alış Değeri</p>
+                  <p className="text-xl font-bold text-blue-600">
+                    {formatCurrency(
+                      products.reduce((sum, p) => {
+                        const purchasePrice = p.purchasePrice || 0
+                        return sum + (purchasePrice * p.stock)
+                      }, 0)
+                    )}
+                  </p>
+                  <p className="text-sm text-blue-600">
+                    {products.filter(p => p.purchasePrice).length} ürünün alış fiyatı mevcut
+                  </p>
+                </div>
+
+                {/* Profit Analysis */}
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Potansiyel Kar</p>
+                  <p className="text-xl font-bold text-emerald-600">
+                    {formatCurrency(
+                      products.reduce((sum, p) => {
+                        const purchasePrice = p.purchasePrice || 0
+                        const profit = (p.price - purchasePrice) * p.stock
+                        return sum + (profit > 0 ? profit : 0)
+                      }, 0)
+                    )}
+                  </p>
+                  <p className="text-sm text-emerald-600">
+                    {(products.reduce((sum, p) => {
+                      const purchasePrice = p.purchasePrice || 0
+                      if (purchasePrice === 0) return sum
+                      const margin = ((p.price - purchasePrice) / purchasePrice) * 100
+                      return sum + margin
+                    }, 0) / Math.max(products.filter(p => p.purchasePrice).length, 1)).toFixed(1)}% ortalama kar marjı
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1214,12 +1666,33 @@ export default function ProductsPage() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-price">Fiyat (₺) *</Label>
+                  <Label htmlFor="edit-purchasePrice">Alış Fiyatı (₺)</Label>
+                  <Input
+                    id="edit-purchasePrice"
+                    type="number"
+                    value={formData.purchasePrice || ''}
+                    onChange={(e) => setFormData({...formData, purchasePrice: Number(e.target.value)})}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-price">Satış Fiyatı (₺) *</Label>
                   <Input
                     id="edit-price"
                     type="number"
                     value={formData.price || ''}
                     onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-purchaseDate">Alış Tarihi</Label>
+                  <Input
+                    id="edit-purchaseDate"
+                    type="date"
+                    value={formData.purchaseDate ? new Date(formData.purchaseDate).toISOString().split('T')[0] : ''}
+                    onChange={(e) => setFormData({...formData, purchaseDate: e.target.value ? new Date(e.target.value) : undefined})}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -1232,6 +1705,67 @@ export default function ProductsPage() {
                   />
                 </div>
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-editDate">Düzenleme Tarihi</Label>
+                <Input
+                  id="edit-editDate"
+                  type="date"
+                  value={formData.editDate ? new Date(formData.editDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                  onChange={(e) => setFormData({...formData, editDate: e.target.value ? new Date(e.target.value) : new Date()})}
+                />
+              </div>
+
+              {/* File Upload Section */}
+              <div className="space-y-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-images">Ürün Görselleri</Label>
+                  <Input
+                    id="edit-images"
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={(e) => {
+                      const files = e.target.files
+                      setSelectedFiles({...selectedFiles, images: files})
+                      console.log('Selected images for edit:', files)
+                    }}
+                    className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  <p className="text-xs text-muted-foreground">PNG, JPG, JPEG dosyaları desteklenir (Maksimum 5 dosya)</p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-datasheet">Teknik Döküman (PDF)</Label>
+                  <Input
+                    id="edit-datasheet"
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      setSelectedFiles({...selectedFiles, datasheet: file || null})
+                      console.log('Selected datasheet for edit:', file)
+                    }}
+                    className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                  />
+                  <p className="text-xs text-muted-foreground">Sadece PDF dosyaları desteklenir</p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-manual">Kullanım Kılavuzu (PDF)</Label>
+                  <Input
+                    id="edit-manual"
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      setSelectedFiles({...selectedFiles, manual: file || null})
+                      console.log('Selected manual for edit:', file)
+                    }}
+                    className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                  />
+                  <p className="text-xs text-muted-foreground">Sadece PDF dosyaları desteklenir</p>
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowEditDialog(false)} disabled={saving}>
@@ -1241,7 +1775,7 @@ export default function ProductsPage() {
                 {saving ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Güncelleniyor...
+                    {uploadingFiles ? 'Dosyalar yükleniyor...' : 'Güncelleniyor...'}
                   </>
                 ) : (
                   'Güncelle'
@@ -1470,8 +2004,8 @@ export default function ProductsPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleDeleteCategory(category.id)}
-                              disabled={category.count > 0}
-                              className={category.count > 0 ? "opacity-50 cursor-not-allowed" : "hover:bg-red-50 hover:text-red-600"}
+                              disabled={category.count > 0 && currentUser?.role !== 'ADMIN'}
+                              className={(category.count > 0 && currentUser?.role !== 'ADMIN') ? "opacity-50 cursor-not-allowed" : "hover:bg-red-50 hover:text-red-600"}
                             >
                               <Trash2 className="w-4 h-4 mr-1" />
                               Sil
@@ -1503,7 +2037,80 @@ export default function ProductsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* File Viewing Modal */}
+        <Dialog open={showFileModal} onOpenChange={setShowFileModal}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{currentFile?.name}</DialogTitle>
+            </DialogHeader>
+            <div className="flex justify-center items-center p-4 relative">
+              {currentFile?.type === 'image' ? (
+                <div className="relative w-full">
+                  <img
+                    src={currentFile.images ? currentFile.images[currentImageIndex] : currentFile.url}
+                    alt={currentFile.name}
+                    className="max-w-full max-h-[70vh] object-contain rounded-lg mx-auto"
+                  />
+                  {currentFile.images && currentFile.images.length > 1 && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white/90"
+                        onClick={() => setCurrentImageIndex(prev => prev > 0 ? prev - 1 : currentFile.images!.length - 1)}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white/90"
+                        onClick={() => setCurrentImageIndex(prev => prev < currentFile.images!.length - 1 ? prev + 1 : 0)}
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
+                        {currentImageIndex + 1} / {currentFile.images.length}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : currentFile?.type === 'pdf' ? (
+                <div className="w-full h-[70vh] border rounded-lg">
+                  <iframe
+                    src={currentFile.url}
+                    className="w-full h-full rounded-lg"
+                    title={currentFile.name}
+                  />
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Dosya önizlemesi mevcut değil</p>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const url = currentFile?.images ? currentFile.images[currentImageIndex] : currentFile?.url
+                  if (url) {
+                    window.open(url, '_blank')
+                  }
+                }}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Yeni Sekmede Aç
+              </Button>
+              <Button variant="outline" onClick={() => setShowFileModal(false)}>
+                Kapat
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         </div>
+        <Toaster />
       </DashboardLayout>
     </>
   )

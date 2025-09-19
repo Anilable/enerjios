@@ -86,6 +86,44 @@ export async function POST(
       } as any
     });
 
+    // Auto-deduct stock for approved quotes
+    const quoteWithItems = await prisma.quote.findUnique({
+      where: { id: quote.id },
+      include: {
+        items: true
+      }
+    });
+
+    if (quoteWithItems?.items) {
+      for (const item of quoteWithItems.items) {
+        // Skip if it's a placeholder product ID (for custom items)
+        if (item.productId.startsWith('temp_')) {
+          continue;
+        }
+
+        // Find the actual product
+        const product = await prisma.product.findUnique({
+          where: { id: item.productId }
+        });
+
+        if (product && product.stock >= item.quantity) {
+          // Deduct from stock
+          await prisma.product.update({
+            where: { id: item.productId },
+            data: {
+              stock: product.stock - item.quantity
+            }
+          });
+
+          // Log stock movement
+          console.log(`Stock deducted: Product ${product.name} - Quantity ${item.quantity} - Remaining stock: ${product.stock - item.quantity}`);
+        } else if (product) {
+          // Log warning if insufficient stock
+          console.warn(`Insufficient stock for product ${product.name}: Required ${item.quantity}, Available ${product.stock}`);
+        }
+      }
+    }
+
     // Update project status if applicable
     if ((quote as any).project) {
       await prisma.project.update({

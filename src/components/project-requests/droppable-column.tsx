@@ -5,16 +5,17 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ProjectRequestCard } from './project-request-card'
-import { KanbanColumn, ProjectRequest } from '@/types/project-request'
+import { KanbanColumn, ProjectRequest, ProjectRequestStatus } from '@/types/project-request'
 
 interface DroppableColumnProps {
   column: KanbanColumn
   onCardClick: (request: ProjectRequest) => void
   onDelete?: (id: string) => void
+  onStatusUpdate?: (requestId: string, newStatus: ProjectRequestStatus) => Promise<void>
   canDelete?: boolean
 }
 
-export function DroppableColumn({ column, onCardClick, onDelete, canDelete = false }: DroppableColumnProps) {
+export function DroppableColumn({ column, onCardClick, onDelete, onStatusUpdate, canDelete = false }: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   })
@@ -67,6 +68,7 @@ export function DroppableColumn({ column, onCardClick, onDelete, canDelete = fal
                   onCardClick(request)
                 }}
                 onDelete={onDelete}
+                onStatusUpdate={onStatusUpdate}
                 canDelete={canDelete}
               />
             ))}

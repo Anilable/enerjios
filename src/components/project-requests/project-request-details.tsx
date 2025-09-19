@@ -42,14 +42,16 @@ interface ProjectRequestDetailsProps {
   onClose: () => void
   onUpdateStatus: (requestId: string, newStatus: ProjectRequest['status']) => void
   onAddNote: (requestId: string, note: string) => void
+  hasQuote?: boolean
 }
 
-export function ProjectRequestDetails({ 
-  request, 
-  isOpen, 
-  onClose, 
-  onUpdateStatus, 
-  onAddNote 
+export function ProjectRequestDetails({
+  request,
+  isOpen,
+  onClose,
+  onUpdateStatus,
+  onAddNote,
+  hasQuote = false
 }: ProjectRequestDetailsProps) {
   const [newNote, setNewNote] = useState('')
   const [isAddingNote, setIsAddingNote] = useState(false)
@@ -160,7 +162,7 @@ export function ProjectRequestDetails({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl w-[94vw] h-[94vh] overflow-hidden flex flex-col bg-gradient-to-br from-slate-50 to-white border-0 shadow-2xl">
+      <DialogContent className="!max-w-none w-[99vw] max-h-[95vh] overflow-y-auto bg-gradient-to-br from-slate-50 to-white border-0 shadow-2xl">
         {/* Modern Header with EnerjiOS Orange Gradient */}
         <DialogHeader className="flex-shrink-0 px-6 py-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white relative overflow-hidden">
           {/* Background Pattern */}
@@ -237,302 +239,301 @@ export function ProjectRequestDetails({
         </DialogHeader>
         
         {/* Two Column Layout */}
-        <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+        <div className="flex-1 overflow-hidden p-2 grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Left Column - Customer & Project Details */}
-          <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4 space-y-4">
-            <div className="space-y-4">
-              {/* Customer Information Card */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <User className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">Müşteri Bilgileri</h3>
-                    <p className="text-slate-500 text-xs">İletişim ve adres detayları</p>
-                  </div>
+          <div className="space-y-6">
+            {/* Customer Information Card */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <User className="w-4 h-4 text-blue-600" />
                 </div>
-                
-                <div className="space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="group">
-                      <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
-                        <div className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center">
-                          <Phone className="w-3.5 h-3.5 text-green-600" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-xs text-slate-500 uppercase tracking-wide mb-0.5">Telefon</div>
-                          <div className="font-semibold text-slate-900 text-sm">{request.customerPhone}</div>
-                        </div>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => window.open(`tel:${request.customerPhone}`)}
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="group">
-                      <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
-                        <div className="w-7 h-7 bg-purple-100 rounded-lg flex items-center justify-center">
-                          <Mail className="w-3.5 h-3.5 text-purple-600" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-xs text-slate-500 uppercase tracking-wide mb-0.5">E-posta</div>
-                          <div className="font-semibold text-slate-900 text-sm truncate">{request.customerEmail}</div>
-                        </div>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => window.open(`mailto:${request.customerEmail}`)}
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 bg-slate-50 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <div className="w-7 h-7 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Building className="w-3.5 h-3.5 text-orange-600" />
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Müşteri Bilgileri</h3>
+                  <p className="text-slate-500 text-xs">İletişim ve adres detayları</p>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="group">
+                    <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                      <div className="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center">
+                        <Phone className="w-3.5 h-3.5 text-green-600" />
                       </div>
                       <div className="flex-1">
-                        <div className="text-xs text-slate-500 uppercase tracking-wide mb-0.5">Adres</div>
-                        <div className="font-semibold text-slate-900 text-sm leading-relaxed">{request.address}</div>
+                        <div className="text-xs text-slate-500 uppercase tracking-wide mb-0.5">Telefon</div>
+                        <div className="font-semibold text-slate-900 text-sm">{request.customerPhone}</div>
                       </div>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => window.open(`tel:${request.customerPhone}`)}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="group">
+                    <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                      <div className="w-7 h-7 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <Mail className="w-3.5 h-3.5 text-purple-600" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-xs text-slate-500 uppercase tracking-wide mb-0.5">E-posta</div>
+                        <div className="font-semibold text-slate-900 text-sm truncate">{request.customerEmail}</div>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => window.open(`mailto:${request.customerEmail}`)}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-2.5 bg-slate-50 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <div className="w-7 h-7 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Building className="w-3.5 h-3.5 text-orange-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs text-slate-500 uppercase tracking-wide mb-0.5">Adres</div>
+                      <div className="font-semibold text-slate-900 text-sm leading-relaxed">{request.address}</div>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Project Details Card */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-shadow">
+            {/* Project Details Card */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                  <FileText className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Proje Detayları</h3>
+                  <p className="text-slate-500 text-xs">Teknik özellikler ve gereksinimler</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Zap className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs font-medium text-blue-800">Kapasite</span>
+                  </div>
+                  <div className="text-lg font-bold text-blue-900">{request.estimatedCapacity} kW</div>
+                  <div className="text-xs text-blue-600">Tahmini güç kapasitesi</div>
+                </div>
+                
+                {request.estimatedBudget && (
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 border border-green-100">
+                    <div className="flex items-center gap-2 mb-1">
+                      <DollarSign className="w-4 h-4 text-green-600" />
+                      <span className="text-xs font-medium text-green-800">Bütçe</span>
+                    </div>
+                    <div className="text-lg font-bold text-green-900">{formatCurrency(request.estimatedBudget)}</div>
+                    <div className="text-xs text-green-600">Müşteri bütçesi</div>
+                  </div>
+                )}
+
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 border border-purple-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Package className="w-4 h-4 text-purple-600" />
+                    <span className="text-xs font-medium text-purple-800">Proje Türü</span>
+                  </div>
+                  <div className="text-sm font-bold text-purple-900">{PROJECT_TYPE_LABELS[request.projectType]}</div>
+                  <div className="text-xs text-purple-600">Kurulum tipi</div>
+                </div>
+
+                <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-3 border border-orange-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Activity className="w-4 h-4 text-orange-600" />
+                    <span className="text-xs font-medium text-orange-800">Kaynak</span>
+                  </div>
+                  <div className="text-sm font-bold text-orange-900">{getSourceLabel(request.source)}</div>
+                  <div className="text-xs text-orange-600">Talep kaynağı</div>
+                </div>
+              </div>
+              
+              {(request.assignedEngineerName || request.scheduledVisitDate) && (
+                <>
+                  <Separator className="my-6" />
+                  <div className="space-y-4">
+                    {request.assignedEngineerName && (
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                        <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                          <User className="w-4 h-4 text-indigo-600" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-xs text-slate-500 uppercase tracking-wide">Atanan Mühendis</div>
+                          <div className="font-semibold text-slate-900">{request.assignedEngineerName}</div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {request.scheduledVisitDate && (
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                        <div className="w-8 h-8 bg-rose-100 rounded-lg flex items-center justify-center">
+                          <Calendar className="w-4 h-4 text-rose-600" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-xs text-slate-500 uppercase tracking-wide">Planlanan Ziyaret</div>
+                          <div className="font-semibold text-slate-900">{formatDate(request.scheduledVisitDate)}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Description */}
+            {request.description && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                    <FileText className="w-4 h-4 text-emerald-600" />
+                  <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <MessageSquare className="w-4 h-4 text-amber-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900">Proje Detayları</h3>
-                    <p className="text-slate-500 text-xs">Teknik özellikler ve gereksinimler</p>
+                    <h3 className="text-lg font-bold text-slate-900">Açıklama</h3>
+                    <p className="text-slate-500 text-xs">Müşteri talebi detayları</p>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Zap className="w-4 h-4 text-blue-600" />
-                      <span className="text-xs font-medium text-blue-800">Kapasite</span>
-                    </div>
-                    <div className="text-lg font-bold text-blue-900">{request.estimatedCapacity} kW</div>
-                    <div className="text-xs text-blue-600">Tahmini güç kapasitesi</div>
-                  </div>
-                  
-                  {request.estimatedBudget && (
-                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 border border-green-100">
-                      <div className="flex items-center gap-2 mb-1">
-                        <DollarSign className="w-4 h-4 text-green-600" />
-                        <span className="text-xs font-medium text-green-800">Bütçe</span>
-                      </div>
-                      <div className="text-lg font-bold text-green-900">{formatCurrency(request.estimatedBudget)}</div>
-                      <div className="text-xs text-green-600">Müşteri bütçesi</div>
-                    </div>
-                  )}
-
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 border border-purple-100">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Package className="w-4 h-4 text-purple-600" />
-                      <span className="text-xs font-medium text-purple-800">Proje Türü</span>
-                    </div>
-                    <div className="text-sm font-bold text-purple-900">{PROJECT_TYPE_LABELS[request.projectType]}</div>
-                    <div className="text-xs text-purple-600">Kurulum tipi</div>
-                  </div>
-
-                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-3 border border-orange-100">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Activity className="w-4 h-4 text-orange-600" />
-                      <span className="text-xs font-medium text-orange-800">Kaynak</span>
-                    </div>
-                    <div className="text-sm font-bold text-orange-900">{getSourceLabel(request.source)}</div>
-                    <div className="text-xs text-orange-600">Talep kaynağı</div>
-                  </div>
-                </div>
-                
-                {(request.assignedEngineerName || request.scheduledVisitDate) && (
-                  <>
-                    <Separator className="my-6" />
-                    <div className="space-y-4">
-                      {request.assignedEngineerName && (
-                        <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                          <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
-                            <User className="w-4 h-4 text-indigo-600" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="text-xs text-slate-500 uppercase tracking-wide">Atanan Mühendis</div>
-                            <div className="font-semibold text-slate-900">{request.assignedEngineerName}</div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {request.scheduledVisitDate && (
-                        <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                          <div className="w-8 h-8 bg-rose-100 rounded-lg flex items-center justify-center">
-                            <Calendar className="w-4 h-4 text-rose-600" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="text-xs text-slate-500 uppercase tracking-wide">Planlanan Ziyaret</div>
-                            <div className="font-semibold text-slate-900">{formatDate(request.scheduledVisitDate)}</div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Description */}
-              {request.description && (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
-                      <MessageSquare className="w-5 h-5 text-amber-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-slate-900">Açıklama</h3>
-                      <p className="text-slate-500 text-sm">Müşteri talebi detayları</p>
-                    </div>
-                  </div>
-                  <div className="bg-slate-50 rounded-xl p-4">
-                    <p className="text-slate-700 leading-relaxed">
-                      {request.description}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Tags */}
-              {request.tags.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center">
-                      <Star className="w-5 h-5 text-cyan-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-slate-900">Etiketler</h3>
-                      <p className="text-slate-500 text-sm">{request.tags.length} etiket tanımlanmış</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {request.tags.map((tag, index) => (
-                      <Badge 
-                        key={index} 
-                        className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-3 py-1.5 text-sm font-medium shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Photos */}
-              {request.hasPhotos && (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-pink-100 rounded-xl flex items-center justify-center">
-                      <Camera className="w-5 h-5 text-pink-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-slate-900">Fotoğraflar</h3>
-                      <p className="text-slate-500 text-sm">Eklenen görsel materyaller</p>
-                    </div>
-                  </div>
-                  <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl p-6 text-center border border-pink-100">
-                    <Camera className="w-12 h-12 text-pink-400 mx-auto mb-3" />
-                    <div className="text-slate-700 font-medium mb-1">Fotoğraflar Mevcut</div>
-                    <div className="text-slate-500 text-sm">Bu talebe bağlı görsel materyaller bulunmaktadır</div>
-                  </div>
-                </div>
-              )}
-
-              {/* Notes */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center">
-                      <MessageSquare className="w-5 h-5 text-violet-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-slate-900">Notlar</h3>
-                      <p className="text-slate-500 text-sm">{request.notes.length} not mevcut</p>
-                    </div>
-                  </div>
-                  <Button 
-                    className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all"
-                    onClick={() => setIsAddingNote(true)}
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Not Ekle
-                  </Button>
-                </div>
-                
-                {isAddingNote && (
-                  <div className="mb-6 p-4 bg-slate-50 rounded-xl border-2 border-dashed border-slate-300">
-                    <Textarea
-                      placeholder="Yeni not yazın..."
-                      value={newNote}
-                      onChange={(e) => setNewNote(e.target.value)}
-                      rows={3}
-                      className="mb-3 border-slate-200 focus:border-violet-500 focus:ring-violet-500"
-                    />
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={handleAddNote}
-                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                      >
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Kaydet
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => {
-                          setIsAddingNote(false)
-                          setNewNote('')
-                        }}
-                      >
-                        İptal
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {request.notes.length === 0 ? (
-                    <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-8 text-center border-2 border-dashed border-slate-300">
-                      <MessageSquare className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-                      <div className="text-slate-600 font-medium mb-1">Henüz not eklenmemiş</div>
-                      <div className="text-slate-500 text-sm">İlk notu eklemek için yukarıdaki butonu kullanın</div>
-                    </div>
-                  ) : (
-                    request.notes.map((note, index) => (
-                      <div key={index} className="bg-gradient-to-r from-white to-slate-50 border border-slate-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                        <div className="flex items-start gap-3">
-                          <div className="w-2 h-2 bg-violet-500 rounded-full mt-2 flex-shrink-0"></div>
-                          <p className="text-slate-700 leading-relaxed flex-1">{note}</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <p className="text-slate-700 leading-relaxed">
+                    {request.description}
+                  </p>
                 </div>
               </div>
+            )}
+
+            {/* Tags */}
+            {request.tags.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center">
+                    <Star className="w-4 h-4 text-cyan-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Etiketler</h3>
+                    <p className="text-slate-500 text-xs">{request.tags.length} etiket tanımlanmış</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {request.tags.map((tag, index) => (
+                    <Badge 
+                      key={index} 
+                      className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-3 py-1.5 text-sm font-medium shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Photos */}
+            {request.hasPhotos && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
+                    <Camera className="w-4 h-4 text-pink-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Fotoğraflar</h3>
+                    <p className="text-slate-500 text-xs">Eklenen görsel materyaller</p>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl p-6 text-center border border-pink-100">
+                  <Camera className="w-12 h-12 text-pink-400 mx-auto mb-3" />
+                  <div className="text-slate-700 font-medium mb-1">Fotoğraflar Mevcut</div>
+                  <div className="text-slate-500 text-sm">Bu talebe bağlı görsel materyaller bulunmaktadır</div>
+                </div>
+              </div>
+            )}
+
+            {/* Notes */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
+                    <MessageSquare className="w-4 h-4 text-violet-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Notlar</h3>
+                    <p className="text-slate-500 text-xs">{request.notes.length} not mevcut</p>
+                  </div>
+                </div>
+                <Button 
+                  className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all"
+                  onClick={() => setIsAddingNote(true)}
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Not Ekle
+                </Button>
+              </div>
+              
+              {isAddingNote && (
+                <div className="mb-6 p-4 bg-slate-50 rounded-xl border-2 border-dashed border-slate-300">
+                  <Textarea
+                    placeholder="Yeni not yazın..."
+                    value={newNote}
+                    onChange={(e) => setNewNote(e.target.value)}
+                    rows={3}
+                    className="mb-3 border-slate-200 focus:border-violet-500 focus:ring-violet-500"
+                  />
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleAddNote}
+                      className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Kaydet
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setIsAddingNote(false)
+                        setNewNote('')
+                      }}
+                    >
+                      İptal
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {request.notes.length === 0 ? (
+                  <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-8 text-center border-2 border-dashed border-slate-300">
+                    <MessageSquare className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                    <div className="text-slate-600 font-medium mb-1">Henüz not eklenmemiş</div>
+                    <div className="text-slate-500 text-sm">İlk notu eklemek için yukarıdaki butonu kullanın</div>
+                  </div>
+                ) : (
+                  request.notes.map((note, index) => (
+                    <div key={index} className="bg-gradient-to-r from-white to-slate-50 border border-slate-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start gap-3">
+                        <div className="w-2 h-2 bg-violet-500 rounded-full mt-2 flex-shrink-0"></div>
+                        <p className="text-slate-700 leading-relaxed flex-1">{note}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Right Column - Status History & Actions */}
-          <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-slate-200 px-4 lg:pl-6 py-4 overflow-y-auto bg-slate-50/50">
+          <div className="space-y-6 overflow-y-auto bg-slate-50/50 rounded-lg p-4">
             <div className="space-y-4">
               {/* Status History */}
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
@@ -615,7 +616,7 @@ export function ProjectRequestDetails({
               </div>
 
               {/* Estimated Materials */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
                     <Package className="w-4 h-4 text-orange-600" />
@@ -650,7 +651,7 @@ export function ProjectRequestDetails({
               </div>
 
               {/* Actions */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
                     <Wrench className="w-4 h-4 text-red-600" />
@@ -690,21 +691,20 @@ export function ProjectRequestDetails({
                     <Calendar className="w-4 h-4 mr-2" />
                     Ziyaret Planla
                   </Button>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="w-full border-2 border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-300 transition-all"
                     onClick={() => {
                       window.open(`/dashboard/quotes/create/${request.id}`, '_blank')
                     }}
                   >
                     <FileText className="w-4 h-4 mr-2" />
-                    Fiyat Teklifi Oluştur
+                    {hasQuote ? 'Teklif Düzenle' : 'Teklif Oluştur'}
                   </Button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -5,11 +5,13 @@ import { useSession } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import { Header } from './Header'
 import { Sidebar } from './sidebar'
+import { MobileSidebar } from '@/components/mobile/MobileSidebar'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Footer } from './footer'
 import { Button } from '@/components/ui/button'
 import { ChevronRight, Home } from 'lucide-react'
 import Link from 'next/link'
+import { getNavItemsByRole } from './sidebar'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -29,13 +31,16 @@ export function DashboardLayout({
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   // Check if mobile on mount and resize
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-      if (window.innerWidth >= 768) {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      if (!mobile) {
         setSidebarOpen(false) // Close sidebar on desktop
+        setMobileSidebarOpen(false) // Close mobile sidebar on desktop
       }
     }
 
@@ -48,6 +53,7 @@ export function DashboardLayout({
   useEffect(() => {
     if (isMobile) {
       setSidebarOpen(false)
+      setMobileSidebarOpen(false)
     }
   }, [pathname, isMobile])
 
@@ -63,7 +69,13 @@ export function DashboardLayout({
     return null // Middleware should handle redirect
   }
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen)
+  const toggleSidebar = () => {
+    if (isMobile) {
+      setMobileSidebarOpen(!mobileSidebarOpen)
+    } else {
+      setSidebarOpen(!sidebarOpen)
+    }
+  }
 
   // Generate breadcrumbs from pathname if not provided
   const generateBreadcrumbs = () => {
@@ -103,41 +115,50 @@ export function DashboardLayout({
   const currentBreadcrumbs = generateBreadcrumbs()
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <Header onSidebarToggle={toggleSidebar} />
 
       <div className="flex">
-        {/* Sidebar */}
+        {/* Desktop Sidebar */}
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
+        {/* Mobile Sidebar */}
+        {isMobile && (
+          <MobileSidebar
+            isOpen={mobileSidebarOpen}
+            onClose={() => setMobileSidebarOpen(false)}
+            navItems={getNavItemsByRole(session.user.role)}
+          />
+        )}
+
         {/* Main Content */}
-        <main className="flex-1 min-h-[calc(100vh-4rem)]">
+        <main className="flex-1 min-h-[calc(100vh-3.5rem)] sm:min-h-[calc(100vh-4rem)]">
           {/* Content Area */}
-          <div className="p-4 md:p-6 lg:p-8">
+          <div className="p-3 sm:p-4 md:p-6 lg:p-8">
             {/* Breadcrumbs */}
             {currentBreadcrumbs.length > 1 && (
-              <nav className="mb-6">
-                <div className="flex items-center space-x-1 text-sm text-gray-500">
+              <nav className="mb-4 sm:mb-6">
+                <div className="flex items-center space-x-1 text-xs sm:text-sm text-muted-foreground overflow-x-auto pb-1">
                   {currentBreadcrumbs.map((crumb, index) => (
-                    <div key={index} className="flex items-center">
-                      {index === 0 && <Home className="w-4 h-4 mr-1" />}
-                      
+                    <div key={index} className="flex items-center flex-shrink-0">
+                      {index === 0 && <Home className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />}
+
                       {crumb.href ? (
-                        <Link 
+                        <Link
                           href={crumb.href}
-                          className="hover:text-gray-900 transition-colors"
+                          className="hover:text-foreground transition-colors whitespace-nowrap touch-manipulation"
                         >
                           {crumb.label}
                         </Link>
                       ) : (
-                        <span className="text-gray-900 font-medium">
+                        <span className="text-foreground font-medium whitespace-nowrap">
                           {crumb.label}
                         </span>
                       )}
-                      
+
                       {index < currentBreadcrumbs.length - 1 && (
-                        <ChevronRight className="w-4 h-4 mx-1" />
+                        <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 mx-1 flex-shrink-0" />
                       )}
                     </div>
                   ))}
@@ -147,15 +168,15 @@ export function DashboardLayout({
 
             {/* Page Title */}
             {title && (
-              <div className="mb-8">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+              <div className="mb-6 sm:mb-8">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground leading-tight">
                   {title}
                 </h1>
               </div>
             )}
 
             {/* Page Content */}
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {children}
             </div>
           </div>
@@ -169,7 +190,7 @@ export function DashboardLayout({
 // Simplified layout for authentication pages
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-950 dark:to-yellow-950">
       {children}
     </div>
   )
@@ -178,7 +199,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
 // Public layout (for homepage, about, etc.)
 export function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <Header />
       <main>
         {children}

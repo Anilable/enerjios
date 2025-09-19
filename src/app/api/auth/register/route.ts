@@ -1,16 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { db } from '@/lib/db'
+import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, email, password, role, companyName, taxNumber, phone, city } = body
+    const {
+      name, email, password, userType,
+      firstName, lastName, phone, city,
+      companyName, taxNumber, sector,
+      specializations, farmName, farmLocation, farmSize, crops
+    } = body
 
     // Validation
-    if (!name || !email || !password || !role) {
+    if (!name || !email || !password || !userType) {
       return NextResponse.json(
         { message: 'Gerekli alanları doldurun' },
+        { status: 400 }
+      )
+    }
+
+    // User type specific validation
+    if ((userType === 'kurumsal' || userType === 'ges-firmasi') && (!companyName || !taxNumber)) {
+      return NextResponse.json(
+        { message: 'Kurumsal hesaplar için firma adı ve vergi numarası gereklidir' },
+        { status: 400 }
+      )
+    }
+
+    if (userType === 'ciftci' && (!farmName || !farmLocation)) {
+      return NextResponse.json(
+        { message: 'Çiftçi hesabı için çiftlik adı ve lokasyon gereklidir' },
         { status: 400 }
       )
     }
@@ -22,8 +42,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if user already exists
-    const existingUser = await db.user.findUnique({
+    // Check if user already exists (email and phone uniqueness)
+    const existingUser = await prisma.user.findUnique({
       where: { email }
     })
 
@@ -34,9 +54,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check phone uniqueness (if phone is provided)
+    if (phone) {
+      const existingPhoneUser = await prisma.user.findFirst({
+        where: { phone }
+      })
+
+      if (existingPhoneUser) {
+        return NextResponse.json(
+          { message: 'Bu telefon numarası zaten kayıtlı' },
+          { status: 400 }
+        )
+      }
+    }
+
     // For company registration, check if tax number exists
-    if (role === 'COMPANY' && taxNumber) {
-      const existingCompany = await db.company.findUnique({
+    if ((userType === 'kurumsal' || userType === 'ges-firmasi') && taxNumber) {
+      const existingCompany = await prisma.company.findUnique({
         where: { taxNumber }
       })
 
@@ -51,57 +85,96 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
+    // Map userType to role
+    const getUserRole = (userType: string) => {
+      switch (userType) {
+        case 'bireysel':
+          return 'CUSTOMER'
+        case 'kurumsal':
+          return 'CUSTOMER'
+        case 'ges-firmasi':
+          return 'COMPANY'
+        case 'ciftci':
+          return 'FARMER'
+        default:
+          return 'CUSTOMER'
+      }
+    }
+
     // Create user
-    const user = await db.user.create({
+    const user = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        role: role as any,
+        role: getUserRole(userType) as any,
         status: 'ACTIVE',
         phone
       }
     })
 
     // Create role-specific profile
-    if (role === 'COMPANY') {
-      await db.company.create({
+    if (userType === 'ges-firmasi') {
+      // Create GES company profile
+      await prisma.company.create({
         data: {
           userId: user.id,
-          name: companyName || name,
-          taxNumber: taxNumber || `temp_${Date.now()}`,
+          name: companyName,
+          taxNumber,
           type: 'INSTALLER',
           city: city || '',
           phone: phone || '',
           verified: false
         }
       })
-    } else if (role === 'CUSTOMER' || role === 'FARMER') {
-      const customerType = role === 'FARMER' ? 'FARMER' : 'INDIVIDUAL'
-      const nameParts = name.split(' ')
-      
-      await db.customer.create({
+    } else if (userType === 'kurumsal') {
+      // Create corporate customer profile
+      await prisma.customer.create({
         data: {
           userId: user.id,
-          type: customerType as any,
-          firstName: nameParts[0] || '',
-          lastName: nameParts.slice(1).join(' ') || '',
+          type: 'CORPORATE',
+          companyName,
+          taxNumber,
+          firstName: firstName || name.split(' ')[0] || '',
+          lastName: lastName || name.split(' ').slice(1).join(' ') || '',
+          city: city || '',
+          phone: phone || ''
+        }
+      })
+    } else if (userType === 'bireysel') {
+      // Create individual customer profile
+      await prisma.customer.create({
+        data: {
+          userId: user.id,
+          type: 'INDIVIDUAL',
+          firstName: firstName || name.split(' ')[0] || '',
+          lastName: lastName || name.split(' ').slice(1).join(' ') || '',
+          city: city || '',
+          phone: phone || ''
+        }
+      })
+    } else if (userType === 'ciftci') {
+      // Create farmer customer profile
+      await prisma.customer.create({
+        data: {
+          userId: user.id,
+          type: 'FARMER',
+          firstName: firstName || name.split(' ')[0] || '',
+          lastName: lastName || name.split(' ').slice(1).join(' ') || '',
           city: city || '',
           phone: phone || ''
         }
       })
 
-      // Create farmer profile if needed
-      if (role === 'FARMER') {
-        await db.farmer.create({
-          data: {
-            userId: user.id,
-            farmSize: 0,
-            mainCrops: JSON.stringify([]),
-            monthlyConsumption: 0
-          }
-        })
-      }
+      // Create farmer-specific profile
+      await prisma.farmer.create({
+        data: {
+          userId: user.id,
+          farmSize: farmSize ? parseFloat(farmSize) : 0,
+          mainCrops: JSON.stringify(crops || []),
+          monthlyConsumption: 0
+        }
+      })
     }
 
     return NextResponse.json(

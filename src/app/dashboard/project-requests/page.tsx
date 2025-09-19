@@ -14,6 +14,7 @@ import { ProjectRequestDetails } from '@/components/project-requests/project-req
 import { CalendarView } from '@/components/project-requests/calendar-view'
 import { NotesManagement } from '@/components/project-requests/notes-management'
 import { SourceLegend } from '@/components/project-requests/source-legend'
+import { StatusUpdateDropdown } from '@/components/project-requests/status-update-dropdown'
 import { ProjectRequestAPI } from '@/lib/api/project-requests'
 import {
   ProjectRequest,
@@ -137,6 +138,7 @@ export default function ProjectRequestsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [globalNotesManagementOpen, setGlobalNotesManagementOpen] = useState(false)
   const [selectedRequestForGlobalNotes, setSelectedRequestForGlobalNotes] = useState<ProjectRequest | null>(null)
+  const [selectedRequestHasQuote, setSelectedRequestHasQuote] = useState(false)
   const { toast } = useToast()
   const { data: session, status: sessionStatus } = useSession()
 
@@ -530,6 +532,30 @@ export default function ProjectRequestsPage() {
     }
   }
 
+  // Check if project request has a quote
+  const checkIfRequestHasQuote = async (projectRequestId: string) => {
+    try {
+      const response = await fetch(`/api/quotes?projectRequestId=${projectRequestId}`)
+      if (response.ok) {
+        const quotes = await response.json()
+        return quotes.length > 0
+      }
+      return false
+    } catch (error) {
+      console.error('Error checking quote:', error)
+      return false
+    }
+  }
+
+  // Handle opening request details
+  const handleOpenRequestDetails = async (request: ProjectRequest) => {
+    setSelectedRequest(request)
+    setDetailsDialogOpen(true)
+    // Check if request has quote in background
+    const hasQuote = await checkIfRequestHasQuote(request.id)
+    setSelectedRequestHasQuote(hasQuote)
+  }
+
   // Check if user can delete requests (only ADMIN role)
   const canDeleteRequests = session?.user?.role === 'ADMIN'
 
@@ -850,9 +876,7 @@ export default function ProjectRequestsPage() {
                         <th className="text-left p-2 sm:p-4 font-medium hidden lg:table-cell">Atanan</th>
                         <th className="text-left p-2 sm:p-4 font-medium">Durum</th>
                         <th className="text-left p-2 sm:p-4 font-medium hidden sm:table-cell">Tarih</th>
-                        {canDeleteRequests && (
-                          <th className="text-left p-2 sm:p-4 font-medium w-12">İşlem</th>
-                        )}
+                        <th className="text-left p-2 sm:p-4 font-medium w-24">İşlem</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -860,10 +884,7 @@ export default function ProjectRequestsPage() {
                         <tr 
                           key={request.id}
                           className="border-t hover:bg-muted/50 cursor-pointer"
-                          onClick={() => {
-                            setSelectedRequest(request)
-                            setDetailsDialogOpen(true)
-                          }}
+                          onClick={() => handleOpenRequestDetails(request)}
                         >
                           <td className="p-2 sm:p-4 font-medium text-sm">{request.requestNumber}</td>
                           <td className="p-2 sm:p-4">
@@ -913,29 +934,39 @@ export default function ProjectRequestsPage() {
                             )}
                           </td>
                           <td className="p-2 sm:p-4">
-                            <Badge variant="outline" className="text-xs">
-                              {PROJECT_REQUEST_STATUS_LABELS[request.status]}
-                            </Badge>
+                            <StatusUpdateDropdown
+                              request={request}
+                              onStatusUpdate={handleUpdateRequestStatus}
+                              variant="compact"
+                              showCurrentStatus={false}
+                            />
                           </td>
                           <td className="p-2 sm:p-4 text-sm text-muted-foreground hidden sm:table-cell">
                             {new Date(request.createdAt).toLocaleDateString('tr-TR')}
                           </td>
-                          {canDeleteRequests && (
-                            <td className="p-2 sm:p-4">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDeleteRequest(request.id)
-                                }}
-                                title="Proje talebini sil"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </td>
-                          )}
+                          <td className="p-2 sm:p-4">
+                            <div className="flex items-center gap-1">
+                              <StatusUpdateDropdown
+                                request={request}
+                                onStatusUpdate={handleUpdateRequestStatus}
+                                variant="minimal"
+                              />
+                              {canDeleteRequests && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDeleteRequest(request.id)
+                                  }}
+                                  title="Proje talebini sil"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -948,111 +979,14 @@ export default function ProjectRequestsPage() {
             {currentView === 'card' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
                 {getSortedRequests(getAllRequests()).map((request) => (
-                  <Card 
+                  <ProjectRequestCard
                     key={request.id}
-                    className="cursor-pointer hover:shadow-lg transition-shadow relative"
-                    onClick={() => {
-                      setSelectedRequest(request)
-                      setDetailsDialogOpen(true)
-                    }}
-                  >
-                    {/* Delete button for card view */}
-                    {canDeleteRequests && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="absolute top-2 right-2 h-6 w-6 p-0 hover:bg-red-50 hover:text-red-600 transition-all border border-gray-200 bg-white shadow-sm z-10"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteRequest(request.id)
-                        }}
-                        title="Proje talebini sil"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    )}
-                    
-                    <CardHeader className={`pb-3 ${canDeleteRequests ? 'pr-12' : ''}`}>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">{request.requestNumber}</CardTitle>
-                        <Badge variant={
-                          request.priority === 'HIGH' ? 'destructive' : 
-                          request.priority === 'MEDIUM' ? 'default' : 
-                          'secondary'
-                        }>
-                          {request.priority === 'HIGH' ? 'Yüksek' : 
-                           request.priority === 'MEDIUM' ? 'Orta' : 'Düşük'}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {/* Google Maps Static Image */}
-                      {getGoogleMapsStaticImage(request.address || request.location) && (
-                        <div className="mb-4 rounded-lg overflow-hidden">
-                          <img
-                            src={getGoogleMapsStaticImage(request.address || request.location)!}
-                            alt={`Map of ${request.location}`}
-                            className="w-full h-32 object-cover"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement
-                              target.style.display = 'none'
-                            }}
-                          />
-                        </div>
-                      )}
-                      
-                      <div className="space-y-3">
-                        <div>
-                          <h3 className="font-semibold">{request.customerName}</h3>
-                          <p className="text-sm text-muted-foreground">{request.customerEmail}</p>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm">{request.location}</span>
-                        </div>
-                        
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm">
-                            <strong>{request.estimatedCapacity} kW</strong>
-                          </span>
-                          <Badge variant="outline">
-                            {PROJECT_REQUEST_STATUS_LABELS[request.status]}
-                          </Badge>
-                        </div>
-
-                        {request.assignedEngineerName && (
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                              <span className="text-xs font-medium text-blue-700">
-                                {request.assignedEngineerName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                              </span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs text-muted-foreground">Atanan:</div>
-                              <div className="text-sm font-medium truncate" title={request.assignedEngineerName}>
-                                {request.assignedEngineerName}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="flex justify-between items-center">
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(request.createdAt).toLocaleDateString('tr-TR')}
-                          </div>
-                          <Badge
-                            variant="outline"
-                            className={`text-xs flex items-center gap-1 ${REQUEST_SOURCE_COLORS[request.source].badge}`}
-                            title={`Kaynak: ${REQUEST_SOURCE_LABELS[request.source]}`}
-                          >
-                            <span>{REQUEST_SOURCE_ICONS[request.source]}</span>
-                            <span className="hidden sm:inline">{REQUEST_SOURCE_LABELS[request.source]}</span>
-                          </Badge>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                    request={request}
+                    onClick={() => handleOpenRequestDetails(request)}
+                    onDelete={handleDeleteRequest}
+                    onStatusUpdate={handleUpdateRequestStatus}
+                    canDelete={canDeleteRequests}
+                  />
                 ))}
               </div>
             )}
@@ -1074,10 +1008,10 @@ export default function ProjectRequestsPage() {
                         column={column}
                         onCardClick={(request) => {
                           console.log('Main kanban - card clicked:', request.id)
-                          setSelectedRequest(request)
-                          setDetailsDialogOpen(true)
+                          handleOpenRequestDetails(request)
                         }}
                         onDelete={handleDeleteRequest}
+                        onStatusUpdate={handleUpdateRequestStatus}
                         canDelete={canDeleteRequests}
                       />
                     )
@@ -1100,10 +1034,8 @@ export default function ProjectRequestsPage() {
             {currentView === 'calendar' && (
               <CalendarView
                 requests={getAllRequests()}
-                onViewRequest={(request) => {
-                  setSelectedRequest(request)
-                  setDetailsDialogOpen(true)
-                }}
+                onViewRequest={handleOpenRequestDetails}
+                onStatusUpdate={handleUpdateRequestStatus}
               />
             )}
           </>
@@ -1122,9 +1054,11 @@ export default function ProjectRequestsPage() {
           onClose={() => {
             setDetailsDialogOpen(false)
             setSelectedRequest(null)
+            setSelectedRequestHasQuote(false)
           }}
           onUpdateStatus={handleUpdateRequestStatus}
           onAddNote={handleAddNote}
+          hasQuote={selectedRequestHasQuote}
         />
 
         {/* Delete Confirmation Dialog */}

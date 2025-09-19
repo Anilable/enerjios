@@ -55,7 +55,7 @@ interface NavItem {
   subItems?: NavItem[]
 }
 
-const getNavItemsByRole = (role: string): NavItem[] => {
+export const getNavItemsByRole = (role: string): NavItem[] => {
   switch (role) {
     case 'ADMIN':
       return [
@@ -253,6 +253,75 @@ const getNavItemsByRole = (role: string): NavItem[] => {
           href: '/dashboard/quotes',
           icon: FileText,
           badge: '3',
+        },
+        {
+          title: 'Ayarlar',
+          href: '/dashboard/settings',
+          icon: Settings,
+        },
+      ]
+
+    case 'INSTALLATION_TEAM':
+      return [
+        {
+          title: 'Dashboard',
+          href: '/dashboard',
+          icon: LayoutDashboard,
+        },
+        {
+          title: 'Proje Talepleri',
+          href: '/dashboard/project-requests',
+          icon: FolderKanban,
+        },
+        {
+          title: 'Projeler',
+          href: '/dashboard/projects',
+          icon: Building,
+          subItems: [
+            { title: 'Kurulum Bekleyen', href: '/dashboard/projects/pending-installation', icon: Clock },
+            { title: 'Kurulum Devam Eden', href: '/dashboard/projects/installing', icon: Settings },
+            { title: 'Tamamlanan', href: '/dashboard/projects/completed', icon: CheckCircle },
+          ]
+        },
+        {
+          title: 'Kurulumlar',
+          href: '/dashboard/installations',
+          icon: Settings,
+          subItems: [
+            { title: 'Planlanan', href: '/dashboard/installations/scheduled', icon: Calendar },
+            { title: 'Devam Eden', href: '/dashboard/installations/active', icon: Zap },
+            { title: 'Tamamlanan', href: '/dashboard/installations/completed', icon: CheckCircle },
+          ]
+        },
+        {
+          title: 'Müşteri Bilgileri',
+          href: '/dashboard/customers',
+          icon: Users,
+        },
+        {
+          title: 'Teknik Dokümanlar',
+          href: '/dashboard/technical-docs',
+          icon: FileText,
+          subItems: [
+            { title: 'Kurulum Kılavuzları', href: '/dashboard/technical-docs/guides', icon: FileText },
+            { title: 'Teknik Şemalar', href: '/dashboard/technical-docs/schematics', icon: FileText },
+            { title: 'Güvenlik Prosedürleri', href: '/dashboard/technical-docs/safety', icon: Shield },
+          ]
+        },
+        {
+          title: 'Raporlar',
+          href: '/dashboard/reports',
+          icon: BarChart3,
+          subItems: [
+            { title: 'Kurulum Raporları', href: '/dashboard/reports/installation', icon: BarChart3 },
+            { title: 'İlerleme Takibi', href: '/dashboard/reports/progress', icon: TrendingUp },
+            { title: 'Tamamlama Oranları', href: '/dashboard/reports/completion', icon: CheckCircle },
+          ]
+        },
+        {
+          title: 'Fotoğraf Talepleri',
+          href: '/dashboard/photo-requests',
+          icon: Camera,
         },
         {
           title: 'Ayarlar',

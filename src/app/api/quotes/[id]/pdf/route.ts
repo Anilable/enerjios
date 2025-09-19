@@ -105,7 +105,7 @@ export async function GET(
 
     const { totalPowerKw: systemPowerKw, panelCount } = calculateSystemPower()
     const annualProduction = Math.round(systemPowerKw * 1450) // kWh per year
-    const annualSavings = Math.round(annualProduction * 2.2) // TL per kWh
+    const annualSavings = Math.round(annualProduction * 5.20) // TL per kWh (updated from 2.2 to 5.20)
     const paybackPeriod = quote.total > 0 && annualSavings > 0
       ? Math.round((quote.total / annualSavings) * 10) / 10
       : 0
@@ -117,21 +117,57 @@ export async function GET(
       paybackPeriod
     })
 
+    // Helper function to convert project type to Turkish
+    const getProjectTypeInTurkish = (type: string) => {
+      const typeMap: Record<string, string> = {
+        'RESIDENTIAL': 'Konut',
+        'COMMERCIAL': 'Ticari',
+        'INDUSTRIAL': 'Endüstriyel',
+        'AGRICULTURAL': 'Tarımsal',
+        'ROOFTOP': 'Çatı GES',
+        'LAND': 'Arazi GES',
+        'AGRISOLAR': 'Tarımsal GES',
+        'CARPARK': 'Otopark GES'
+      }
+      return typeMap[type] || 'Güneş Enerji Projesi'
+    }
+
     // Transform data to match PDF template interface
+    // Use project name if available, otherwise use customer name with project type
+    const projectTypeInTurkish = quote.project?.type ? getProjectTypeInTurkish(quote.project.type) : 'Güneş Enerji Projesi'
+    const projectName = quote.project?.name ||
+      `${quote.customer?.firstName || ''} ${quote.customer?.lastName || ''} - ${projectTypeInTurkish}`.trim()
+
+    // Recalculate totals on the fly to ensure accuracy
+    const calculatedSubtotal = quote.items?.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0) || 0
+    const discountAmount = calculatedSubtotal * ((quote.discount || 0) / 100)
+    const subtotalAfterDiscount = calculatedSubtotal - discountAmount
+    const calculatedTax = subtotalAfterDiscount * 0.20 // Fixed 20% tax rate
+    const calculatedTotal = subtotalAfterDiscount + calculatedTax
+
+    console.log('📊 PDF CALCULATION RECALC:', {
+      originalSubtotal: quote.subtotal,
+      calculatedSubtotal,
+      originalTax: quote.tax,
+      calculatedTax,
+      originalTotal: quote.total,
+      calculatedTotal
+    })
+
     const quoteData = {
       id: quote.id,
       quoteNumber: quote.quoteNumber,
       customerName: `${quote.customer?.firstName || ''} ${quote.customer?.lastName || ''}`.trim(),
       customerEmail: quote.customer?.user?.email || '',
       customerPhone: quote.customer?.phone,
-      projectTitle: `${systemPowerKw.toFixed(1)} kW Güneş Enerji Sistemi`,
+      projectTitle: projectName,
       systemSize: systemPowerKw,
       panelCount: panelCount,
       capacity: systemPowerKw,
-      subtotal: quote.subtotal,
-      tax: quote.tax,
+      subtotal: calculatedSubtotal,
+      tax: calculatedTax,
       discount: quote.discount,
-      total: quote.total,
+      total: calculatedTotal,
       laborCost: 0, // TODO: Add labor cost to Quote model
       status: quote.status as any,
       createdAt: quote.createdAt,

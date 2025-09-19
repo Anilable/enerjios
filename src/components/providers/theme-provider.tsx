@@ -33,8 +33,27 @@ export function ThemeProvider({
     }
   }, [storageKey])
 
+  // Listen for system theme changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+
+    const handleChange = () => {
+      if (theme === 'system') {
+        // Force re-evaluation of system theme
+        setTheme('system')
+      }
+    }
+
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [theme])
+
   useEffect(() => {
     const root = window.document.documentElement
+
+    // Add changing attribute for smooth transitions
+    root.setAttribute('data-theme-changing', 'true')
+
     root.classList.remove('light', 'dark')
 
     let applied: 'light' | 'dark' = 'light'
@@ -50,6 +69,11 @@ export function ThemeProvider({
 
     root.classList.add(applied)
     setActualTheme(applied)
+
+    // Remove changing attribute after a brief delay
+    setTimeout(() => {
+      root.removeAttribute('data-theme-changing')
+    }, 100)
   }, [theme])
 
   const handleSetTheme = (newTheme: Theme) => {

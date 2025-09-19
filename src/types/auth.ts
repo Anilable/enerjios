@@ -30,8 +30,8 @@ export interface AuthUser {
   id: string
   email: string
   name?: string | null
-  role: 'ADMIN' | 'COMPANY' | 'CUSTOMER' | 'FARMER' | 'BANK'
+  role: 'ADMIN' | 'COMPANY' | 'CUSTOMER' | 'FARMER' | 'BANK' | 'INSTALLATION_TEAM'
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING'
 }
 
-export type UserRole = 'ADMIN' | 'COMPANY' | 'CUSTOMER' | 'FARMER' | 'BANK'
+export type UserRole = 'ADMIN' | 'COMPANY' | 'CUSTOMER' | 'FARMER' | 'BANK' | 'INSTALLATION_TEAM'
