@@ -66,128 +66,41 @@ function getCategoryFromType(type: ProductType): string {
   return categoryMap[type] || 'Diğer'
 }
 
-// Ready-made solar packages
-const SOLAR_PACKAGES = {
-  RESIDENTIAL_5KW: {
-    name: '5kW Konut Paketi',
-    description: 'Standart konut için 5kW solar sistem',
-    capacity: 5,
-    items: [
-      {
-        category: 'PANEL',
-        name: 'Monokristalin Panel 540W',
-        quantity: 10,
-        unitPrice: 950,
-        description: 'Jinko Tiger Neo 540W',
-        brand: 'Jinko',
-        specifications: { power: 540, efficiency: 22.3 }
-      },
-      {
-        category: 'INVERTER',
-        name: 'Huawei İnverter 5kW',
-        quantity: 1,
-        unitPrice: 4500,
-        description: 'SUN2000-5KTL-M1',
-        brand: 'Huawei',
-        specifications: { power: 5000, efficiency: 98.2 }
-      },
-      {
-        category: 'MOUNTING',
-        name: 'Çatı Montaj Sistemi',
-        quantity: 1,
-        unitPrice: 2500,
-        description: 'Alüminyum ray ve bağlantı elemanları',
-        brand: 'Trakya Solar'
-      },
-      {
-        category: 'LABOR',
-        name: 'Kurulum İşçiliği',
-        quantity: 24,
-        unitPrice: 150,
-        description: '3 günlük profesyonel kurulum'
-      }
-    ]
-  },
-  RESIDENTIAL_10KW: {
-    name: '10kW Konut Paketi',
-    description: 'Büyük konut için 10kW solar sistem',
-    capacity: 10,
-    items: [
-      {
-        category: 'PANEL',
-        name: 'Monokristalin Panel 540W',
-        quantity: 19,
-        unitPrice: 950,
-        description: 'Jinko Tiger Neo 540W',
-        brand: 'Jinko',
-        specifications: { power: 540, efficiency: 22.3 }
-      },
-      {
-        category: 'INVERTER',
-        name: 'Huawei İnverter 10kW',
-        quantity: 1,
-        unitPrice: 6500,
-        description: 'SUN2000-10KTL-M1',
-        brand: 'Huawei',
-        specifications: { power: 10000, efficiency: 98.4 }
-      },
-      {
-        category: 'MOUNTING',
-        name: 'Çatı Montaj Sistemi',
-        quantity: 1,
-        unitPrice: 4500,
-        description: 'Alüminyum ray ve bağlantı elemanları',
-        brand: 'Trakya Solar'
-      },
-      {
-        category: 'LABOR',
-        name: 'Kurulum İşçiliği',
-        quantity: 40,
-        unitPrice: 150,
-        description: '5 günlük profesyonel kurulum'
-      }
-    ]
-  },
-  COMMERCIAL_20KW: {
-    name: '20kW Ticari Paket',
-    description: 'Küçük işletme için 20kW solar sistem',
-    capacity: 20,
-    items: [
-      {
-        category: 'PANEL',
-        name: 'Monokristalin Panel 540W',
-        quantity: 37,
-        unitPrice: 950,
-        description: 'Jinko Tiger Neo 540W',
-        brand: 'Jinko',
-        specifications: { power: 540, efficiency: 22.3 }
-      },
-      {
-        category: 'INVERTER',
-        name: 'Huawei İnverter 20kW',
-        quantity: 1,
-        unitPrice: 12000,
-        description: 'SUN2000-20KTL-M0',
-        brand: 'Huawei',
-        specifications: { power: 20000, efficiency: 98.6 }
-      },
-      {
-        category: 'MOUNTING',
-        name: 'Çatı/Zemin Montaj Sistemi',
-        quantity: 1,
-        unitPrice: 8000,
-        description: 'Endüstriyel montaj sistemi',
-        brand: 'Trakya Solar'
-      },
-      {
-        category: 'LABOR',
-        name: 'Kurulum İşçiliği',
-        quantity: 80,
-        unitPrice: 150,
-        description: '10 günlük profesyonel kurulum'
-      }
-    ]
-  }
+// Package type mapping for UI display
+const PACKAGE_TYPE_LABELS: Record<string, string> = {
+  ON_GRID: 'Şebekeye Bağlı',
+  OFF_GRID: 'Şebekeden Bağımsız',
+  HYBRID: 'Hibrit Sistem',
+  TARIMSAL_SULAMA: 'Tarımsal Sulama',
+  AKILLI_SISTEM: 'Akıllı Sistem'
+}
+
+const PACKAGE_TYPE_ICONS: Record<string, string> = {
+  ON_GRID: '🔌',
+  OFF_GRID: '🔋',
+  HYBRID: '⚡',
+  TARIMSAL_SULAMA: '💧',
+  AKILLI_SISTEM: '🤖'
+}
+
+// Package type interface
+interface Package {
+  id: string
+  name: string
+  description?: string
+  type: 'ON_GRID' | 'OFF_GRID' | 'HYBRID' | 'TARIMSAL_SULAMA' | 'AKILLI_SISTEM'
+  totalPrice: number
+  totalPower?: number
+  isActive: boolean
+  items: Array<{
+    productId?: string
+    productName: string
+    quantity: number
+    unitPrice: number
+    totalPrice: number
+  }>
+  createdAt: Date
+  updatedAt: Date
 }
 
 // Pricing types
@@ -288,6 +201,8 @@ export default function CreateQuotePage() {
   const [projectRequest, setProjectRequest] = useState<ProjectRequest | null>(null)
   // Removed activeStep for single page layout
   const [products, setProducts] = useState<any[]>([])
+  const [packages, setPackages] = useState<Package[]>([])
+  const [loadingPackages, setLoadingPackages] = useState(true)
   
   const [quoteData, setQuoteData] = useState<QuoteData>({
     projectRequestId: projectId,
@@ -412,6 +327,30 @@ export default function CreateQuotePage() {
     loadProjectData()
   }, [projectId, toast])
 
+  // Load packages from database
+  useEffect(() => {
+    const loadPackages = async () => {
+      try {
+        setLoadingPackages(true)
+        console.log('🔍 Fetching packages from API...')
+        const response = await fetch('/api/packages?isActive=true')
+        console.log('📡 Package API Response status:', response.status)
+        if (response.ok) {
+          const data = await response.json()
+          console.log('📦 Packages from API:', data.packages)
+          setPackages(data.packages || [])
+        } else {
+          console.warn('Failed to fetch packages')
+        }
+      } catch (error) {
+        console.error('Error fetching packages:', error)
+      } finally {
+        setLoadingPackages(false)
+      }
+    }
+    loadPackages()
+  }, [])
+
   // Load products from database
   useEffect(() => {
     const loadProducts = async () => {
@@ -451,9 +390,7 @@ export default function CreateQuotePage() {
   }, [])
 
   // Generate initial quote items based on project capacity
-  const generateInitialItems = (capacity: number, projectType: string) => {
-    const items: QuoteItem[] = []
-
+  const generateInitialItems = (_capacity: number, _projectType: string) => {
     // Don't add any hardcoded products - user will select from database
     // Only keep empty array to avoid breaking existing code
 
@@ -517,14 +454,14 @@ export default function CreateQuotePage() {
     }))
   }
 
-  // Apply ready-made package
-  const applyPackage = (packageKey: keyof typeof SOLAR_PACKAGES) => {
-    const selectedPackage = SOLAR_PACKAGES[packageKey]
-    const packageItems: ExtendedQuoteItem[] = selectedPackage.items.map((item, index) => ({
+  // Apply package from database
+  const applyPackage = (packageData: Package) => {
+    const packageItems: ExtendedQuoteItem[] = packageData.items.map((item, index) => ({
       id: `package-${Date.now()}-${index}`,
-      category: item.category as keyof typeof QUOTE_CATEGORIES,
-      name: item.name,
-      description: item.description,
+      category: 'OTHER', // Default category, user can change later
+      productId: item.productId,
+      name: item.productName,
+      description: item.productName,
       pricingType: 'UNIT',
       unitPrice: item.unitPrice,
       quantity: item.quantity,
@@ -532,19 +469,19 @@ export default function CreateQuotePage() {
       tax: 20,
       subtotal: item.unitPrice * item.quantity,
       total: item.unitPrice * item.quantity * 1.2,
-      brand: (item as any).brand || '',
-      specifications: (item as any).specifications || undefined
+      brand: '',
+      specifications: undefined
     }))
 
-    setQuoteData(prev => ({ 
-      ...prev, 
+    setQuoteData(prev => ({
+      ...prev,
       items: packageItems,
-      capacity: selectedPackage.capacity 
+      capacity: packageData.totalPower ? packageData.totalPower / 1000 : 0 // Convert W to kW
     }))
 
     toast({
       title: 'Paket Uygulandı',
-      description: `${selectedPackage.name} başarıyla eklendi`
+      description: `${packageData.name} başarıyla eklendi`
     })
   }
 
@@ -1118,63 +1055,72 @@ export default function CreateQuotePage() {
               </CardContent>
             </Card>
 
-            {/* Ready-made Packages */}
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>Hazır Paketler</CardTitle>
-                <CardDescription>
-                  Hızlı teklif için hazır paketlerden birini seçin
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {Object.entries(SOLAR_PACKAGES).map(([key, pkg]) => (
-                    <Card 
-                      key={key}
-                      className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50"
-                      onClick={() => applyPackage(key as keyof typeof SOLAR_PACKAGES)}
-                    >
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <Package className="w-5 h-5 text-primary" />
-                          {pkg.name}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-gray-600 mb-3">{pkg.description}</p>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-sm">
-                            <span>Kapasite:</span>
-                            <span className="font-medium">{pkg.capacity} kW</span>
+            {/* Ready-made Packages from Database */}
+            {!loadingPackages && packages.length > 0 && (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle>Hazır Paketler</CardTitle>
+                  <CardDescription>
+                    Hızlı teklif için hazır paketlerden birini seçin
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {packages.map((pkg) => (
+                      <Card
+                        key={pkg.id}
+                        className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50"
+                        onClick={() => applyPackage(pkg)}
+                      >
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <span className="text-lg">{PACKAGE_TYPE_ICONS[pkg.type]}</span>
+                            {pkg.name}
+                          </CardTitle>
+                          <Badge variant="outline" className="mt-1">
+                            {PACKAGE_TYPE_LABELS[pkg.type]}
+                          </Badge>
+                        </CardHeader>
+                        <CardContent>
+                          {pkg.description && (
+                            <p className="text-sm text-gray-600 mb-3">{pkg.description}</p>
+                          )}
+                          <div className="space-y-1">
+                            {pkg.totalPower && (
+                              <div className="flex justify-between text-sm">
+                                <span>Kapasite:</span>
+                                <span className="font-medium">{(pkg.totalPower / 1000).toFixed(1)} kW</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between text-sm">
+                              <span>Ürün Sayısı:</span>
+                              <span className="font-medium">{pkg.items.length} adet</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span>Toplam Fiyat:</span>
+                              <span className="font-medium text-primary">
+                                ₺{pkg.totalPrice.toLocaleString()}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span>Ürün Sayısı:</span>
-                            <span className="font-medium">{pkg.items.length} adet</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span>Tahmini Fiyat:</span>
-                            <span className="font-medium text-primary">
-                              ₺{pkg.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0).toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="w-full mt-3"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            applyPackage(key as keyof typeof SOLAR_PACKAGES)
-                          }}
-                        >
-                          Bu Paketi Seç
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full mt-3"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              applyPackage(pkg)
+                            }}
+                          >
+                            Bu Paketi Seç
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Quote Builder Table */}
             <Card>

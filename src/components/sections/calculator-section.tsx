@@ -22,16 +22,90 @@ import {
   Leaf
 } from 'lucide-react'
 
+// Türkiye'nin 81 ili ve güneşlenme değerleri (kWh/m²/yıl)
 const cities = [
-  { code: '34', name: 'İstanbul', irradiance: 1298 },
-  { code: '06', name: 'Ankara', irradiance: 1365 },
-  { code: '35', name: 'İzmir', irradiance: 1698 },
   { code: '01', name: 'Adana', irradiance: 1642 },
+  { code: '02', name: 'Adıyaman', irradiance: 1589 },
+  { code: '03', name: 'Afyonkarahisar', irradiance: 1456 },
+  { code: '04', name: 'Ağrı', irradiance: 1365 },
+  { code: '05', name: 'Amasya', irradiance: 1298 },
+  { code: '06', name: 'Ankara', irradiance: 1365 },
   { code: '07', name: 'Antalya', irradiance: 1814 },
-  { code: '27', name: 'Gaziantep', irradiance: 1728 },
+  { code: '08', name: 'Artvin', irradiance: 1186 },
+  { code: '09', name: 'Aydın', irradiance: 1698 },
+  { code: '10', name: 'Balıkesir', irradiance: 1456 },
+  { code: '11', name: 'Bilecik', irradiance: 1298 },
+  { code: '12', name: 'Bingöl', irradiance: 1456 },
+  { code: '13', name: 'Bitlis', irradiance: 1456 },
+  { code: '14', name: 'Bolu', irradiance: 1186 },
+  { code: '15', name: 'Burdur', irradiance: 1589 },
   { code: '16', name: 'Bursa', irradiance: 1298 },
+  { code: '17', name: 'Çanakkale', irradiance: 1456 },
+  { code: '18', name: 'Çankırı', irradiance: 1298 },
+  { code: '19', name: 'Çorum', irradiance: 1298 },
+  { code: '20', name: 'Denizli', irradiance: 1589 },
+  { code: '21', name: 'Diyarbakır', irradiance: 1589 },
+  { code: '22', name: 'Edirne', irradiance: 1365 },
+  { code: '23', name: 'Elazığ', irradiance: 1456 },
+  { code: '24', name: 'Erzincan', irradiance: 1365 },
+  { code: '25', name: 'Erzurum', irradiance: 1365 },
+  { code: '26', name: 'Eskişehir', irradiance: 1365 },
+  { code: '27', name: 'Gaziantep', irradiance: 1728 },
+  { code: '28', name: 'Giresun', irradiance: 1186 },
+  { code: '29', name: 'Gümüşhane', irradiance: 1298 },
+  { code: '30', name: 'Hakkari', irradiance: 1589 },
+  { code: '31', name: 'Hatay', irradiance: 1642 },
+  { code: '32', name: 'Isparta', irradiance: 1589 },
+  { code: '33', name: 'Mersin', irradiance: 1642 },
+  { code: '34', name: 'İstanbul', irradiance: 1298 },
+  { code: '35', name: 'İzmir', irradiance: 1698 },
+  { code: '36', name: 'Kars', irradiance: 1365 },
+  { code: '37', name: 'Kastamonu', irradiance: 1186 },
+  { code: '38', name: 'Kayseri', irradiance: 1456 },
+  { code: '39', name: 'Kırklareli', irradiance: 1298 },
+  { code: '40', name: 'Kırşehir', irradiance: 1365 },
+  { code: '41', name: 'Kocaeli', irradiance: 1298 },
   { code: '42', name: 'Konya', irradiance: 1456 },
-]
+  { code: '43', name: 'Kütahya', irradiance: 1365 },
+  { code: '44', name: 'Malatya', irradiance: 1456 },
+  { code: '45', name: 'Manisa', irradiance: 1589 },
+  { code: '46', name: 'Kahramanmaraş', irradiance: 1589 },
+  { code: '47', name: 'Mardin', irradiance: 1728 },
+  { code: '48', name: 'Muğla', irradiance: 1814 },
+  { code: '49', name: 'Muş', irradiance: 1456 },
+  { code: '50', name: 'Nevşehir', irradiance: 1456 },
+  { code: '51', name: 'Niğde', irradiance: 1456 },
+  { code: '52', name: 'Ordu', irradiance: 1186 },
+  { code: '53', name: 'Rize', irradiance: 1098 },
+  { code: '54', name: 'Sakarya', irradiance: 1298 },
+  { code: '55', name: 'Samsun', irradiance: 1298 },
+  { code: '56', name: 'Siirt', irradiance: 1589 },
+  { code: '57', name: 'Sinop', irradiance: 1186 },
+  { code: '58', name: 'Sivas', irradiance: 1365 },
+  { code: '59', name: 'Tekirdağ', irradiance: 1365 },
+  { code: '60', name: 'Tokat', irradiance: 1298 },
+  { code: '61', name: 'Trabzon', irradiance: 1186 },
+  { code: '62', name: 'Tunceli', irradiance: 1456 },
+  { code: '63', name: 'Şanlıurfa', irradiance: 1728 },
+  { code: '64', name: 'Uşak', irradiance: 1456 },
+  { code: '65', name: 'Van', irradiance: 1589 },
+  { code: '66', name: 'Yozgat', irradiance: 1365 },
+  { code: '67', name: 'Zonguldak', irradiance: 1186 },
+  { code: '68', name: 'Aksaray', irradiance: 1456 },
+  { code: '69', name: 'Bayburt', irradiance: 1365 },
+  { code: '70', name: 'Karaman', irradiance: 1456 },
+  { code: '71', name: 'Kırıkkale', irradiance: 1365 },
+  { code: '72', name: 'Batman', irradiance: 1589 },
+  { code: '73', name: 'Şırnak', irradiance: 1589 },
+  { code: '74', name: 'Bartın', irradiance: 1186 },
+  { code: '75', name: 'Ardahan', irradiance: 1298 },
+  { code: '76', name: 'Iğdır', irradiance: 1456 },
+  { code: '77', name: 'Yalova', irradiance: 1298 },
+  { code: '78', name: 'Karabük', irradiance: 1186 },
+  { code: '79', name: 'Kilis', irradiance: 1728 },
+  { code: '80', name: 'Osmaniye', irradiance: 1642 },
+  { code: '81', name: 'Düzce', irradiance: 1186 }
+].sort((a, b) => a.name.localeCompare(b.name, 'tr')) // Alfabetik sıralama
 
 export function CalculatorSection() {
   const [formData, setFormData] = useState({
@@ -75,14 +149,32 @@ export function CalculatorSection() {
       const selectedCity = cities.find(c => c.code === formData.city)
       const irradiance = selectedCity?.irradiance || 1400
       
-      // Simple calculations (for demo)
-      const annualConsumption = (monthlyBill / 2.2) * 12 // kWh/year at 2.2 TL/kWh
-      const systemSize = Math.round(annualConsumption / (irradiance * 1.2)) // kWp
-      const investment = systemSize * 4500 // 4500 TL/kWp average
-      const annualSaving = annualConsumption * 2.2 * 0.9 // 90% saving
+      // Gerçekçi hesaplamalar
+      const electricityPrice = 4.73 // 2024 güncel ortalama kWh fiyatı (TL)
+      const annualConsumption = (monthlyBill / electricityPrice) * 12 // kWh/yıl
+
+      // Sistem boyutu hesaplama (güneşlenme ve performans oranı ile)
+      const performanceRatio = 0.75 // Tipik GES performans oranı
+      const systemSize = Math.ceil(annualConsumption / (irradiance * performanceRatio)) // kWp
+
+      // Güncel yatırım maliyeti (2024 fiyatları)
+      const unitCostPerKWp = systemSize <= 10 ? 18000 : systemSize <= 50 ? 15000 : 12000 // TL/kWp
+      const investment = systemSize * unitCostPerKWp
+
+      // Yıllık üretim ve tasarruf
+      const annualProduction = systemSize * irradiance * performanceRatio // kWh/yıl
+      const selfConsumptionRate = 0.70 // Öztüketim oranı %70
+      const gridFeedRate = 0.30 // Şebekeye verilen %30
+
+      // Tasarruf hesaplama (öztüketim + şebekeye satış)
+      const selfConsumptionSaving = annualProduction * selfConsumptionRate * electricityPrice
+      const gridFeedIncome = annualProduction * gridFeedRate * (electricityPrice * 0.6) // Satış fiyatı alış fiyatının %60'ı
+      const annualSaving = selfConsumptionSaving + gridFeedIncome
+
+      // Geri ödeme süresi ve CO2 azaltımı
       const paybackPeriod = investment / annualSaving
-      const co2Reduction = annualConsumption * 0.4 / 1000 // ton CO2/year
-      const monthlyProduction = annualConsumption / 12
+      const co2Reduction = annualProduction * 0.475 / 1000 // ton CO2/yıl (Türkiye elektrik karbon yoğunluğu)
+      const monthlyProduction = annualProduction / 12
 
       setResults({
         systemSize,

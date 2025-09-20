@@ -9,7 +9,8 @@ import {
   TrendingUp,
   Zap,
   Leaf,
-  Shield
+  Shield,
+  Calculator
 } from 'lucide-react'
 
 // Solar Energy Animation Component
@@ -588,12 +589,12 @@ export function HeroSection() {
               </p>
             </div>
 
-            {/* Primary CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+            {/* CTA Buttons - 4 Buttons Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
               <Button
                 size="lg"
-                className="bg-primary hover:bg-primary/90 px-8 py-4 text-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl"
-                onClick={() => window.location.href = '/auth/signin'}
+                className="bg-primary hover:bg-primary/90 px-6 py-4 text-base font-semibold transition-all duration-300 shadow-lg hover:shadow-xl relative z-10"
+                onClick={() => window.location.href = '/dashboard'}
               >
                 <Sun className="w-5 h-5 mr-2" />
                 Hemen Başla
@@ -602,7 +603,7 @@ export function HeroSection() {
               <Button
                 variant="outline"
                 size="lg"
-                className="border-primary text-primary hover:bg-primary hover:text-white px-8 py-4 text-lg font-semibold transition-all duration-300"
+                className="border-2 border-primary text-primary hover:bg-primary hover:text-white px-6 py-4 text-base font-semibold transition-all duration-300 shadow-lg hover:shadow-xl relative z-10"
                 onClick={() => {
                   const companiesSection = document.querySelector('#companies-section')
                   if (companiesSection) {
@@ -613,14 +614,10 @@ export function HeroSection() {
                 <FileSearch className="w-5 h-5 mr-2" />
                 Firmaları Gör
               </Button>
-            </div>
 
-            {/* Secondary CTA Buttons - Less prominent */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
               <Button
-                variant="ghost"
                 size="lg"
-                className="text-primary hover:bg-primary/10 px-6 py-3 text-base font-medium transition-all duration-300"
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-4 text-base font-semibold transition-all duration-300 shadow-lg hover:shadow-xl relative z-10"
                 onClick={() => {
                   const calculatorSection = document.getElementById('calculator-section')
                   if (calculatorSection) {
@@ -628,17 +625,16 @@ export function HeroSection() {
                   }
                 }}
               >
-                <FileSearch className="w-4 h-4 mr-2" />
+                <Calculator className="w-5 h-5 mr-2" />
                 Hızlı Hesaplama
               </Button>
 
               <Button
-                variant="ghost"
                 size="lg"
-                className="text-orange-600 hover:bg-orange-100 px-6 py-3 text-base font-medium transition-all duration-300"
+                className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-4 text-base font-semibold transition-all duration-300 shadow-lg hover:shadow-xl relative z-10"
                 onClick={() => window.location.href = '/partner/register'}
               >
-                <TrendingUp className="w-4 h-4 mr-2" />
+                <TrendingUp className="w-5 h-5 mr-2" />
                 Partner Ol
               </Button>
             </div>
