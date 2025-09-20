@@ -1,4 +1,4 @@
-// next.config.js (TAM VE GÜNCELLENMİŞ HALİ)
+// next.config.js (GÜNCEL VE TEMİZLENMİŞ HALİ)
 
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -82,67 +82,9 @@ const nextConfig = {
 
   // Output configuration for production
   output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
-
-  // =========================================================================
-  // 🔥 GÜNCELLEME BURADA BAŞLIYOR 🔥
-  // =========================================================================
-
-  // Security headers
-  async headers() {
-    // İki farklı CSP kuralını, tüm site için geçerli olan tek ve güçlü bir kuralda birleştirdik.
-    // Bu, /auth veya diğer yollar arasındaki kafa karışıklığını ve çakışmaları ortadan kaldırır.
-    const cspHeader = `
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://www.gstatic.com https://*.googleapis.com https://*.googletagmanager.com;
-      style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com;
-      font-src 'self' https://fonts.gstatic.com;
-      frame-src 'self' https://accounts.google.com;
-      connect-src 'self' https://accounts.google.com https://www.googleapis.com https://*.googleapis.com https://api.iyzipay.com https://api.openweathermap.org https://www.tcmb.gov.tr;
-      img-src 'self' data: https: blob: https://*.googleusercontent.com https://www.gstatic.com;
-      frame-ancestors 'none';
-    `.replace(/\s{2,}/g, ' ').trim(); // Çok satırlı yazımı tek satıra çevirir
-
-    return [
-      {
-        source: '/:path*', // Bu kuralları projenin TÜM yollarına uygula
-        headers: [
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin',
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block',
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
-          },
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload',
-          },
-          {
-            key: 'Content-Security-Policy',
-            value: cspHeader, // Birleştirilmiş ve temizlenmiş CSP kuralını buraya koy
-          },
-        ],
-      },
-    ];
-  },
-
-  // =========================================================================
-  // 🔥 GÜNCELLEME BURADA BİTİYOR 🔥
-  // =========================================================================
   
+  // 🔥🔥🔥 ASYNC HEADERS FONKSİYONU TAMAMEN KALDIRILDI 🔥🔥🔥
+  // Güvenlik başlıkları artık middleware.ts dosyasından yönetilecek.
 
   // Environment-specific redirects
   async redirects() {

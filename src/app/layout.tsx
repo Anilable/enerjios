@@ -1,3 +1,5 @@
+// src/app/layout.tsx (GÜNCELLENMİŞ HALİ)
+
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
@@ -8,6 +10,10 @@ import { ChatSupport } from "@/components/chat/chat-support";
 import ChatWidget from "@/components/chat/ChatWidget";
 import { Toaster } from "sonner";
 import "./globals.css";
+
+// 🔥 GÜNCELLEME: Gerekli import'lar eklendi
+import { headers } from 'next/headers';
+import Script from 'next/script';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -68,6 +74,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // 🔥 GÜNCELLEME: Middleware'in oluşturduğu nonce'u başlıklardan oku.
+  const nonce = headers().get('x-nonce') || '';
+
   return (
     <html lang="tr">
       <body
@@ -82,6 +91,15 @@ export default function RootLayout({
             <ChatWidget />
           </AuthProvider>
         </ThemeProvider>
+        
+        {/* 🔥 GÜNCELLEME: Google'ın istemci betiği, doğru nonce değeriyle buraya eklendi. */}
+        <Script
+          src="https://accounts.google.com/gsi/client"
+          async
+          defer
+          nonce={nonce} 
+          strategy="afterInteractive" 
+        />
       </body>
     </html>
   );
