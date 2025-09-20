@@ -23,8 +23,13 @@ export async function PUT(
     const body = await request.json()
     console.log('UPDATE body:', body)
 
-    // Validate required fields
-    if (!body.name || (!body.type && !body.category) || !body.brand || body.price === undefined) {
+    // Check if this is a file deletion request (only has file fields)
+    const isFileOperation = Object.keys(body).every(key =>
+      ['images', 'datasheet', 'manual'].includes(key)
+    )
+
+    // Validate required fields only for full product updates (not file operations)
+    if (!isFileOperation && (!body.name || (!body.type && !body.category) || !body.brand || body.price === undefined)) {
       return NextResponse.json(
         { error: 'Missing required fields: name, category/type, brand, and price are required' },
         { status: 400 }
@@ -43,39 +48,54 @@ export async function PUT(
       )
     }
 
-    // Convert category to ProductType if needed
-    let productType: ProductType
-    if (body.category) {
-      const categoryTypeMap: Record<string, ProductType> = {
-        'Solar Paneller': ProductType.SOLAR_PANEL,
-        'İnverterler': ProductType.INVERTER,
-        'Bataryalar': ProductType.BATTERY,
-        'Montaj Malzemeleri': ProductType.MOUNTING_SYSTEM,
-        'Kablolar': ProductType.CABLE,
-        'İzleme Sistemleri': ProductType.MONITORING,
-        'Aksesuarlar': ProductType.ACCESSORY
+    let updateData: any = {
+      updatedById: session.user.id
+    }
+
+    if (isFileOperation) {
+      // Handle file operations only
+      if (body.hasOwnProperty('images')) {
+        updateData.images = body.images
       }
-      productType = categoryTypeMap[body.category] || ProductType.ACCESSORY
+      if (body.hasOwnProperty('datasheet')) {
+        updateData.datasheet = body.datasheet
+      }
+      if (body.hasOwnProperty('manual')) {
+        updateData.manual = body.manual
+      }
     } else {
-      productType = body.type
-    }
+      // Handle full product update
+      // Convert category to ProductType if needed
+      let productType: ProductType
+      if (body.category) {
+        const categoryTypeMap: Record<string, ProductType> = {
+          'Solar Paneller': ProductType.SOLAR_PANEL,
+          'İnverterler': ProductType.INVERTER,
+          'Bataryalar': ProductType.BATTERY,
+          'Montaj Malzemeleri': ProductType.MOUNTING_SYSTEM,
+          'Kablolar': ProductType.CABLE,
+          'İzleme Sistemleri': ProductType.MONITORING,
+          'Aksesuarlar': ProductType.ACCESSORY
+        }
+        productType = categoryTypeMap[body.category] || ProductType.ACCESSORY
+      } else {
+        productType = body.type
+      }
 
-    // Find category if available
-    let categoryId = null
-    if (body.category) {
-      const category = await prisma.category.findFirst({
-        where: { name: body.category }
-      })
-      categoryId = category?.id || null
-    }
+      // Find category if available
+      let categoryId = null
+      if (body.category) {
+        const category = await prisma.category.findFirst({
+          where: { name: body.category }
+        })
+        categoryId = category?.id || null
+      }
 
-    // Parse and validate stock
-    const stock = parseInt(body.stock?.toString() || '0')
+      // Parse and validate stock
+      const stock = parseInt(body.stock?.toString() || '0')
 
-    // Update product
-    const product = await prisma.product.update({
-      where: { id: productId },
-      data: {
+      updateData = {
+        ...updateData,
         name: body.name,
         type: productType,
         categoryId: categoryId,
@@ -94,9 +114,14 @@ export async function PUT(
         images: body.images || '[]',
         datasheet: body.datasheet,
         manual: body.manual,
-        unitType: body.unitType || 'adet',
-        updatedById: session.user.id
-      },
+        unitType: body.unitType || 'adet'
+      }
+    }
+
+    // Update product
+    const product = await prisma.product.update({
+      where: { id: productId },
+      data: updateData,
       include: {
         company: {
           select: {

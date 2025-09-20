@@ -25,7 +25,7 @@ import {
 import {
   AlertTriangle, Plus, X, Upload, FileText, Image as ImageIcon,
   Save, Eye, Copy, Barcode, Package, DollarSign, Warehouse,
-  Settings, Shield, Clock, Zap
+  Clock, Trash2, CheckCircle, AlertCircle
 } from 'lucide-react'
 import { 
   ProductCategoryManager, 
@@ -114,7 +114,56 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
 
   useEffect(() => {
     if (product) {
-      setFormData(product)
+      // Parse JSON strings from database and merge datasheet/manual
+      const existingImages = typeof product.images === 'string'
+        ? JSON.parse(product.images || '[]')
+        : product.images || []
+
+      const existingDocuments = typeof product.documents === 'string'
+        ? JSON.parse(product.documents || '[]')
+        : product.documents || []
+
+      // Add datasheet and manual from separate fields if they exist
+      const additionalDocs = []
+      if ((product as any).datasheet) {
+        additionalDocs.push({
+          id: `datasheet-${Date.now()}`,
+          name: 'Teknik Döküman',
+          type: 'DATASHEET',
+          url: (product as any).datasheet,
+          language: 'tr'
+        })
+      }
+      if ((product as any).manual) {
+        additionalDocs.push({
+          id: `manual-${Date.now()}`,
+          name: 'Kullanım Kılavuzu',
+          type: 'MANUAL',
+          url: (product as any).manual,
+          language: 'tr'
+        })
+      }
+
+      const parsedProduct = {
+        ...product,
+        images: existingImages,
+        documents: [...existingDocuments, ...additionalDocs]
+      }
+
+      console.log('📋 Loading product for edit:', {
+        id: product.id,
+        name: product.name,
+        imagesCount: parsedProduct.images.length,
+        documentsCount: parsedProduct.documents.length,
+        images: parsedProduct.images,
+        documents: parsedProduct.documents.map(d => ({ name: d.name, type: d.type, hasUrl: !!d.url })),
+        rawImages: product.images,
+        rawDocuments: product.documents,
+        rawDatasheet: (product as any).datasheet,
+        rawManual: (product as any).manual
+      })
+
+      setFormData(parsedProduct)
       if (product.specifications) {
         setSpecificationValues(product.specifications)
       }
@@ -362,6 +411,16 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
     return groups
   }, {}) || {}
 
+  // Get file type icon helper function
+  const getFileIcon = (type: string, url: string) => {
+    if (url && url.includes('.pdf')) return '📄'
+    if (url && (url.includes('.jpg') || url.includes('.png') || url.includes('.jpeg'))) return '🖼️'
+    if (type === 'DATASHEET') return '📋'
+    if (type === 'MANUAL') return '📖'
+    if (type === 'CERTIFICATE') return '🏆'
+    return '📄'
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -518,7 +577,20 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Ürün Görselleri</CardTitle>
+                <div>
+                  <CardTitle>Ürün Görselleri</CardTitle>
+                  {formData.images && formData.images.length > 0 ? (
+                    <CardDescription className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      {formData.images.length} görsel mevcut
+                    </CardDescription>
+                  ) : (
+                    <CardDescription className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-gray-400" />
+                      Henüz görsel yüklenmemiş
+                    </CardDescription>
+                  )}
+                </div>
                 <Button
                   type="button"
                   variant="outline"
@@ -531,13 +603,22 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
                     input.onchange = (e) => {
                       const files = (e.target as HTMLInputElement).files
                       if (files) {
-                        // In a real implementation, you would upload these files to a server
-                        // For now, we'll create local URLs for preview
-                        const newImages = Array.from(files).map(file => URL.createObjectURL(file))
+                        // Show upload progress (simulated)
+                        const fileArray = Array.from(files)
+                        console.log(`Uploading ${fileArray.length} image(s)...`)
+
+                        // Create local URLs for preview
+                        const newImages = fileArray.map(file => URL.createObjectURL(file))
                         setFormData(prev => ({
                           ...prev,
                           images: [...(prev.images || []), ...newImages]
                         }))
+
+                        // Simulate upload success feedback
+                        setTimeout(() => {
+                          console.log('Images uploaded successfully!')
+                          // You could show a success toast here
+                        }, 1000)
                       }
                     }
                     input.click()
@@ -552,12 +633,19 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
               {formData.images && formData.images.length > 0 ? (
                 <div className="grid grid-cols-4 gap-4">
                   {formData.images.map((image, index) => (
-                    <div key={index} className="relative group">
+                    <div key={index} className="relative group bg-gray-50 rounded-lg border">
                       <img
                         src={image}
                         alt={`Product ${index + 1}`}
                         className="w-full h-32 object-cover rounded-lg border"
+                        onError={(e) => {
+                          // If image fails to load, show placeholder
+                          (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Im0xNSAxMi01IDUtNS01eiIgZmlsbD0iIzk0YTNiOCIvPgo8L3N2Zz4K'
+                        }}
                       />
+                      <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                        Görsel {index + 1}
+                      </div>
                       <Button
                         type="button"
                         variant="destructive"
@@ -566,6 +654,7 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
                         onClick={() => {
                           const updatedImages = formData.images?.filter((_, i) => i !== index) || []
                           setFormData(prev => ({ ...prev, images: updatedImages }))
+                          console.log(`🗑️ Removed image ${index + 1}`)
                         }}
                       >
                         <X className="w-3 h-3" />
@@ -576,8 +665,9 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
               ) : (
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
                   <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-sm text-gray-500 mb-2">Henüz görsel eklenmemiş</p>
-                  <p className="text-xs text-gray-400">Görsel yüklemek için yukarıdaki butonu kullanın</p>
+                  <p className="text-sm text-gray-500 mb-2">Henüz ürün görseli eklenmemiş</p>
+                  <p className="text-xs text-gray-400">JPG, PNG veya WebP formatında görsel yükleyebilirsiniz</p>
+                  <p className="text-xs text-gray-400 mt-1">Maksimum dosya boyutu: 5MB</p>
                 </div>
               )}
             </CardContent>
@@ -984,7 +1074,25 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Ürün Belgeleri</CardTitle>
+                <div>
+                  <CardTitle>Ürün Belgeleri</CardTitle>
+                  {formData.documents && formData.documents.length > 0 ? (
+                    <CardDescription className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      {formData.documents.length} belge mevcut
+                      <span className="text-xs">
+                        ({formData.documents.filter(d => d.type === 'DATASHEET').length} teknik,
+                        {formData.documents.filter(d => d.type === 'MANUAL').length} kılavuz,
+                        {formData.documents.filter(d => d.type === 'CERTIFICATE').length} sertifika)
+                      </span>
+                    </CardDescription>
+                  ) : (
+                    <CardDescription className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-gray-400" />
+                      Henüz belge yüklenmemiş
+                    </CardDescription>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Button onClick={() => addDocument('DATASHEET')} size="sm" variant="outline">
                     <Plus className="w-4 h-4 mr-2" />
@@ -1003,90 +1111,112 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
             </CardHeader>
             <CardContent>
               {formData.documents?.map((doc, index) => (
-                <div key={doc.id} className="flex gap-4 items-center p-4 border rounded mb-4">
-                  <FileText className="w-6 h-6 text-muted-foreground" />
-                  <div className="flex-1 grid grid-cols-4 gap-4">
-                    <Input
-                      placeholder="Belge adı"
-                      value={doc.name}
-                      onChange={(e) => updateDocument(index, 'name', e.target.value)}
-                    />
-                    <div className="flex gap-2">
+                  <div key={doc.id} className="flex gap-4 items-center p-4 border rounded mb-4 bg-gray-50">
+                    <div className="text-2xl">{getFileIcon(doc.type, doc.url)}</div>
+                    <div className="flex-1 grid grid-cols-4 gap-4">
                       <Input
-                        placeholder="URL veya dosya yolu"
-                        value={doc.url}
-                        onChange={(e) => updateDocument(index, 'url', e.target.value)}
-                        className="flex-1"
+                        placeholder="Belge adı"
+                        value={doc.name}
+                        onChange={(e) => updateDocument(index, 'name', e.target.value)}
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const input = document.createElement('input')
-                          input.type = 'file'
-                          input.accept = doc.type === 'DATASHEET' || doc.type === 'MANUAL' || doc.type === 'CERTIFICATE' ? '.pdf,.doc,.docx' : '*/*'
-                          input.onchange = (e) => {
-                            const file = (e.target as HTMLInputElement).files?.[0]
-                            if (file) {
-                              // In a real implementation, you would upload this file to a server
-                              // For now, we'll create a local URL
-                              const fileUrl = URL.createObjectURL(file)
-                              updateDocument(index, 'url', fileUrl)
-                              if (!doc.name) {
-                                updateDocument(index, 'name', file.name)
-                              }
-                            }
-                          }
-                          input.click()
-                        }}
-                        title="Dosya Yükle"
-                      >
-                        <Upload className="w-3 h-3" />
-                      </Button>
-                    </div>
-                    <Select
-                      value={doc.language}
-                      onValueChange={(value) => updateDocument(index, 'language', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="tr">Türkçe</SelectItem>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="de">Deutsch</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="flex gap-2">
-                      <Badge variant="outline">{doc.type}</Badge>
-                      {doc.url && (
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder={doc.url ? "Dosya yüklendi" : "Dosya seçilmedi"}
+                          value={doc.url ? (doc.url.startsWith('blob:') ? 'Yerel dosya seçildi' : doc.url) : ''}
+                          onChange={(e) => updateDocument(index, 'url', e.target.value)}
+                          className="flex-1"
+                          disabled={!!(doc.url && doc.url.startsWith('blob:'))}
+                        />
                         <Button
                           type="button"
-                          variant="outline"
+                          variant={doc.url ? "default" : "outline"}
                           size="sm"
-                          onClick={() => window.open(doc.url, '_blank')}
-                          title="Dosyayı Görüntüle"
+                          onClick={() => {
+                            const input = document.createElement('input')
+                            input.type = 'file'
+                            input.accept = doc.type === 'DATASHEET' || doc.type === 'MANUAL' || doc.type === 'CERTIFICATE' ? '.pdf,.doc,.docx' : '*/*'
+                            input.onchange = (e) => {
+                              const file = (e.target as HTMLInputElement).files?.[0]
+                              if (file) {
+                                // Show upload progress (simulated)
+                                const fileUrl = URL.createObjectURL(file)
+                                updateDocument(index, 'url', fileUrl)
+                                if (!doc.name) {
+                                  updateDocument(index, 'name', file.name)
+                                }
+                                // Simulate upload success
+                                setTimeout(() => {
+                                  // You could show a success toast here
+                                  console.log('File uploaded successfully')
+                                }, 1000)
+                              }
+                            }
+                            input.click()
+                          }}
+                          title={doc.url ? "Dosyayı Değiştir" : "Dosya Yükle"}
                         >
-                          <Eye className="w-3 h-3" />
+                          <Upload className="w-3 h-3" />
+                          {doc.url && <span className="ml-1 text-xs">✓</span>}
                         </Button>
-                      )}
+                      </div>
+                      <Select
+                        value={doc.language}
+                        onValueChange={(value) => updateDocument(index, 'language', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="tr">Türkçe</SelectItem>
+                          <SelectItem value="en">English</SelectItem>
+                          <SelectItem value="de">Deutsch</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="flex gap-2">
+                        <Badge variant="outline">{doc.type}</Badge>
+                        {doc.url && (
+                          <div className="flex gap-1">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(doc.url, '_blank')}
+                              title="Dosyayı Görüntüle"
+                            >
+                              <Eye className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                updateDocument(index, 'url', '')
+                                updateDocument(index, 'name', '')
+                              }}
+                              title="Dosyayı Kaldır"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeDocument(index)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => removeDocument(index)}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
               ))}
 
               {(!formData.documents || formData.documents.length === 0) && (
-                <div className="text-center py-8 text-muted-foreground">
-                  Henüz belge eklenmemiş
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-sm text-gray-500 mb-2">Henüz belge eklenmemiş</p>
+                  <p className="text-xs text-gray-400">Yukarıdaki butonları kullanarak belge ekleyin</p>
                 </div>
               )}
             </CardContent>

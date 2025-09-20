@@ -40,9 +40,9 @@ import {
   Package, Plus, Search, Filter, Edit, Eye, Trash2, Copy,
   MoreHorizontal, Download, Upload, AlertCircle, CheckCircle,
   Clock, Zap, Sun, Battery, Grid3x3, Cable, Settings as SettingsIcon,
-  TrendingUp, TrendingDown, DollarSign, Warehouse, Barcode, 
+  TrendingUp, TrendingDown, DollarSign, Warehouse, Barcode,
   FileSpreadsheet, FileText, BarChart3, Target, AlertTriangle,
-  RefreshCw, Archive, Star, BookOpen
+  RefreshCw, Archive, Star, BookOpen, Shield
 } from 'lucide-react'
 import { Product, ProductCategoryManager, ProductInventory } from '@/lib/product-categories'
 
@@ -103,14 +103,20 @@ export default function ProductManagementPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true)
+      console.log('🔄 Fetching products from API...')
 
       // Fetch products from API
       const response = await fetch('/api/products')
+      console.log('📡 Products API response:', response.status, response.statusText)
       if (!response.ok) {
         throw new Error('Failed to fetch products')
       }
 
       const data = await response.json()
+      console.log('📦 Products data received:', data.length, 'products')
+      if (data.length > 0) {
+        console.log('🔍 Sample product data:', data[0])
+      }
 
       // Transform API data to match ProductWithStats interface
       const transformedProducts: ProductWithStats[] = data.map((product: any) => ({
@@ -167,6 +173,7 @@ export default function ProductManagementPage() {
         updatedBy: product.updatedBy
       }))
 
+      console.log('✅ Products processed and set:', transformedProducts.length)
       setProducts(transformedProducts)
 
       /* Comment out mock data - keeping for reference
@@ -416,13 +423,40 @@ export default function ProductManagementPage() {
   }
 
   const getCategoryIcon = (categoryId: string) => {
+    // First try to find the category and use its icon
+    const category = categories.find(cat => cat.id === categoryId)
+    if (category?.icon) {
+      const iconMap: Record<string, any> = {
+        Sun,
+        Zap,
+        Battery,
+        Grid3x3,
+        Cable,
+        Settings: SettingsIcon,
+        Package,
+        FileText,
+        Shield,
+        Warehouse
+      }
+      return iconMap[category.icon] || Package
+    }
+
+    // Fallback to product type based icons
     const icons = {
       panels: Sun,
       inverters: Zap,
       mounting: Grid3x3,
       batteries: Battery,
       cables: Cable,
-      accessories: SettingsIcon
+      accessories: SettingsIcon,
+      // Add more mappings based on actual category names/IDs
+      'SOLAR_PANEL': Sun,
+      'INVERTER': Zap,
+      'BATTERY': Battery,
+      'MOUNTING_SYSTEM': Grid3x3,
+      'CABLE': Cable,
+      'MONITORING': SettingsIcon,
+      'ACCESSORY': SettingsIcon
     }
     return icons[categoryId as keyof typeof icons] || Package
   }
@@ -708,6 +742,13 @@ export default function ProductManagementPage() {
               <Plus className="w-4 h-4 mr-2" />
               Yeni Ürün
             </Button>
+            <Button variant="outline" onClick={() => {
+              console.log('🔄 Manual fetchProducts triggered')
+              fetchProducts()
+            }}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
           </div>
         </div>
 
@@ -917,9 +958,12 @@ export default function ProductManagementPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProducts.map((product) => {
-                const stockStatus = getStockStatus(product.inventory)
-                const Icon = getCategoryIcon(product.categoryId)
+              {(() => {
+                console.log('🔄 Rendering products table:', filteredProducts.length, 'filtered products')
+                return filteredProducts.map((product) => {
+                  console.log('🔗 Rendering product row:', product.name)
+                  const stockStatus = getStockStatus(product.inventory)
+                  const Icon = getCategoryIcon(product.categoryId)
                 
                 return (
                   <TableRow key={product.id}>
@@ -1020,14 +1064,26 @@ export default function ProductManagementPage() {
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
+                          <Button
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            onClick={() => console.log('🔍 Dropdown clicked for product:', product.name)}
+                          >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>İşlemler</DropdownMenuLabel>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             onClick={() => {
+                              console.log('🔧 Edit button clicked for product:', {
+                                id: product.id,
+                                name: product.name,
+                                images: product.images,
+                                documents: product.documents,
+                                datasheet: (product as any).datasheet,
+                                manual: (product as any).manual
+                              })
                               setSelectedProduct(product)
                               setIsEditModalOpen(true)
                             }}
@@ -1049,7 +1105,8 @@ export default function ProductManagementPage() {
                     </TableCell>
                   </TableRow>
                 )
-              })}
+              })
+              })()}
             </TableBody>
           </Table>
         </Card>
@@ -1065,12 +1122,19 @@ export default function ProductManagementPage() {
         </Dialog>
 
         {/* Edit Product Modal */}
-        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <Dialog open={isEditModalOpen} onOpenChange={(open) => {
+          console.log('📝 Edit modal state changed:', { open, selectedProduct: selectedProduct?.name })
+          setIsEditModalOpen(open)
+          if (!open) {
+            setSelectedProduct(null)
+          }
+        }}>
           <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
             <ProductForm
               product={selectedProduct || undefined}
               onSave={handleEditProduct}
               onCancel={() => {
+                console.log('❌ Edit cancelled')
                 setIsEditModalOpen(false)
                 setSelectedProduct(null)
               }}

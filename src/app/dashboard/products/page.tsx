@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import * as XLSX from 'xlsx'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -45,7 +46,9 @@ import {
   Box,
   Grid3x3,
   Trash,
-  Save
+  Save,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react'
 
 type Product = {
@@ -109,6 +112,16 @@ export default function ProductsPage() {
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showBulkAddDialog, setShowBulkAddDialog] = useState(false)
+
+  // Excel Upload States
+  const [excelFile, setExcelFile] = useState<File | null>(null)
+  const [excelData, setExcelData] = useState<any[]>([])
+  const [excelHeaders, setExcelHeaders] = useState<string[]>([])
+  const [columnMapping, setColumnMapping] = useState<{[key: string]: string}>({})
+  const [showMappingStep, setShowMappingStep] = useState(false)
+  const [showPreviewStep, setShowPreviewStep] = useState(false)
+  const [bulkUploadProgress, setBulkUploadProgress] = useState(0)
+  const [bulkUploadStatus, setBulkUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
   const [showStockUpdateDialog, setShowStockUpdateDialog] = useState(false)
   const [showPriceUpdateDialog, setShowPriceUpdateDialog] = useState(false)
   const [showOrderDialog, setShowOrderDialog] = useState(false)
@@ -325,6 +338,367 @@ export default function ProductsPage() {
       })
       throw error
     }
+  }
+
+  // Delete file functions
+  const deleteProductImages = async (productId: string) => {
+    try {
+      console.log('🗑️ Deleting product images:', productId)
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          images: '[]' // Clear images
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete images')
+      }
+
+      toast({
+        title: "✅ Başarılı!",
+        description: "Görseller silindi.",
+      })
+
+      // Update the selected product state
+      if (selectedProduct) {
+        setSelectedProduct({
+          ...selectedProduct,
+          images: '[]'
+        })
+      }
+
+      // Refresh products list
+      await fetchProducts()
+    } catch (error) {
+      console.error('❌ Error deleting images:', error)
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Görseller silinirken hata oluştu!"
+      })
+    }
+  }
+
+  const deleteProductDatasheet = async (productId: string) => {
+    try {
+      console.log('🗑️ Deleting product datasheet:', productId)
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          datasheet: null // Clear datasheet
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete datasheet')
+      }
+
+      toast({
+        title: "✅ Başarılı!",
+        description: "Teknik döküman silindi.",
+      })
+
+      // Update the selected product state
+      if (selectedProduct) {
+        setSelectedProduct({
+          ...selectedProduct,
+          datasheet: null as any
+        })
+      }
+
+      // Refresh products list
+      await fetchProducts()
+    } catch (error) {
+      console.error('❌ Error deleting datasheet:', error)
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Teknik döküman silinirken hata oluştu!"
+      })
+    }
+  }
+
+  const deleteProductManual = async (productId: string) => {
+    try {
+      console.log('🗑️ Deleting product manual:', productId)
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          manual: null // Clear manual
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete manual')
+      }
+
+      toast({
+        title: "✅ Başarılı!",
+        description: "Kullanım kılavuzu silindi.",
+      })
+
+      // Update the selected product state
+      if (selectedProduct) {
+        setSelectedProduct({
+          ...selectedProduct,
+          manual: null as any
+        })
+      }
+
+      // Refresh products list
+      await fetchProducts()
+    } catch (error) {
+      console.error('❌ Error deleting manual:', error)
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Kullanım kılavuzu silinirken hata oluştu!"
+      })
+    }
+  }
+
+  // Excel Upload Functions
+  const handleExcelUpload = (file: File) => {
+    if (!file) return
+
+    // Validate file type
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Sadece Excel dosyaları (.xlsx, .xls) desteklenir!"
+      })
+      return
+    }
+
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Dosya boyutu 10MB'dan büyük olamaz!"
+      })
+      return
+    }
+
+    setExcelFile(file)
+    const reader = new FileReader()
+
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result
+        const workbook = XLSX.read(data, { type: 'binary' })
+        const sheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[sheetName]
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+
+        if (jsonData.length < 2) {
+          toast({
+            variant: "destructive",
+            title: "Hata",
+            description: "Excel dosyası en az 2 satır içermelidir (başlık + veri)!"
+          })
+          return
+        }
+
+        const headers = jsonData[0] as string[]
+        const rows = jsonData.slice(1)
+
+        console.log('📊 Excel Headers found:', headers)
+        console.log('📊 Excel Headers length:', headers.length)
+        headers.forEach((header, index) => {
+          console.log(`Header ${index}:`, typeof header, header)
+        })
+        console.log('📊 Excel Data rows:', rows.length)
+
+        // Filter out empty headers
+        const validHeaders = headers.map((header, index) => ({
+          originalIndex: index,
+          header: header,
+          isEmpty: !header || header.toString().trim() === ''
+        }))
+        console.log('📊 Valid headers analysis:', validHeaders)
+
+        setExcelHeaders(headers)
+        setExcelData(rows)
+        setShowMappingStep(true)
+
+        // Auto-detect common mappings
+        const autoMapping: {[key: string]: string} = {}
+        headers.forEach((header, index) => {
+          const lowerHeader = header.toString().toLowerCase()
+          console.log(`🔍 Processing header ${index}: "${header}" -> "${lowerHeader}"`)
+
+          if (lowerHeader.includes('tanim') || lowerHeader.includes('tanım') || lowerHeader.includes('ad') || lowerHeader.includes('name') || lowerHeader.includes('ürün')) {
+            autoMapping[index.toString()] = 'name'
+            console.log(`✅ Auto-mapped column ${index} (${header}) to 'name'`)
+          } else if (lowerHeader.includes('kategori') || lowerHeader.includes('category')) {
+            autoMapping[index.toString()] = 'category'
+            console.log(`✅ Auto-mapped column ${index} (${header}) to 'category'`)
+          } else if (lowerHeader.includes('marka') || lowerHeader.includes('brand')) {
+            autoMapping[index.toString()] = 'brand'
+            console.log(`✅ Auto-mapped column ${index} (${header}) to 'brand'`)
+          } else if (lowerHeader.includes('fiyat') || lowerHeader.includes('price') || lowerHeader.includes('birim fiyat') || lowerHeader.includes('net fiyat')) {
+            autoMapping[index.toString()] = 'price'
+            console.log(`✅ Auto-mapped column ${index} (${header}) to 'price'`)
+          } else if (lowerHeader.includes('stok') || lowerHeader.includes('stock') || lowerHeader.includes('durum')) {
+            autoMapping[index.toString()] = 'stock'
+            console.log(`✅ Auto-mapped column ${index} (${header}) to 'stock'`)
+          } else if (lowerHeader.includes('model') || lowerHeader.includes('kod')) {
+            autoMapping[index.toString()] = 'model'
+            console.log(`✅ Auto-mapped column ${index} (${header}) to 'model'`)
+          } else if (lowerHeader.includes('güç') || lowerHeader.includes('power') || lowerHeader.includes('watt')) {
+            autoMapping[index.toString()] = 'power'
+            console.log(`✅ Auto-mapped column ${index} (${header}) to 'power'`)
+          } else if (lowerHeader.includes('garanti') || lowerHeader.includes('warranty')) {
+            autoMapping[index.toString()] = 'warranty'
+            console.log(`✅ Auto-mapped column ${index} (${header}) to 'warranty'`)
+          } else if (lowerHeader.includes('açıklama') || lowerHeader.includes('description') || lowerHeader.includes('özellik')) {
+            autoMapping[index.toString()] = 'description'
+            console.log(`✅ Auto-mapped column ${index} (${header}) to 'description'`)
+          } else {
+            console.log(`⚪ No auto-mapping for column ${index}: "${header}"`)
+          }
+        })
+
+        console.log('🎯 Final auto-mapping result:', autoMapping)
+        setColumnMapping(autoMapping)
+
+        toast({
+          title: "✅ Başarılı!",
+          description: `Excel dosyası yüklendi. ${rows.length} satır veri bulundu.`
+        })
+      } catch (error) {
+        console.error('Excel parsing error:', error)
+        toast({
+          variant: "destructive",
+          title: "Hata",
+          description: "Excel dosyası okunurken hata oluştu!"
+        })
+      }
+    }
+
+    reader.readAsBinaryString(file)
+  }
+
+  const validateMappedData = () => {
+    console.log('🔍 Validating mapped data...')
+    console.log('📊 Current column mapping:', columnMapping)
+
+    const nameColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'name')
+    const categoryColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'category')
+    const brandColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'brand')
+    const priceColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'price')
+
+    console.log('✅ Found columns:', {
+      name: nameColumn,
+      category: categoryColumn,
+      brand: brandColumn,
+      price: priceColumn
+    })
+
+    if (!nameColumn || !categoryColumn || !priceColumn) {
+      console.log('❌ Validation failed - missing required columns')
+      toast({
+        variant: "destructive",
+        title: "Eksik Alanlar",
+        description: "Ürün Adı, Kategori ve Fiyat alanları zorunludur!"
+      })
+      return false
+    }
+
+    console.log('✅ Validation passed')
+    return true
+  }
+
+  const processExcelData = async () => {
+    if (!validateMappedData()) return
+
+    setBulkUploadStatus('uploading')
+    setBulkUploadProgress(0)
+
+    const nameColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'name')!
+    const categoryColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'category')!
+    const brandColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'brand')
+    const priceColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'price')!
+    const stockColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'stock')
+
+    const products = excelData.map(row => ({
+      name: row[parseInt(nameColumn)],
+      category: row[parseInt(categoryColumn)],
+      brand: row[parseInt(brandColumn || '0')] || '',
+      price: parseFloat(row[parseInt(priceColumn)]) || 0,
+      stock: parseInt(row[parseInt(stockColumn || '0')]) || 0,
+    }))
+
+    // Process in batches
+    const batchSize = 10
+    let processed = 0
+
+    for (let i = 0; i < products.length; i += batchSize) {
+      const batch = products.slice(i, i + batchSize)
+
+      try {
+        for (const product of batch) {
+          await fetch('/api/products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(product)
+          })
+          processed++
+          setBulkUploadProgress((processed / products.length) * 100)
+        }
+      } catch (error) {
+        console.error('Batch upload error:', error)
+      }
+    }
+
+    setBulkUploadStatus('success')
+    await fetchProducts()
+
+    toast({
+      title: "✅ Tamamlandı!",
+      description: `${processed} ürün başarıyla eklendi.`
+    })
+
+    // Reset states
+    setExcelFile(null)
+    setExcelData([])
+    setExcelHeaders([])
+    setColumnMapping({})
+    setShowMappingStep(false)
+    setShowPreviewStep(false)
+    setShowBulkAddDialog(false)
+  }
+
+  const downloadExcelTemplate = () => {
+    const templateData = [
+      ['Ürün Adı', 'Kategori', 'Marka', 'Model', 'Fiyat', 'Stok', 'Güç (W)', 'Garanti (Yıl)', 'Açıklama'],
+      ['540W Monokristalin Panel', 'Panel', 'Longi Solar', 'LR5-54HPH-540M', '1500', '50', '540', '25', 'Yüksek verimli monokristalin güneş paneli'],
+      ['5KW Hibrit İnverter', 'İnverter', 'Growatt', 'SPH-5000TL3-BH', '8500', '20', '5000', '5', 'Bataryalı hibrit inverter sistemi'],
+      ['100Ah Lithium Batarya', 'Batarya', 'Pylontech', 'US3000C', '12000', '15', '0', '10', 'LiFePO4 lityum depolama bataryası'],
+      ['Alüminyum Montaj Rayı', 'Konstrüksiyon', 'Schletter', 'MSP-Plus', '150', '100', '0', '25', '4m uzunluğunda alüminyum montaj rayı']
+    ]
+
+    const worksheet = XLSX.utils.aoa_to_sheet(templateData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Ürünler')
+    XLSX.writeFile(workbook, 'urun-sablonu.xlsx')
+
+    toast({
+      title: "📄 Excel Şablonu İndirildi",
+      description: "Örnek Excel dosyası bilgisayarınıza kaydedildi."
+    })
   }
 
   const handleAddProduct = async () => {
@@ -864,12 +1238,32 @@ export default function ProductsPage() {
   }
 
   const openEditDialog = (product: Product) => {
+    console.log('📝 Opening edit dialog for product:', {
+      id: product.id,
+      name: product.name,
+      images: product.images,
+      datasheet: (product as any).datasheet,
+      manual: (product as any).manual
+    })
+
     setSelectedProduct(product)
     setFormData({
       ...product,
       power: product.power.replace(/[^0-9.]/g, ''), // Extract numeric value
       warranty: product.warranty.replace(/[^0-9]/g, '') // Extract numeric value
     })
+
+    // Parse existing files from database
+    const existingImages = typeof product.images === 'string'
+      ? JSON.parse(product.images || '[]')
+      : product.images || []
+
+    console.log('📋 Existing files found:', {
+      images: existingImages.length,
+      datasheet: !!(product as any).datasheet,
+      manual: !!(product as any).manual
+    })
+
     // Clear selected files when opening edit dialog
     setSelectedFiles({ images: null, datasheet: null, manual: null })
     setShowEditDialog(true)
@@ -1776,33 +2170,277 @@ export default function ProductsPage() {
                 <DialogTrigger asChild>
                   <Button variant="outline" className="flex flex-col items-center gap-2 h-20">
                     <Plus className="w-5 h-5" />
-                    Toplu Ürün Ekle
+                    Excel Yükle
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Toplu Ürün Ekleme</DialogTitle>
+                    <DialogTitle>Excel Dosyası ile Toplu Ürün Ekleme</DialogTitle>
                     <DialogDescription>
-                      CSV dosyası yükleyerek toplu ürün ekleme yapın
+                      Excel dosyası (.xlsx) yükleyerek toplu ürün ekleme yapın
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="py-4 space-y-4">
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                      <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                      <p className="text-sm text-gray-600">CSV dosyanızı buraya sürükleyin</p>
-                      <p className="text-xs text-gray-500 mt-2">veya dosya seçmek için tıklayın</p>
+
+                  {!showMappingStep && !showPreviewStep && (
+                    <div className="py-4 space-y-4">
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                        <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                        <p className="text-sm text-gray-600">Excel dosyanızı buraya sürükleyin</p>
+                        <p className="text-xs text-gray-500 mt-2">veya dosya seçmek için tıklayın</p>
+                        <input
+                          type="file"
+                          accept=".xlsx,.xls"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) handleExcelUpload(file)
+                          }}
+                          className="hidden"
+                          id="excel-upload"
+                        />
+                        <label htmlFor="excel-upload">
+                          <Button variant="outline" className="mt-4" asChild>
+                            <span>Dosya Seç</span>
+                          </Button>
+                        </label>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <Button variant="outline" className="w-full" onClick={downloadExcelTemplate}>
+                          <FileSpreadsheet className="w-4 h-4 mr-2" />
+                          Excel Şablonu İndir
+                        </Button>
+                        <div className="text-sm text-gray-600 space-y-1">
+                          <p>📋 Gereksinimler:</p>
+                          <p>• Excel formatı (.xlsx)</p>
+                          <p>• Maksimum 10MB</p>
+                          <p>• İlk satır başlık olmalı</p>
+                        </div>
+                      </div>
                     </div>
-                    <Button variant="outline" className="w-full">
-                      <FileSpreadsheet className="w-4 h-4 mr-2" />
-                      Örnek CSV İndir
-                    </Button>
-                  </div>
+                  )}
+
+                  {showMappingStep && !showPreviewStep && (
+                    <div className="py-4 space-y-4">
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <h3 className="font-medium text-blue-900 mb-2">Sütun Eşleştirme</h3>
+                        <p className="text-sm text-blue-700">Excel sütunlarını veritabanı alanlarıyla eşleştirin</p>
+                      </div>
+
+                      <div className="grid gap-4">
+                        {excelHeaders.map((header, index) => {
+                          // Skip empty headers
+                          if (!header || header.toString().trim() === '') {
+                            return null
+                          }
+
+                          return (
+                          <div key={index} className="grid grid-cols-4 gap-4 items-center">
+                            <div className="font-medium">
+                              <span className="text-xs text-gray-400 mr-2">Sütun {index + 1}:</span>
+                              {header}
+                            </div>
+                            <div>→</div>
+                            <div className="text-xs text-gray-500">
+                              Mevcut: {columnMapping[index.toString()] || 'Seçilmedi'}
+                            </div>
+                            <Select
+                              value={columnMapping[index.toString()] || 'skip'}
+                              onValueChange={(value) => {
+                                console.log(`🔄 Column ${index} (${header}) changed to: ${value}`)
+                                console.log('📊 Previous mapping:', columnMapping)
+
+                                if (value === 'skip') {
+                                  setColumnMapping(prev => {
+                                    const newMapping = {...prev}
+                                    delete newMapping[index.toString()]
+                                    console.log('✅ Updated mapping (skip):', newMapping)
+                                    return newMapping
+                                  })
+                                } else {
+                                  // Remove this field from other columns before assigning to current
+                                  setColumnMapping(prev => {
+                                    const newMapping = {...prev}
+                                    // Clear this field from other columns
+                                    Object.keys(newMapping).forEach(key => {
+                                      if (newMapping[key] === value) {
+                                        console.log(`🔄 Removing ${value} from column ${key}`)
+                                        delete newMapping[key]
+                                      }
+                                    })
+                                    // Assign to current column
+                                    newMapping[index.toString()] = value
+                                    console.log('✅ Updated mapping (assign):', newMapping)
+                                    return newMapping
+                                  })
+                                }
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Alan seçin" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="skip">Atla</SelectItem>
+                                <SelectItem value="name">
+                                  Ürün Adı *
+                                  {Object.values(columnMapping).includes('name') &&
+                                    columnMapping[index.toString()] !== 'name' && (
+                                    <span className="text-xs text-gray-500 ml-1">(kullanılıyor)</span>
+                                  )}
+                                </SelectItem>
+                                <SelectItem value="category">
+                                  Kategori *
+                                  {Object.values(columnMapping).includes('category') &&
+                                    columnMapping[index.toString()] !== 'category' && (
+                                    <span className="text-xs text-gray-500 ml-1">(kullanılıyor)</span>
+                                  )}
+                                </SelectItem>
+                                <SelectItem value="brand">
+                                  Marka
+                                  {Object.values(columnMapping).includes('brand') &&
+                                    columnMapping[index.toString()] !== 'brand' && (
+                                    <span className="text-xs text-gray-500 ml-1">(kullanılıyor)</span>
+                                  )}
+                                </SelectItem>
+                                <SelectItem value="model">Model</SelectItem>
+                                <SelectItem value="price">
+                                  Fiyat *
+                                  {Object.values(columnMapping).includes('price') &&
+                                    columnMapping[index.toString()] !== 'price' && (
+                                    <span className="text-xs text-gray-500 ml-1">(kullanılıyor)</span>
+                                  )}
+                                </SelectItem>
+                                <SelectItem value="stock">Stok</SelectItem>
+                                <SelectItem value="power">Güç (W)</SelectItem>
+                                <SelectItem value="warranty">Garanti (Yıl)</SelectItem>
+                                <SelectItem value="description">Açıklama</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          )
+                        })}
+                      </div>
+
+                      <div className="bg-amber-50 p-4 rounded-lg">
+                        <p className="text-sm text-amber-700">
+                          <strong>Zorunlu alanlar:</strong> Ürün Adı, Kategori ve Fiyat
+                        </p>
+                        <p className="text-xs text-amber-600 mt-1">
+                          Marka, Model, Stok gibi diğer alanlar isteğe bağlıdır.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {showPreviewStep && (
+                    <div className="py-4 space-y-4">
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <h3 className="font-medium text-green-900 mb-2">Önizleme</h3>
+                        <p className="text-sm text-green-700">İlk 5 satır önizlemesi</p>
+                      </div>
+
+                      <div className="border rounded-lg overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="p-2 text-left">Ürün Adı</th>
+                              <th className="p-2 text-left">Kategori</th>
+                              <th className="p-2 text-left">Marka</th>
+                              <th className="p-2 text-left">Fiyat</th>
+                              <th className="p-2 text-left">Stok</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {excelData.slice(0, 5).map((row, index) => {
+                              const nameColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'name')
+                              const categoryColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'category')
+                              const brandColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'brand')
+                              const priceColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'price')
+                              const stockColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'stock')
+
+                              return (
+                                <tr key={index} className="border-t">
+                                  <td className="p-2">{nameColumn ? row[parseInt(nameColumn)] : '-'}</td>
+                                  <td className="p-2">{categoryColumn ? row[parseInt(categoryColumn)] : '-'}</td>
+                                  <td className="p-2">{brandColumn ? row[parseInt(brandColumn)] : '-'}</td>
+                                  <td className="p-2">{priceColumn ? row[parseInt(priceColumn)] : '-'}</td>
+                                  <td className="p-2">{stockColumn ? row[parseInt(stockColumn)] : '-'}</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {bulkUploadStatus === 'uploading' && (
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Yükleniyor...</span>
+                            <span>{Math.round(bulkUploadProgress)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full transition-all"
+                              style={{ width: `${bulkUploadProgress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowBulkAddDialog(false)}>İptal</Button>
-                    <Button onClick={() => {
-                      toast({title: "Başarılı", description: "Toplu ürün ekleme işlemi başlatıldı."})
-                      setShowBulkAddDialog(false)
-                    }}>Yükle</Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowBulkAddDialog(false)
+                        setShowMappingStep(false)
+                        setShowPreviewStep(false)
+                        setExcelFile(null)
+                        setExcelData([])
+                        setExcelHeaders([])
+                        setColumnMapping({})
+                      }}
+                    >
+                      İptal
+                    </Button>
+
+                    {showMappingStep && !showPreviewStep && (
+                      <Button onClick={() => {
+                        console.log('🔍 Preview button clicked')
+                        console.log('📋 Current states:', {
+                          showMappingStep,
+                          showPreviewStep,
+                          excelHeaders: excelHeaders.length,
+                          excelData: excelData.length,
+                          columnMapping
+                        })
+
+                        if (validateMappedData()) {
+                          console.log('✅ Moving to preview step')
+                          setShowPreviewStep(true)
+                        } else {
+                          console.log('❌ Validation failed, staying on mapping step')
+                        }
+                      }}>
+                        Önizleme
+                      </Button>
+                    )}
+
+                    {showPreviewStep && (
+                      <Button
+                        onClick={processExcelData}
+                        disabled={bulkUploadStatus === 'uploading'}
+                      >
+                        {bulkUploadStatus === 'uploading' ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Yükleniyor...
+                          </>
+                        ) : (
+                          'Ürünleri Ekle'
+                        )}
+                      </Button>
+                    )}
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -1823,7 +2461,7 @@ export default function ProductsPage() {
                   </DialogHeader>
                   <div className="py-4">
                     <p className="text-sm text-gray-600 mb-4">
-                      Stok güncelleme işlemi için CSV dosyası yükleyin veya manuel olarak güncelleyin.
+                      Stok güncelleme işlemi için manuel olarak güncelleyin.
                     </p>
                   </div>
                   <DialogFooter>
@@ -2018,6 +2656,45 @@ export default function ProductsPage() {
               <div className="space-y-4">
                 <div className="grid gap-2">
                   <Label htmlFor="edit-images">Ürün Görselleri</Label>
+
+                  {/* Show existing images */}
+                  {selectedProduct && (() => {
+                    const existingImages = typeof selectedProduct.images === 'string'
+                      ? JSON.parse(selectedProduct.images || '[]')
+                      : selectedProduct.images || []
+
+                    return existingImages.length > 0 ? (
+                      <div className="mb-2 p-2 bg-green-50 rounded border">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-sm text-green-700">
+                            <CheckCircle className="w-4 h-4" />
+                            <span>{existingImages.length} mevcut görsel</span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              if (confirm('Mevcut görselleri silmek istediğinize emin misiniz?')) {
+                                await deleteProductImages(selectedProduct.id)
+                              }
+                            }}
+                            className="h-6 px-2 text-xs text-red-600 hover:text-red-800 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            Sil
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mb-2 p-2 bg-gray-50 rounded border">
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <AlertCircle className="w-4 h-4" />
+                          <span>Henüz görsel yüklenmemiş</span>
+                        </div>
+                      </div>
+                    )
+                  })()}
+
                   <Input
                     id="edit-images"
                     type="file"
@@ -2035,6 +2712,43 @@ export default function ProductsPage() {
 
                 <div className="grid gap-2">
                   <Label htmlFor="edit-datasheet">Teknik Döküman (PDF)</Label>
+
+                  {/* Show existing datasheet */}
+                  {selectedProduct && (() => {
+                    const hasDatasheet = !!(selectedProduct as any).datasheet
+
+                    return hasDatasheet ? (
+                      <div className="mb-2 p-2 bg-green-50 rounded border">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-sm text-green-700">
+                            <CheckCircle className="w-4 h-4" />
+                            <span>Mevcut teknik döküman var</span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              if (confirm('Teknik dökümanı silmek istediğinize emin misiniz?')) {
+                                await deleteProductDatasheet(selectedProduct.id)
+                              }
+                            }}
+                            className="h-6 px-2 text-xs text-red-600 hover:text-red-800 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            Sil
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mb-2 p-2 bg-gray-50 rounded border">
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <AlertCircle className="w-4 h-4" />
+                          <span>Henüz teknik döküman yüklenmemiş</span>
+                        </div>
+                      </div>
+                    )
+                  })()}
+
                   <Input
                     id="edit-datasheet"
                     type="file"
@@ -2051,6 +2765,43 @@ export default function ProductsPage() {
 
                 <div className="grid gap-2">
                   <Label htmlFor="edit-manual">Kullanım Kılavuzu (PDF)</Label>
+
+                  {/* Show existing manual */}
+                  {selectedProduct && (() => {
+                    const hasManual = !!(selectedProduct as any).manual
+
+                    return hasManual ? (
+                      <div className="mb-2 p-2 bg-green-50 rounded border">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-sm text-green-700">
+                            <CheckCircle className="w-4 h-4" />
+                            <span>Mevcut kullanım kılavuzu var</span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              if (confirm('Kullanım kılavuzunu silmek istediğinize emin misiniz?')) {
+                                await deleteProductManual(selectedProduct.id)
+                              }
+                            }}
+                            className="h-6 px-2 text-xs text-red-600 hover:text-red-800 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            Sil
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mb-2 p-2 bg-gray-50 rounded border">
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <AlertCircle className="w-4 h-4" />
+                          <span>Henüz kullanım kılavuzu yüklenmemiş</span>
+                        </div>
+                      </div>
+                    )
+                  })()}
+
                   <Input
                     id="edit-manual"
                     type="file"
