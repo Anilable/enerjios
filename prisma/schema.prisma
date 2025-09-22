@@ -537,6 +537,7 @@ enum PackageType {
 model Package {
   id          String      @id @default(cuid())
   companyId   String?
+  parentId    String?     // For sub-packages hierarchy
   name        String
   type        PackageType
   description String?
@@ -559,6 +560,8 @@ model Package {
 
   // Relations
   company     Company?      @relation(fields: [companyId], references: [id])
+  parent      Package?      @relation("PackageHierarchy", fields: [parentId], references: [id])
+  children    Package[]     @relation("PackageHierarchy")
   createdBy   User?         @relation("PackageCreatedBy", fields: [createdById], references: [id])
   updatedBy   User?         @relation("PackageUpdatedBy", fields: [updatedById], references: [id])
   items       PackageItem[]
@@ -567,6 +570,7 @@ model Package {
   @@index([type])
   @@index([isActive])
   @@index([companyId])
+  @@index([parentId])
 }
 
 model PackageItem {

@@ -12,6 +12,7 @@ import { getRoleName } from '@/lib/role-utils'
 import { Suspense, useEffect, useState } from 'react'
 import { FinancialOverview } from '@/components/dashboard/financial-overview'
 import { WeatherWidget } from '@/components/dashboard/weather-widget'
+import { WorkflowCalendar } from '@/components/dashboard/workflow-calendar'
 import Link from 'next/link'
 
 interface DashboardMetrics {
@@ -55,6 +56,21 @@ export default function DashboardPage() {
   const [metricsLoading, setMetricsLoading] = useState(true)
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([])
   const [projectsLoading, setProjectsLoading] = useState(true)
+  const [calendarNotes, setCalendarNotes] = useState<any[]>([])
+
+  // Load notes from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedNotes = localStorage.getItem('calendar-notes')
+      if (savedNotes) {
+        try {
+          setCalendarNotes(JSON.parse(savedNotes))
+        } catch (error) {
+          console.error('Error loading calendar notes:', error)
+        }
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -138,6 +154,36 @@ export default function DashboardPage() {
 
   const user = session.user
 
+  const saveNotesToStorage = (notes: any[]) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('calendar-notes', JSON.stringify(notes))
+    }
+  }
+
+  const handleAddNote = (note: any) => {
+    const newNote = {
+      id: Date.now().toString(),
+      ...note
+    }
+    const updatedNotes = [...calendarNotes, newNote]
+    setCalendarNotes(updatedNotes)
+    saveNotesToStorage(updatedNotes)
+  }
+
+  const handleEditNote = (id: string, updatedNote: any) => {
+    const updatedNotes = calendarNotes.map(note =>
+      note.id === id ? { ...note, ...updatedNote } : note
+    )
+    setCalendarNotes(updatedNotes)
+    saveNotesToStorage(updatedNotes)
+  }
+
+  const handleDeleteNote = (id: string) => {
+    const updatedNotes = calendarNotes.filter(note => note.id !== id)
+    setCalendarNotes(updatedNotes)
+    saveNotesToStorage(updatedNotes)
+  }
+
   return (
     <DashboardLayout 
       title={`Hoş geldiniz, ${user.name}! 👋`}
@@ -158,27 +204,27 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions Section */}
-      <Card className="mb-8 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-700">
-        <CardHeader>
-          <CardTitle className="text-xl flex items-center gap-2">
-            <Compass className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+      <Card className="mb-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-700">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Compass className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Hızlı İşlemler
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             En çok kullanılan araçlara hızlı erişim
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3">
             <Link href="/dashboard/project-requests">
               <Button
                 variant="default"
-                className="w-full h-24 flex-col gap-2 bg-gradient-to-br from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+                className="w-full h-14 px-0.5 flex-col gap-1 bg-gradient-to-br from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
               >
-                <FolderPlus className="h-8 w-8" />
-                <div>
-                  <div className="font-semibold">Proje Talepleri</div>
-                  <div className="text-xs opacity-90">Yeni Talep</div>
+                <FolderPlus className="h-4 w-4" />
+                <div className="text-center">
+                  <div className="font-semibold text-xs leading-tight">Proje Talepleri</div>
+                  <div className="text-xs opacity-90 leading-tight">Yeni Talep</div>
                 </div>
               </Button>
             </Link>
@@ -186,12 +232,12 @@ export default function DashboardPage() {
             <Link href="/dashboard/designer">
               <Button
                 variant="default"
-                className="w-full h-24 flex-col gap-2 bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+                className="w-full h-14 px-0.5 flex-col gap-1 bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
               >
-                <Compass className="h-8 w-8" />
-                <div>
-                  <div className="font-semibold">Proje Tasarımcısı</div>
-                  <div className="text-xs opacity-90">3D Çatı Analizi</div>
+                <Compass className="h-4 w-4" />
+                <div className="text-center">
+                  <div className="font-semibold text-xs leading-tight">Proje Tasarımcısı</div>
+                  <div className="text-xs opacity-90 leading-tight">3D Çatı Analizi</div>
                 </div>
               </Button>
             </Link>
@@ -199,12 +245,12 @@ export default function DashboardPage() {
             <Link href="/dashboard/project-requests">
               <Button
                 variant="default"
-                className="w-full h-24 flex-col gap-2 bg-gradient-to-br from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+                className="w-full h-14 px-0.5 flex-col gap-1 bg-gradient-to-br from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
               >
-                <ClipboardList className="h-8 w-8" />
-                <div>
-                  <div className="font-semibold">Talep İzleme</div>
-                  <div className="text-xs opacity-90">Proje Takibi</div>
+                <ClipboardList className="h-4 w-4" />
+                <div className="text-center">
+                  <div className="font-semibold text-xs leading-tight">Talep İzleme</div>
+                  <div className="text-xs opacity-90 leading-tight">Proje Takibi</div>
                 </div>
               </Button>
             </Link>
@@ -213,12 +259,12 @@ export default function DashboardPage() {
               <Link href="/dashboard/calculator">
                 <Button
                   variant="outline"
-                  className="w-full h-24 flex-col gap-2 border-2 hover:bg-gray-50 dark:hover:bg-gray-800 hover:scale-105 transition-all"
+                  className="w-full h-14 px-0.5 flex-col gap-1 border-2 hover:bg-gray-50 dark:hover:bg-gray-800 hover:scale-105 transition-all"
                 >
-                  <Calculator className="h-8 w-8 text-green-600" />
-                  <div>
-                    <div className="font-semibold">GES Hesaplayıcı</div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400">Maliyet Analizi</div>
+                  <Calculator className="h-4 w-4 text-green-600" />
+                  <div className="text-center">
+                    <div className="font-semibold text-xs leading-tight">GES Hesaplayıcı</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 leading-tight">Maliyet Analizi</div>
                   </div>
                 </Button>
               </Link>
@@ -228,12 +274,12 @@ export default function DashboardPage() {
               <Link href="/dashboard/quotes">
                 <Button
                   variant="outline"
-                  className="w-full h-24 flex-col gap-2 border-2 hover:bg-gray-50 dark:hover:bg-gray-800 hover:scale-105 transition-all"
+                  className="w-full h-14 px-0.5 flex-col gap-1 border-2 hover:bg-gray-50 dark:hover:bg-gray-800 hover:scale-105 transition-all"
                 >
-                  <FileText className="h-8 w-8 text-orange-600" />
-                  <div>
-                    <div className="font-semibold">Teklifler</div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400">Fiyat Teklifleri</div>
+                  <FileText className="h-4 w-4 text-orange-600" />
+                  <div className="text-center">
+                    <div className="font-semibold text-xs leading-tight">Teklifler</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 leading-tight">Fiyat Teklifleri</div>
                   </div>
                 </Button>
               </Link>
@@ -243,26 +289,26 @@ export default function DashboardPage() {
               <Link href="/dashboard/project-requests">
                 <Button
                   variant="outline"
-                  className="w-full h-24 flex-col gap-2 border-2 hover:bg-gray-50 dark:hover:bg-gray-800 hover:scale-105 transition-all"
+                  className="w-full h-14 px-0.5 flex-col gap-1 border-2 hover:bg-gray-50 dark:hover:bg-gray-800 hover:scale-105 transition-all"
                 >
-                  <Building className="h-8 w-8 text-blue-600" />
-                  <div>
-                    <div className="font-semibold">Kurulum Projeleri</div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400">Aktif Kurulumlar</div>
+                  <Building className="h-4 w-4 text-blue-600" />
+                  <div className="text-center">
+                    <div className="font-semibold text-xs leading-tight">Kurulum Projeleri</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 leading-tight">Aktif Kurulumlar</div>
                   </div>
                 </Button>
               </Link>
             )}
-            
+
             <Link href="/dashboard/reports">
-              <Button 
-                variant="outline" 
-                className="w-full h-24 flex-col gap-2 border-2 hover:bg-gray-50 dark:hover:bg-gray-800 hover:scale-105 transition-all"
+              <Button
+                variant="outline"
+                className="w-full h-14 px-0.5 flex-col gap-1 border-2 hover:bg-gray-50 dark:hover:bg-gray-800 hover:scale-105 transition-all"
               >
-                <BarChart3 className="h-8 w-8 text-purple-600" />
-                <div>
-                  <div className="font-semibold">Raporlar</div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400">Performans Analizi</div>
+                <BarChart3 className="h-4 w-4 text-purple-600" />
+                <div className="text-center">
+                  <div className="font-semibold text-xs leading-tight">Raporlar</div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400 leading-tight">Performans Analizi</div>
                 </div>
               </Button>
             </Link>
@@ -372,6 +418,17 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           )}
+        </div>
+
+        {/* Workflow Calendar */}
+        <div className="mb-8">
+          <WorkflowCalendar
+            projectRequests={recentProjects}
+            notes={calendarNotes}
+            onNoteAdd={handleAddNote}
+            onNoteEdit={handleEditNote}
+            onNoteDelete={handleDeleteNote}
+          />
         </div>
 
         {/* Recent Projects and Financial Overview */}

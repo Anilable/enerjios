@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import useSWR from 'swr'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { CustomerList } from '@/components/customers/customer-list'
 import { CustomerForm } from '@/components/customers/customer-form'
@@ -96,29 +97,35 @@ export default function CustomersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
   const [customers, setCustomers] = useState<CustomerData[]>([])
-  const [loading, setLoading] = useState(true)
 
-  // Fetch real customer data from API
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        setLoading(true)
-        const response = await fetch('/api/customers')
-        if (response.ok) {
-          const data = await response.json()
-          setCustomers(data)
-        } else {
-          console.error('Failed to fetch customers:', response.statusText)
-        }
-      } catch (error) {
-        console.error('Error fetching customers:', error)
-      } finally {
-        setLoading(false)
-      }
+  const fetcher = useCallback(async (url: string) => {
+    const response = await fetch(url, { cache: 'no-store' })
+    if (!response.ok) {
+      throw new Error('Failed to fetch customers')
     }
 
-    fetchCustomers()
+    return response.json()
   }, [])
+
+  const {
+    data: customersData,
+    isLoading,
+    mutate,
+  } = useSWR<CustomerData[]>('/api/customers', fetcher, {
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    refreshInterval: 60000,
+  })
+
+  useEffect(() => {
+    if (customersData) {
+      setCustomers(customersData)
+    }
+  }, [customersData])
+
+  const refreshCustomers = useCallback(async () => {
+    await mutate()
+  }, [mutate])
 
   // Calculate stats from actual customer data
   const stats = {
@@ -149,6 +156,18 @@ export default function CustomersPage() {
     setSelectedCustomer(customer)
     setIsCreating(true)
     setActiveTab('form')
+  }
+
+  const handleCustomerDeletedSuccess = async (customerId: string) => {
+    // Immediately refresh data from server
+    await mutate()
+
+    if (selectedCustomer?.id === customerId) {
+      setSelectedCustomer(null)
+      setIsCreating(false)
+    }
+
+    setActiveTab('list')
   }
 
   const getStatusColor = (status: CustomerData['status']) => {
@@ -256,7 +275,7 @@ export default function CustomersPage() {
 
             {/* Customer List */}
             <TabsContent value="list" className="space-y-6 h-full">
-              {loading ? (
+              {(isLoading && customers.length === 0) ? (
                 <div className="flex items-center justify-center h-96">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
@@ -269,6 +288,8 @@ export default function CustomersPage() {
                   customers={customers}
                   onViewCustomer={handleViewCustomer}
                   onEditCustomer={handleEditCustomer}
+                  onRefreshCustomers={refreshCustomers}
+                  onCustomerDeleted={handleCustomerDeletedSuccess}
                   getStatusColor={getStatusColor}
                   getStatusLabel={getStatusLabel}
                   getPriorityColor={getPriorityColor}
@@ -278,13 +299,38 @@ export default function CustomersPage() {
 
             {/* Customer Form */}
             <TabsContent value="form" className="h-full">
-              <CustomerForm 
+              <CustomerForm
                 customer={isCreating ? selectedCustomer : null}
                 onSave={async (customer) => {
                   try {
                     if (isCreating && selectedCustomer) {
-                      // Update existing customer (TODO: implement PUT endpoint)
-                      setCustomers(prev => prev.map(c => c.id === customer.id ? customer : c))
+                      // Update existing customer
+                      const response = await fetch(`/api/customers/${selectedCustomer.id}`, {
+                        method: 'PUT',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          firstName: customer.firstName,
+                          lastName: customer.lastName,
+                          email: customer.email,
+                          phone: customer.phone,
+                          address: customer.address,
+                          city: customer.city,
+                          district: customer.district,
+                          customerType: customer.customerType,
+                          companyName: customer.companyName,
+                          taxNumber: customer.taxNumber
+                        })
+                      })
+
+                      if (!response.ok) {
+                        const errorData = await response.json()
+                        throw new Error(errorData.error || 'Failed to update customer')
+                      }
+
+                      // Immediately refresh the data from server
+                      await mutate()
                     } else {
                       // Create new customer via API
                       const response = await fetch('/api/customers', {
@@ -311,11 +357,10 @@ export default function CustomersPage() {
                         throw new Error(errorData.error || 'Failed to create customer')
                       }
 
-                      const savedCustomer = await response.json()
-                      // Update local state with the saved customer from database
-                      setCustomers(prev => [...prev, savedCustomer])
+                      // Immediately refresh the data from server
+                      await mutate()
                     }
-                    
+
                     setIsCreating(false)
                     setSelectedCustomer(null)
                     setActiveTab('list')

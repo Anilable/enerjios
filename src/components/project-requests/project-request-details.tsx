@@ -119,30 +119,112 @@ export function ProjectRequestDetails({
   // Tahmini malzeme listesi oluşturma
   const generateEstimatedMaterials = (capacity: number, projectType: string) => {
     const materials = []
-    
-    // Panel sayısı hesaplaması (ortalama 400W panel varsayımı)
-    const panelCount = Math.ceil(capacity * 1000 / 400)
-    materials.push({ name: 'Güneş Paneli', quantity: panelCount, unit: 'adet', description: `${400}W Monokristal` })
-    
-    // Inverter sayısı
-    const inverterCount = Math.ceil(capacity / 5) // 5kW'lık inverterlar
-    materials.push({ name: 'İnverter', quantity: inverterCount, unit: 'adet', description: `${inverterCount > 1 ? '5kW' : capacity + 'kW'} String İnverter` })
-    
-    // Montaj malzemeleri
-    materials.push({ name: 'Montaj Rayı', quantity: Math.ceil(panelCount / 2), unit: 'adet', description: 'Alüminyum montaj rayı' })
-    materials.push({ name: 'Montaj Kelepçesi', quantity: panelCount * 4, unit: 'adet', description: 'Panel kelepçesi' })
-    
-    // Kablo ve elektrik malzemeleri
-    const dcCableLength = Math.ceil(panelCount * 5) // Panel başına 5m kablo
-    materials.push({ name: 'DC Kablo', quantity: dcCableLength, unit: 'm', description: '4mm² DC kablo' })
-    materials.push({ name: 'AC Kablo', quantity: Math.ceil(capacity * 10), unit: 'm', description: '2.5mm² AC kablo' })
-    
-    if (projectType === 'ROOFTOP') {
-      materials.push({ name: 'Çatı Ankrajı', quantity: Math.ceil(panelCount / 4), unit: 'set', description: 'Çatı montaj ankrajı' })
-    } else if (projectType === 'LAND') {
-      materials.push({ name: 'Beton Temel', quantity: Math.ceil(panelCount / 10), unit: 'adet', description: 'Arazi montaj temeli' })
+
+    // Panel sayısı hesaplaması (ortalama 550W panel varsayımı - güncel teknoloji)
+    const panelWattage = 550
+    const panelCount = Math.ceil(capacity * 1000 / panelWattage)
+    materials.push({
+      name: 'Güneş Paneli',
+      quantity: panelCount,
+      unit: 'adet',
+      description: `${panelWattage}W Mono-PERC Yüksek Verimli Panel`
+    })
+
+    // Inverter sayısı ve tipi (proje tipine göre)
+    let inverterType = 'String İnverter'
+    let inverterSize = 50 // kW
+    let inverterCount = Math.ceil(capacity / inverterSize)
+
+    if (capacity <= 10) {
+      inverterSize = capacity <= 5 ? capacity : 5
+      inverterCount = Math.ceil(capacity / inverterSize)
+      inverterType = 'String İnverter'
+    } else if (capacity <= 100) {
+      inverterSize = 50
+      inverterCount = Math.ceil(capacity / inverterSize)
+      inverterType = 'Merkezi İnverter'
+    } else {
+      inverterSize = 100
+      inverterCount = Math.ceil(capacity / inverterSize)
+      inverterType = 'Mega İnverter'
     }
-    
+
+    materials.push({
+      name: 'İnverter',
+      quantity: inverterCount,
+      unit: 'adet',
+      description: `${inverterSize}kW ${inverterType}`
+    })
+
+    // Montaj sistemi (proje tipine göre)
+    if (projectType === 'ROOFTOP' || projectType === 'RESIDENTIAL' || projectType === 'COMMERCIAL') {
+      materials.push({
+        name: 'Çatı Montaj Sistemi',
+        quantity: Math.ceil(panelCount / 2),
+        unit: 'set',
+        description: 'Alüminyum ray ve kelepçe sistemi'
+      })
+      materials.push({
+        name: 'Çatı Ankrajı',
+        quantity: Math.ceil(panelCount / 3),
+        unit: 'set',
+        description: 'Paslanmaz çelik ankraj sistemi'
+      })
+    } else if (projectType === 'LAND' || projectType === 'INDUSTRIAL') {
+      materials.push({
+        name: 'Arazi Montaj Sistemi',
+        quantity: Math.ceil(panelCount / 4),
+        unit: 'set',
+        description: 'Galvanizli çelik konstrüksiyon'
+      })
+      materials.push({
+        name: 'Beton Temel',
+        quantity: Math.ceil(panelCount / 8),
+        unit: 'adet',
+        description: 'Ön gerili beton temel blokları'
+      })
+    }
+
+    // Kablo ve elektrik malzemeleri
+    const dcCableLength = Math.ceil(panelCount * 3) // Panel başına ortalama 3m
+    const acCableLength = Math.ceil(capacity * 8) // kW başına 8m
+
+    materials.push({
+      name: 'DC Kablo',
+      quantity: dcCableLength,
+      unit: 'm',
+      description: '6mm² UV Dayanımlı Solar Kablo'
+    })
+    materials.push({
+      name: 'AC Kablo',
+      quantity: acCableLength,
+      unit: 'm',
+      description: '4mm² NYY Yeraltı Kablosu'
+    })
+
+    // Koruma ve izleme sistemleri
+    materials.push({
+      name: 'DC Combiner Box',
+      quantity: Math.ceil(panelCount / 12),
+      unit: 'adet',
+      description: 'Sigorta ve surge arrester ile'
+    })
+
+    materials.push({
+      name: 'AC Dağıtım Panosu',
+      quantity: 1,
+      unit: 'adet',
+      description: 'Koruma röleleri ve ölçüm cihazları ile'
+    })
+
+    // İzleme sistemi
+    materials.push({
+      name: 'İzleme Sistemi',
+      quantity: 1,
+      unit: 'set',
+      description: 'WiFi/GSM tabanlı performans izleme'
+    })
+
     return materials
   }
 
@@ -167,7 +249,7 @@ export function ProjectRequestDetails({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="!max-w-none w-[99vw] max-h-[95vh] overflow-y-auto bg-gradient-to-br from-slate-50 to-white border-0 shadow-2xl">
+      <DialogContent className="max-w-[95vw] lg:max-w-6xl max-h-[85vh] overflow-hidden bg-gradient-to-br from-slate-50 to-white border-0 shadow-2xl flex flex-col">
         {/* Modern Header with EnerjiOS Orange Gradient */}
         <DialogHeader className="flex-shrink-0 px-6 py-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white relative overflow-hidden">
           {/* Background Pattern */}
@@ -246,7 +328,7 @@ export function ProjectRequestDetails({
         {/* Two Column Layout */}
         <div className="flex-1 overflow-hidden p-2 grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Left Column - Customer & Project Details */}
-          <div className="space-y-6">
+          <div className="space-y-6 overflow-y-auto">
             {/* Customer Information Card */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3 mb-4">
@@ -620,40 +702,42 @@ export function ProjectRequestDetails({
                 </div>
               </div>
 
-              {/* Estimated Materials */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <Package className="w-4 h-4 text-orange-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">Malzeme Listesi</h3>
-                    <p className="text-slate-500 text-xs">Tahmini gereksinimler</p>
-                  </div>
-                </div>
-                <div className="space-y-3 max-h-48 overflow-y-auto">
-                  {generateEstimatedMaterials(request.estimatedCapacity, request.projectType).map((material, index) => (
-                    <div key={index} className="flex justify-between items-start p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
-                      <div className="flex-1">
-                        <div className="font-semibold text-slate-900 text-sm">{material.name}</div>
-                        <div className="text-xs text-slate-500 mt-0.5">{material.description}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold text-slate-900 text-sm">{material.quantity}</div>
-                        <div className="text-xs text-slate-500">{material.unit}</div>
-                      </div>
+              {/* Materials List - Only show if quote exists */}
+              {hasQuote && (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                      <Package className="w-4 h-4 text-orange-600" />
                     </div>
-                  ))}
-                </div>
-                <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-200">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div className="text-xs text-amber-700">
-                      Bu liste {request.estimatedCapacity}kW kapasiteye göre tahminidir. Kesin malzeme listesi saha ziyareti sonrası oluşturulacaktır.
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">Malzeme Listesi</h3>
+                      <p className="text-slate-500 text-xs">Teklif edilen malzemeler</p>
                     </div>
                   </div>
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
+                    {generateEstimatedMaterials(request.estimatedCapacity, request.projectType).map((material, index) => (
+                      <div key={index} className="flex justify-between items-start p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                        <div className="flex-1">
+                          <div className="font-semibold text-slate-900 text-sm">{material.name}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">{material.description}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-slate-900 text-sm">{material.quantity}</div>
+                          <div className="text-xs text-slate-500">{material.unit}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 p-3 bg-green-50 rounded-xl border border-green-200">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-xs text-green-700">
+                        Bu liste önceden verilen teklifteki malzemeleri göstermektedir.
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Actions */}
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">

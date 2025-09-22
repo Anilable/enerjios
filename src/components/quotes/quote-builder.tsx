@@ -35,7 +35,6 @@ interface QuoteData {
   customerPhone?: string
   customerId?: string
   projectType?: string
-  projectTitle?: string
   systemSize?: number
   panelCount?: number
   capacity?: number
@@ -226,7 +225,6 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
     customerEmail: '',
     customerPhone: '',
     customerAddress: '',
-    projectTitle: '',
     systemSize: 0,
     panelCount: 0,
     validityDays: 30
@@ -237,6 +235,7 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
   const [laborRate, setLaborRate] = useState(150)
   const [marginPercent, setMarginPercent] = useState(25)
   const [taxPercent, setTaxPercent] = useState(1) // GES için %1 KDV
+  const [packageSearchQuery, setPackageSearchQuery] = useState('')
   const [productCatalog, setProductCatalog] = useState<ProductCatalog>(defaultProductCatalog)
   const [loadingProducts, setLoadingProducts] = useState(true)
   const [packages, setPackages] = useState<PackageType[]>([])
@@ -364,7 +363,6 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
         customerEmail: quote.customerEmail,
         customerPhone: quote.customerPhone || '',
         customerAddress: '', // Not in current QuoteData type
-        projectTitle: quote.projectTitle || '',
         systemSize: quote.systemSize || 0,
         panelCount: quote.panelCount || 0,
         validityDays: 30
@@ -541,7 +539,6 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
     if (!formData.customerName) newErrors.customerName = 'Müşteri adı gerekli'
     if (!formData.customerEmail) newErrors.customerEmail = 'Email gerekli'
     if (!formData.customerPhone) newErrors.customerPhone = 'Telefon gerekli'
-    if (!formData.projectTitle) newErrors.projectTitle = 'Proje başlığı gerekli'
     if (items.length === 0) newErrors.items = 'En az bir ürün eklemelisiniz'
     
     setErrors(newErrors)
@@ -561,7 +558,6 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
       customerName: formData.customerName,
       customerEmail: formData.customerEmail,
       customerPhone: formData.customerPhone,
-      projectTitle: formData.projectTitle,
       status: 'DRAFT',
       systemSize: formData.systemSize,
       panelCount: formData.panelCount,
@@ -688,19 +684,6 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
                 </div>
               </div>
               
-              <div>
-                <Label htmlFor="projectTitle">Proje Başlığı *</Label>
-                <Input
-                  id="projectTitle"
-                  value={formData.projectTitle}
-                  onChange={(e) => setFormData(prev => ({ ...prev, projectTitle: e.target.value }))}
-                  className={errors.projectTitle ? 'border-red-500' : ''}
-                  placeholder="Örn: Ev Çatı GES Sistemi - İstanbul"
-                />
-                {errors.projectTitle && (
-                  <p className="text-sm text-red-600 mt-1">{errors.projectTitle}</p>
-                )}
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -802,8 +785,26 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                <div className="mb-4">
+                  <Input
+                    placeholder="Paket adı veya türü ile arayın..."
+                    value={packageSearchQuery}
+                    onChange={(e) => setPackageSearchQuery(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {packages.map(pkg => (
+                  {packages
+                    .filter(pkg => {
+                      if (!packageSearchQuery) return true
+                      const searchLower = packageSearchQuery.toLowerCase()
+                      return (
+                        pkg.name.toLowerCase().includes(searchLower) ||
+                        pkg.description?.toLowerCase().includes(searchLower) ||
+                        PACKAGE_TYPE_LABELS[pkg.type].toLowerCase().includes(searchLower)
+                      )
+                    })
+                    .map(pkg => (
                     <Card key={pkg.id} className="cursor-pointer hover:shadow-md transition-all border-2 hover:border-blue-300">
                       <CardHeader className="pb-2">
                         <div className="flex items-start justify-between">

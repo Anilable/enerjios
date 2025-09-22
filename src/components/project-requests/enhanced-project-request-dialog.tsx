@@ -100,7 +100,8 @@ const sourceIcons = {
 
 
 interface FormErrors {
-  customerName?: string
+  customerFirstName?: string
+  customerLastName?: string
   customerEmail?: string
   customerPhone?: string
   location?: string
@@ -136,7 +137,7 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
   const [activeTab, setActiveTab] = useState('customer')
   const [searchQuery, setSearchQuery] = useState('')
   const [completedTabs, setCompletedTabs] = useState<Set<string>>(new Set())
-  const [autoProgressEnabled, setAutoProgressEnabled] = useState(true)
+  const [autoProgressEnabled, setAutoProgressEnabled] = useState(false)
   const progressTimeout = useRef<NodeJS.Timeout | null>(null)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     prefilledCustomer ? {
@@ -151,6 +152,7 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
   )
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false)
   const [cityDropdownOpen, setCityDropdownOpen] = useState(false)
+  const [citySearch, setCitySearch] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   
@@ -159,24 +161,25 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
   
   
   const [formData, setFormData] = useState({
-    customerName: prefilledCustomer?.name || '',
+    customerFirstName: prefilledCustomer?.name?.split(' ')[0] || '',
+    customerLastName: prefilledCustomer?.name?.split(' ').slice(1).join(' ') || '',
     customerEmail: prefilledCustomer?.email || '',
     customerPhone: prefilledCustomer?.phone || '',
     location: prefilledCustomer?.city || '',
     address: prefilledCustomer?.address || '',
     projectType: '' as ProjectType | '',
-    systemType: 'ONGRID' as 'ONGRID' | 'OFFGRID' | 'HYBRID',
+    systemType: '' as 'ONGRID' | 'OFFGRID' | 'HYBRID' | '',
     includeStorage: false,
     estimatedCapacity: '',
     estimatedBudget: '',
     description: '',
-    priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH',
-    source: 'WEBSITE' as any,
+    priority: '' as 'LOW' | 'MEDIUM' | 'HIGH' | '',
+    source: '' as any,
     tags: '',
     urgentRequest: false,
     hasExistingSystem: false,
     preferredVisitDate: '',
-    contactPreference: 'PHONE' as 'PHONE' | 'EMAIL' | 'WHATSAPP',
+    contactPreference: '' as 'PHONE' | 'EMAIL' | 'WHATSAPP' | '',
     availableTimeSlots: [] as string[]
   })
 
@@ -196,17 +199,29 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
 
   // Enhanced form validation
   const validateForm = (): boolean => {
+    console.log('validateForm called with formData:', formData)
     const newErrors: FormErrors = {}
 
-    // Customer Name Validation
-    if (!formData.customerName.trim()) {
-      newErrors.customerName = 'Müşteri adı gereklidir'
-    } else if (formData.customerName.length < 2) {
-      newErrors.customerName = 'Müşteri adı en az 2 karakter olmalıdır'
-    } else if (formData.customerName.length > 100) {
-      newErrors.customerName = 'Müşteri adı en fazla 100 karakter olabilir'
-    } else if (!/^[a-zA-ZÇçĞğıİÖöŞşÜü\s.'-]+$/.test(formData.customerName)) {
-      newErrors.customerName = 'Müşteri adı geçersiz karakterler içeriyor'
+    // Customer First Name Validation
+    if (!formData.customerFirstName.trim()) {
+      newErrors.customerFirstName = 'Ad gereklidir'
+    } else if (formData.customerFirstName.length < 2) {
+      newErrors.customerFirstName = 'Ad en az 2 karakter olmalıdır'
+    } else if (formData.customerFirstName.length > 50) {
+      newErrors.customerFirstName = 'Ad en fazla 50 karakter olabilir'
+    } else if (!/^[a-zA-ZÇçĞğıİÖöŞşÜü\s.'-]+$/.test(formData.customerFirstName)) {
+      newErrors.customerFirstName = 'Ad geçersiz karakterler içeriyor'
+    }
+
+    // Customer Last Name Validation
+    if (!formData.customerLastName.trim()) {
+      newErrors.customerLastName = 'Soyad gereklidir'
+    } else if (formData.customerLastName.length < 2) {
+      newErrors.customerLastName = 'Soyad en az 2 karakter olmalıdır'
+    } else if (formData.customerLastName.length > 50) {
+      newErrors.customerLastName = 'Soyad en fazla 50 karakter olabilir'
+    } else if (!/^[a-zA-ZÇçĞğıİÖöŞşÜü\s.'-]+$/.test(formData.customerLastName)) {
+      newErrors.customerLastName = 'Soyad geçersiz karakterler içeriyor'
     }
 
     // Email Validation
@@ -315,9 +330,11 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
   // Handle customer selection
   const handleCustomerSelect = (customer: Customer) => {
     setSelectedCustomer(customer)
+    const nameParts = customer.name.split(' ')
     setFormData(prev => ({
       ...prev,
-      customerName: customer.name,
+      customerFirstName: nameParts[0] || '',
+      customerLastName: nameParts.slice(1).join(' ') || '',
       customerEmail: customer.email,
       customerPhone: customer.phone
     }))
@@ -325,7 +342,8 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
     // Clear customer-related errors
     setErrors(prev => ({
       ...prev,
-      customerName: undefined,
+      customerFirstName: undefined,
+      customerLastName: undefined,
       customerEmail: undefined,
       customerPhone: undefined
     }))
@@ -334,11 +352,18 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
   // Real-time field validation
   const validateField = (field: string, value: any): string | undefined => {
     switch (field) {
-      case 'customerName':
-        if (!value?.trim()) return 'Müşteri adı gereklidir'
-        if (value.length < 2) return 'Müşteri adı en az 2 karakter olmalıdır'
-        if (value.length > 100) return 'Müşteri adı en fazla 100 karakter olabilir'
-        if (!/^[a-zA-ZÇçĞğıİÖöŞşÜü\s]+$/.test(value)) return 'Müşteri adı sadece harf ve boşluk içerebilir'
+      case 'customerFirstName':
+        if (!value?.trim()) return 'Ad gereklidir'
+        if (value.length < 2) return 'Ad en az 2 karakter olmalıdır'
+        if (value.length > 50) return 'Ad en fazla 50 karakter olabilir'
+        if (!/^[a-zA-ZÇçĞğıİÖöŞşÜü\s]+$/.test(value)) return 'Ad sadece harf ve boşluk içerebilir'
+        break
+
+      case 'customerLastName':
+        if (!value?.trim()) return 'Soyad gereklidir'
+        if (value.length < 2) return 'Soyad en az 2 karakter olmalıdır'
+        if (value.length > 50) return 'Soyad en fazla 50 karakter olabilir'
+        if (!/^[a-zA-ZÇçĞğıİÖöŞşÜü\s]+$/.test(value)) return 'Soyad sadece harf ve boşluk içerebilir'
         break
         
       case 'customerEmail':
@@ -401,10 +426,22 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
         }
         break
         
+      case 'contactPreference':
+        if (!value) return 'İletişim tercihi seçimi gereklidir'
+        break
+
+      case 'source':
+        if (!value) return 'Müşteri kaynağı seçimi gereklidir'
+        break
+
+      case 'priority':
+        if (!value) return 'Öncelik durumu seçimi gereklidir'
+        break
+
       case 'tags':
         if (value && value.length > 200) return 'Etiketler en fazla 200 karakter olabilir'
         break
-        
+
       case 'description':
         if (value && value.length > 1000) return 'Açıklama en fazla 1000 karakter olabilir'
         break
@@ -426,9 +463,15 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
     setErrors({})
 
     console.log('Form submission started:', { formData })
-    
-    if (!validateForm()) {
-      console.log('Form validation failed:', errors)
+
+    try {
+      if (!validateForm()) {
+        console.log('Form validation failed:', errors)
+        setIsSubmitting(false)
+        return
+      }
+    } catch (error) {
+      console.error('Validation error:', error)
       setIsSubmitting(false)
       return
     }
@@ -448,7 +491,7 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
 
       // Create API-compatible request data
       const requestData = {
-        customerName: formData.customerName,
+        customerName: `${formData.customerFirstName} ${formData.customerLastName}`.trim(),
         customerEmail: formData.customerEmail,
         customerPhone: formData.customerPhone || null,
         location: formData.location,
@@ -462,7 +505,7 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
         source: formData.source || 'WEBSITE',
         tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
         notes: [],
-        contactPreference: formData.contactPreference || null,
+        contactPreference: formData.contactPreference || undefined,
         customerId: selectedCustomer?.id || null,
         assignedEngineerId: null,
         scheduledVisitDate: formData.preferredVisitDate ? new Date(formData.preferredVisitDate).toISOString() : null
@@ -485,24 +528,25 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
 
   const resetForm = () => {
     setFormData({
-      customerName: prefilledCustomer?.name || '',
+      customerFirstName: prefilledCustomer?.name?.split(' ')[0] || '',
+      customerLastName: prefilledCustomer?.name?.split(' ').slice(1).join(' ') || '',
       customerEmail: prefilledCustomer?.email || '',
       customerPhone: prefilledCustomer?.phone || '',
       location: prefilledCustomer?.city || '',
       address: prefilledCustomer?.address || '',
       projectType: '',
-      systemType: 'ONGRID',
+      systemType: '',
       includeStorage: false,
       estimatedCapacity: '',
       estimatedBudget: '',
       description: '',
-      priority: 'MEDIUM',
-      source: 'WEBSITE',
+      priority: '',
+      source: '',
       tags: '',
       urgentRequest: false,
       hasExistingSystem: false,
       preferredVisitDate: '',
-      contactPreference: 'PHONE',
+      contactPreference: '',
       availableTimeSlots: []
     })
     setSelectedCustomer(prefilledCustomer ? {
@@ -527,27 +571,30 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
     switch (tab) {
       case 'customer':
         return !!(
-          formData.customerName &&
+          formData.customerFirstName &&
+          formData.customerLastName &&
           formData.customerEmail &&
-          formData.customerPhone &&
-          !errors.customerName &&
+          formData.contactPreference &&
+          formData.source &&
+          !errors.customerFirstName &&
+          !errors.customerLastName &&
           !errors.customerEmail &&
-          !errors.customerPhone
+          !errors.customerPhone && // Phone is optional but if provided, must be valid
+          !errors.contactPreference &&
+          !errors.source
         )
       case 'project':
         return !!(
           formData.projectType &&
+          formData.systemType &&
           formData.location &&
           !errors.projectType &&
+          !errors.systemType &&
           !errors.location
         )
       case 'details':
         return !!(
-          formData.contactPreference &&
-          formData.source &&
           formData.priority &&
-          !errors.contactPreference &&
-          !errors.source &&
           !errors.priority
         )
       default:
@@ -625,7 +672,8 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
   // Enhanced form progress tracking
   const getFormProgress = () => {
     const requiredFields = [
-      'customerName',
+      'customerFirstName',
+      'customerLastName',
       'customerEmail',
       'location',
       'projectType',
@@ -655,7 +703,8 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
   const getMissingFields = () => {
     const missingFields: Array<{field: string, label: string}> = []
 
-    if (!formData.customerName) missingFields.push({field: 'customerName', label: 'Müşteri Adı'})
+    if (!formData.customerFirstName) missingFields.push({field: 'customerFirstName', label: 'Ad'})
+    if (!formData.customerLastName) missingFields.push({field: 'customerLastName', label: 'Soyad'})
     if (!formData.customerEmail) missingFields.push({field: 'customerEmail', label: 'E-posta Adresi'})
     if (!formData.location) missingFields.push({field: 'location', label: 'Konum Bilgisi'})
     if (!formData.projectType) missingFields.push({field: 'projectType', label: 'Proje Türü'})
@@ -702,7 +751,7 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[95vw] lg:max-w-7xl max-h-[95vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] lg:max-w-4xl h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="bg-gradient-to-r from-orange-500 via-orange-400 to-yellow-400 p-3 rounded-t-lg -m-6 mb-3">
           <DialogTitle className="text-lg flex items-center gap-2 text-white">
             <FileText className="h-4 w-4" />
@@ -743,8 +792,8 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
             </AlertDescription>
           </Alert>
         )}
-        
-        <form onSubmit={handleSubmit}>
+
+        <form onSubmit={handleSubmit} className="flex flex-col h-full min-h-0">
           <Tabs value={activeTab} onValueChange={(tab) => {
             // Clear any pending auto-progression
             if (progressTimeout.current) {
@@ -758,7 +807,7 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
 
             // Re-enable auto-progression after a short delay
             setTimeout(() => setAutoProgressEnabled(true), 2000)
-          }} className="mt-2">
+          }} className="mt-2 flex flex-col h-full min-h-0">
             <TabsList className="grid w-full grid-cols-3 bg-orange-50 h-9">
               <TabsTrigger value="customer" className={cn(
                 "flex items-center gap-1 text-xs data-[state=active]:bg-orange-500 data-[state=active]:text-white py-1",
@@ -771,7 +820,7 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
                 ) : isTabValid('customer') ? (
                   <CheckCircle className="h-2.5 w-2.5 ml-0.5 text-green-600 animate-pulse" />
                 ) : (
-                  errors.customerName || errors.customerEmail || errors.customerPhone ? (
+                  errors.customerFirstName || errors.customerLastName || errors.customerEmail || errors.customerPhone || errors.contactPreference || errors.source ? (
                     <AlertTriangle className="h-2.5 w-2.5 ml-0.5 text-red-600" />
                   ) : null
                 )}
@@ -803,37 +852,36 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
                 ) : isTabValid('details') ? (
                   <CheckCircle className="h-2.5 w-2.5 ml-0.5 text-green-600 animate-pulse" />
                 ) : (
-                  errors.contactPreference || errors.source || errors.priority ? (
+                  errors.priority ? (
                     <AlertTriangle className="h-2.5 w-2.5 ml-0.5 text-red-600" />
                   ) : null
                 )}
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="customer" className="space-y-2 mt-3">
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                {/* Customer Search Section */}
-                <Card className="border-orange-100">
-                  <CardHeader className="pb-2 p-3">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <User className="h-3 w-3 text-orange-600" />
-                      Müşteri Seçimi
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      Mevcut müşteri seçin veya yeni ekleyin
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-2 pt-0 p-3">
+            <TabsContent value="customer" className="space-y-3 mt-2 flex-1 overflow-y-auto min-h-0">
+              {/* Customer Search Section */}
+              <Card className="border-orange-100">
+                <CardHeader className="pb-3 p-4">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <User className="h-4 w-4 text-orange-600" />
+                    Müşteri Seçimi
+                  </CardTitle>
+                  <CardDescription className="text-sm">
+                    Mevcut müşteri seçin veya yeni müşteri bilgilerini girin
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 pt-0 p-4">
                   {/* Enhanced Customer Search */}
                   <div className="space-y-2">
-                    <Label>Müşteri Ara</Label>
+                    <Label className="text-sm font-medium">Müşteri Ara</Label>
                     <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
                           role="combobox"
                           aria-expanded={customerSearchOpen}
-                          className="w-full justify-between"
+                          className="w-full justify-between h-10"
                         >
                           {selectedCustomer ? (
                             <div className="flex items-center justify-between w-full">
@@ -858,8 +906,8 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
                       </PopoverTrigger>
                       <PopoverContent className="w-full p-0">
                         <Command shouldFilter={false}>
-                          <CommandInput 
-                            placeholder="İsim, e-posta veya telefon ile ara..." 
+                          <CommandInput
+                            placeholder="İsim, e-posta veya telefon ile ara..."
                             value={searchQuery}
                             onValueChange={setSearchQuery}
                           />
@@ -885,9 +933,9 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
                                 <CommandEmpty>
                                   <div className="p-4 text-center">
                                     <p className="text-sm text-muted-foreground mb-2">Müşteri bulunamadı</p>
-                                    <Button 
-                                      type="button" 
-                                      variant="link" 
+                                    <Button
+                                      type="button"
+                                      variant="link"
                                       className="text-xs"
                                       onClick={() => {
                                         setCustomerSearchOpen(false)
@@ -957,121 +1005,156 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
                   <Separator />
 
                   {/* Customer Details */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div className="space-y-1">
-                      <Label htmlFor="customerName" className="flex items-center gap-1 text-xs">
-                        <User className="h-3 w-3" />
-                        Müşteri Adı *
-                      </Label>
-                      <Input
-                        id="customerName"
-                        value={formData.customerName}
-                        onChange={(e) => handleInputChange('customerName', e.target.value)}
-                        placeholder="Ahmet Yılmaz"
-                        className={cn(getFieldClassName('customerName'), "h-8 text-sm")}
-                        required
-                      />
-                      {errors.customerName && (
-                        <p className="text-xs text-red-600 flex items-center gap-1">
-                          <AlertTriangle className="h-2.5 w-2.5" />
-                          {errors.customerName}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <Label htmlFor="customerEmail" className="flex items-center gap-1 text-xs">
-                        <Mail className="h-3 w-3" />
-                        E-posta *
-                      </Label>
-                      <Input
-                        id="customerEmail"
-                        type="email"
-                        value={formData.customerEmail}
-                        onChange={(e) => handleInputChange('customerEmail', e.target.value)}
-                        placeholder="ahmet@example.com"
-                        className={cn(getFieldClassName('customerEmail'), "h-8 text-sm")}
-                        required
-                      />
-                      {errors.customerEmail && (
-                        <p className="text-xs text-red-600 flex items-center gap-1">
-                          <AlertTriangle className="h-2.5 w-2.5" />
-                          {errors.customerEmail}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <Label htmlFor="customerPhone" className="flex items-center gap-1 text-xs">
-                        <Phone className="h-3 w-3" />
-                        Telefon
-                      </Label>
-                      <Input
-                        id="customerPhone"
-                        value={formData.customerPhone}
-                        onChange={(e) => handleInputChange('customerPhone', e.target.value)}
-                        placeholder="+90 532 123 4567"
-                        className={cn(getFieldClassName('customerPhone'), "h-8 text-sm")}
-                      />
-                      {errors.customerPhone && (
-                        <p className="text-xs text-red-600 flex items-center gap-1">
-                          <AlertTriangle className="h-2.5 w-2.5" />
-                          {errors.customerPhone}
-                        </p>
-                      )}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="customerFirstName" className="flex items-center gap-2 text-sm font-medium">
+                          <User className="h-4 w-4" />
+                          Ad *
+                        </Label>
+                        <Input
+                          id="customerFirstName"
+                          value={formData.customerFirstName}
+                          onChange={(e) => handleInputChange('customerFirstName', e.target.value)}
+                          placeholder="Ahmet"
+                          className={cn(getFieldClassName('customerFirstName'), "h-10")}
+                          required
+                        />
+                        {errors.customerFirstName && (
+                          <p className="text-sm text-red-600 flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            {errors.customerFirstName}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="customerLastName" className="flex items-center gap-2 text-sm font-medium">
+                          <User className="h-4 w-4" />
+                          Soyad *
+                        </Label>
+                        <Input
+                          id="customerLastName"
+                          value={formData.customerLastName}
+                          onChange={(e) => handleInputChange('customerLastName', e.target.value)}
+                          placeholder="Yılmaz"
+                          className={cn(getFieldClassName('customerLastName'), "h-10")}
+                          required
+                        />
+                        {errors.customerLastName && (
+                          <p className="text-sm text-red-600 flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            {errors.customerLastName}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <Label htmlFor="contactPreference" className="text-xs">İletişim Tercihi</Label>
-                      <Select
-                        value={formData.contactPreference}
-                        onValueChange={(value) => handleInputChange('contactPreference', value)}
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="PHONE">
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-4 w-4" />
-                              Telefon
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="EMAIL">
-                            <div className="flex items-center gap-2">
-                              <Mail className="h-4 w-4" />
-                              E-posta
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="WHATSAPP">
-                            <div className="flex items-center gap-2">
-                              <MessageCircle className="h-4 w-4" />
-                              WhatsApp
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="customerEmail" className="flex items-center gap-2 text-sm font-medium">
+                          <Mail className="h-4 w-4" />
+                          E-posta Adresi *
+                        </Label>
+                        <Input
+                          id="customerEmail"
+                          type="email"
+                          value={formData.customerEmail}
+                          onChange={(e) => handleInputChange('customerEmail', e.target.value)}
+                          placeholder="ahmet@example.com"
+                          className={cn(getFieldClassName('customerEmail'), "h-10")}
+                          required
+                        />
+                        {errors.customerEmail && (
+                          <p className="text-sm text-red-600 flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            {errors.customerEmail}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="customerPhone" className="flex items-center gap-2 text-sm font-medium">
+                          <Phone className="h-4 w-4" />
+                          Telefon Numarası
+                        </Label>
+                        <Input
+                          id="customerPhone"
+                          value={formData.customerPhone}
+                          onChange={(e) => handleInputChange('customerPhone', e.target.value)}
+                          placeholder="+90 532 123 4567"
+                          className={cn(getFieldClassName('customerPhone'), "h-10")}
+                        />
+                        {errors.customerPhone && (
+                          <p className="text-sm text-red-600 flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            {errors.customerPhone}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="contactPreference" className="text-sm font-medium">İletişim Tercihi *</Label>
+                        <Select
+                          value={formData.contactPreference}
+                          onValueChange={(value) => handleInputChange('contactPreference', value)}
+                        >
+                          <SelectTrigger className={cn(getFieldClassName('contactPreference'), "h-10")}>
+                            <SelectValue placeholder="İletişim yöntemi seçin" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="PHONE">
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-4 w-4" />
+                                Telefon
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="EMAIL">
+                              <div className="flex items-center gap-2">
+                                <Mail className="h-4 w-4" />
+                                E-posta
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="WHATSAPP">
+                              <div className="flex items-center gap-2">
+                                <MessageCircle className="h-4 w-4" />
+                                WhatsApp
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
 
+                  <Separator />
+
                   {/* Enhanced Source Selection */}
-                  <div className="space-y-1">
-                    <Label className="text-xs">Müşteri Kaynağı</Label>
-                    <div className="grid grid-cols-4 md:grid-cols-8 gap-1">
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Müşteri Kaynağı *</Label>
+                    {errors.source && (
+                      <p className="text-sm text-red-600 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Müşteri kaynağı seçimi gereklidir
+                      </p>
+                    )}
+                    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                       {Object.entries(REQUEST_SOURCE_LABELS).map(([value, label]) => {
                         const Icon = sourceIcons[value as keyof typeof sourceIcons]
                         return (
                           <Card
                             key={value}
                             className={cn(
-                              "cursor-pointer transition-all hover:shadow-sm p-1",
-                              formData.source === value && "ring-1 ring-orange-400 bg-orange-50"
+                              "cursor-pointer transition-all hover:shadow-md p-3 text-center",
+                              formData.source === value && "ring-2 ring-orange-400 bg-orange-50"
                             )}
                             onClick={() => handleInputChange('source', value)}
                           >
-                            <div className="flex flex-col items-center gap-0.5 text-xs">
-                              <Icon className="h-3 w-3" />
-                              <span className="text-xs truncate">{label}</span>
+                            <div className="flex flex-col items-center gap-2">
+                              <Icon className="h-5 w-5 text-gray-600" />
+                              <span className="text-xs font-medium">{label}</span>
                             </div>
                           </Card>
                         )
@@ -1080,10 +1163,9 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
                   </div>
                 </CardContent>
               </Card>
-              </div>
             </TabsContent>
 
-            <TabsContent value="project" className="space-y-2 mt-3">
+            <TabsContent value="project" className="space-y-2 mt-3 flex-1 overflow-y-auto min-h-0">
               <Card className="border-orange-100">
                 <CardHeader className="pb-2 p-3">
                   <CardTitle className="text-sm flex items-center gap-2">
@@ -1094,15 +1176,18 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
                     Kurulum yapılacak alan ve sistem tipini belirtin
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-2 pt-0 p-3">
+                <CardContent className="space-y-3 pt-0 p-4">
                   {/* Location */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
                     <div className="space-y-1">
                       <Label htmlFor="location" className="flex items-center gap-1 text-xs">
                         <MapPin className="h-3 w-3" />
                         Şehir *
                       </Label>
-                      <Popover open={cityDropdownOpen} onOpenChange={setCityDropdownOpen}>
+                      <Popover open={cityDropdownOpen} onOpenChange={(open) => {
+                        setCityDropdownOpen(open)
+                        if (!open) setCitySearch('')
+                      }}>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
@@ -1119,38 +1204,51 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[200px] p-0">
-                          <Command>
-                            <CommandInput placeholder="Şehir ara..." />
-                            <CommandList>
-                              <CommandEmpty>Şehir bulunamadı.</CommandEmpty>
-                              <CommandGroup>
-                                {cities.map((city) => (
-                                  <CommandItem
-                                    key={city}
-                                    value={city}
-                                    onSelect={(currentValue) => {
-                                      handleInputChange('location', currentValue === formData.location ? '' : currentValue)
-                                      setCityDropdownOpen(false)
-                                    }}
-                                    onMouseDown={(e) => {
-                                      e.preventDefault()
-                                      handleInputChange('location', city)
-                                      setCityDropdownOpen(false)
-                                    }}
-                                    className="cursor-pointer"
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        formData.location === city ? "opacity-100" : "opacity-0"
-                                      )}
-                                    />
-                                    {city}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
+                          <div className="flex flex-col">
+                            <div className="p-2 border-b">
+                              <Input
+                                placeholder="Şehir ara..."
+                                value={citySearch}
+                                onChange={(e) => setCitySearch(e.target.value)}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="max-h-[200px] overflow-y-auto">
+                              {cities
+                                .filter(city =>
+                                  city.toLowerCase().includes(citySearch.toLowerCase())
+                                )
+                                .map((city) => (
+                                <div
+                                  key={city}
+                                  onClick={() => {
+                                    handleInputChange('location', city)
+                                    setCityDropdownOpen(false)
+                                    setCitySearch('')
+                                  }}
+                                  className={cn(
+                                    "flex items-center px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800",
+                                    formData.location === city && "bg-orange-50 text-orange-900 dark:bg-orange-900/50 dark:text-orange-100"
+                                  )}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      formData.location === city ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {city}
+                                </div>
+                              ))}
+                              {cities.filter(city =>
+                                city.toLowerCase().includes(citySearch.toLowerCase())
+                              ).length === 0 && (
+                                <div className="px-3 py-2 text-sm text-gray-500">
+                                  Şehir bulunamadı.
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </PopoverContent>
                       </Popover>
                       {errors.location && (
@@ -1220,7 +1318,7 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
 
                   {/* System Type Selection */}
                   <div className="space-y-1">
-                    <Label className="text-xs">Sistem Tipi</Label>
+                    <Label className="text-xs">Sistem Tipi *</Label>
                     <RadioGroup
                       value={formData.systemType}
                       onValueChange={(value) => handleInputChange('systemType', value)}
@@ -1321,7 +1419,7 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
               </Card>
             </TabsContent>
 
-            <TabsContent value="details" className="space-y-2 mt-3">
+            <TabsContent value="details" className="space-y-2 mt-3 flex-1 overflow-y-auto min-h-0">
               <Card className="border-orange-100">
                 <CardHeader className="pb-2 p-3">
                   <CardTitle className="text-sm flex items-center gap-2">
@@ -1332,8 +1430,8 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
                     Proje ile ilgili ek detayları ve tercihlerinizi belirtin
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-2 pt-0 p-3">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <CardContent className="space-y-3 pt-0 p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
                     <div className="space-y-1">
                       <Label htmlFor="estimatedBudget" className="flex items-center gap-1 text-xs">
                         <DollarSign className="h-3 w-3" />
@@ -1378,13 +1476,13 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="priority" className="text-sm">Öncelik Durumu</Label>
-                    <Select 
-                      value={formData.priority} 
+                    <Label htmlFor="priority" className="text-sm">Öncelik Durumu *</Label>
+                    <Select
+                      value={formData.priority}
                       onValueChange={(value) => handleInputChange('priority', value)}
                     >
-                      <SelectTrigger>
-                        <SelectValue />
+                      <SelectTrigger className={cn(getFieldClassName('priority'))}>
+                        <SelectValue placeholder="Öncelik durumu seçin" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="LOW">
@@ -1489,76 +1587,48 @@ export function EnhancedProjectRequestDialog({ isOpen, onClose, onSubmit, prefil
             </TabsContent>
           </Tabs>
 
-          {/* Enhanced Validation Summary */}
+          {/* Compact Validation Summary */}
           {(!canSubmitForm() || getMissingFields().length > 0 || getValidationErrors().length > 0) && (
-            <div className="mt-3">
-              {/* Form Progress Summary */}
-              <Card className="border-l-4 border-l-amber-400 bg-amber-50/50">
-                <CardContent className="p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-600" />
-                      <span className="text-sm font-medium text-amber-800">Form Tamamlama Durumu</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-amber-700">
-                      <span>{getFormProgress().completed}/{getFormProgress().total} tamamlandı</span>
-                      <Progress value={getFormProgress().percentage} className="w-12 h-1.5" />
-                    </div>
+            <div className="border-t pt-2 mt-2 flex-shrink-0">
+              {/* Compact Form Progress Summary */}
+              <div className="bg-amber-50/50 border-l-4 border-l-amber-400 p-2 rounded-r-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-3 w-3 text-amber-600" />
+                    <span className="text-xs font-medium text-amber-800">Form Durumu</span>
+                    <span className="text-xs text-amber-700">
+                      {getFormProgress().completed}/{getFormProgress().total} ({getFormProgress().percentage}%)
+                    </span>
                   </div>
+                  <Progress value={getFormProgress().percentage} className="w-16 h-1" />
+                </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    {/* Missing Required Fields */}
-                    {getMissingFields().length > 0 && (
-                      <div>
-                        <p className="text-sm font-medium text-red-800 mb-2 flex items-center gap-1">
-                          <X className="h-3 w-3" />
-                          Eksik Zorunlu Alanlar ({getMissingFields().length})
-                        </p>
-                        <ul className="space-y-1">
-                          {getMissingFields().map(({field, label}) => (
-                            <li key={field} className="text-sm text-red-700 flex items-center gap-1">
-                              <div className="h-1.5 w-1.5 bg-red-500 rounded-full" />
-                              {label}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Validation Errors */}
-                    {getValidationErrors().length > 0 && (
-                      <div>
-                        <p className="text-sm font-medium text-red-800 mb-2 flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          Düzeltilmesi Gereken Hatalar ({getValidationErrors().length})
-                        </p>
-                        <ul className="space-y-1">
-                          {getValidationErrors().map(({field, error}) => (
-                            <li key={field} className="text-sm text-red-700 flex items-center gap-1">
-                              <div className="h-1.5 w-1.5 bg-red-500 rounded-full" />
-                              {error}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Success State */}
-                    {canSubmitForm() && (
-                      <div className="md:col-span-2">
-                        <div className="flex items-center gap-2 text-green-700 bg-green-50 p-3 rounded-lg border border-green-200">
-                          <CheckCircle className="h-4 w-4" />
-                          <span className="text-sm font-medium">Tüm gerekli alanlar tamamlandı! Form gönderilebilir.</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                {/* Compact Error Summary */}
+                <div className="flex items-center gap-4 mt-1 text-xs">
+                  {getMissingFields().length > 0 && (
+                    <span className="text-red-700 flex items-center gap-1">
+                      <X className="h-2.5 w-2.5" />
+                      {getMissingFields().length} eksik alan
+                    </span>
+                  )}
+                  {getValidationErrors().length > 0 && (
+                    <span className="text-red-700 flex items-center gap-1">
+                      <AlertTriangle className="h-2.5 w-2.5" />
+                      {getValidationErrors().length} hata
+                    </span>
+                  )}
+                  {canSubmitForm() && (
+                    <span className="text-green-700 flex items-center gap-1">
+                      <CheckCircle className="h-2.5 w-2.5" />
+                      Form hazır
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
-          <DialogFooter className="mt-4 bg-gradient-to-r from-orange-50 to-yellow-50 p-4 rounded-lg">
+          <DialogFooter className="border-t pt-2 mt-2 bg-gradient-to-r from-orange-50 to-yellow-50 p-4 rounded-lg flex-shrink-0">
             <Button type="button" variant="outline" onClick={handleClose}>
               İptal
             </Button>

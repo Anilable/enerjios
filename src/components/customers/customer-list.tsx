@@ -44,10 +44,18 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
+interface ForceDeleteData {
+  customerId: string
+  details?: Record<string, number>
+  [key: string]: unknown
+}
+
 interface CustomerListProps {
   customers: CustomerData[]
   onViewCustomer: (customer: CustomerData) => void
   onEditCustomer: (customer: CustomerData) => void
+  onRefreshCustomers: () => Promise<void>
+  onCustomerDeleted: (customerId: string) => void
   getStatusColor: (status: CustomerData['status']) => string
   getStatusLabel: (status: CustomerData['status']) => string
   getPriorityColor: (priority: CustomerData['priority']) => string
@@ -57,6 +65,8 @@ export function CustomerList({
   customers,
   onViewCustomer,
   onEditCustomer,
+  onRefreshCustomers,
+  onCustomerDeleted,
   getStatusColor,
   getStatusLabel,
   getPriorityColor
@@ -74,7 +84,7 @@ export function CustomerList({
   const [deleteCustomerId, setDeleteCustomerId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showForceDeleteDialog, setShowForceDeleteDialog] = useState(false)
-  const [forceDeleteData, setForceDeleteData] = useState<any>(null)
+  const [forceDeleteData, setForceDeleteData] = useState<ForceDeleteData | null>(null)
 
   // Check if user is admin - this will be verified on the backend
   const isAdmin = true // For now, show the button to all users, backend will handle authorization
@@ -237,70 +247,95 @@ export function CustomerList({
   const handleRefreshData = async () => {
     setIsRefreshing(true)
     try {
-      // Refresh customer data - you may want to add a refresh callback prop
-      await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
-      window.location.reload() // Simple refresh for now
+      await onRefreshCustomers()
+      toast({
+        title: 'Liste Yenilendi',
+        description: 'Müşteri listesi güncellendi.',
+      })
     } catch (error) {
       console.error('Refresh failed:', error)
+      toast({
+        title: 'Yenileme Başarısız',
+        description: 'Veriler yenilenirken bir hata oluştu.',
+        variant: 'destructive',
+      })
     } finally {
       setIsRefreshing(false)
     }
   }
 
-  const handleDeleteCustomer = async (forceDelete = false) => {
-    if (!deleteCustomerId) return
+  const handleDeleteCustomer = async (forceDelete = false, customerIdOverride?: string) => {
+    const targetCustomerId = customerIdOverride ?? deleteCustomerId
+    if (!targetCustomerId) return
 
-    console.log('🔥 Frontend: Starting delete for customer:', deleteCustomerId, 'Force:', forceDelete)
+    console.log('🔥 Frontend: Starting delete for customer:', targetCustomerId, 'Force:', forceDelete)
     setIsDeleting(true)
     try {
       const url = forceDelete
-        ? `/api/customers/${deleteCustomerId}?force=true`
-        : `/api/customers/${deleteCustomerId}`
+        ? `/api/customers/${targetCustomerId}?force=true`
+        : `/api/customers/${targetCustomerId}`
 
       const response = await fetch(url, {
         method: 'DELETE',
+        headers: {
+          'Cache-Control': 'no-store',
+        },
       })
 
       console.log('🔥 Frontend: API response status:', response.status)
-      const data = await response.json()
-      console.log('🔥 Frontend: API response data:', data)
+
+      let data: any = null
+      try {
+        data = await response.json()
+        console.log('🔥 Frontend: API response data:', data)
+      } catch (error) {
+        console.log('⚠️ Frontend: Delete response has no JSON body')
+      }
 
       if (response.ok) {
+        onCustomerDeleted(targetCustomerId)
+        setShowForceDeleteDialog(false)
+        setForceDeleteData(null)
         toast({
           title: 'Müşteri Silindi',
           description: 'Müşteri başarıyla silindi.',
         })
-        // Refresh the page to update the list
-        window.location.reload()
-      } else if (response.status === 400 && data.canForceDelete && !forceDelete) {
+      } else if (response.status === 400 && data?.canForceDelete && !forceDelete) {
         // Show force delete confirmation
         setIsDeleting(false)
         setDeleteCustomerId(null)
-        setForceDeleteData(data)
+        setForceDeleteData({ ...data, customerId: targetCustomerId })
         setShowForceDeleteDialog(true)
         return
       } else {
-        // Check if there's associated data
-        if (data.details) {
-          let errorMessage = 'Bu müşteri silinemez çünkü ilişkili veriler var:\n'
-          if (data.details.quotes > 0) {
-            errorMessage += `\n• ${data.details.quotes} teklif`
+        if (data?.details) {
+          const associationLabels: Record<string, string> = {
+            quotes: 'teklif',
+            projectRequests: 'proje talebi',
+            photoRequests: 'fotoğraf talebi',
+            leads: 'lead',
+            quoteRequests: 'teklif isteği',
+            partnerReviews: 'iş ortağı değerlendirmesi',
+            projects: 'proje',
           }
-          if (data.details.projectRequests > 0) {
-            errorMessage += `\n• ${data.details.projectRequests} proje talebi`
-          }
-          if (data.details.photoRequests > 0) {
-            errorMessage += `\n• ${data.details.photoRequests} fotoğraf talebi`
-          }
+
+          const relatedItems = Object.entries(data.details)
+            .filter(([, count]) => typeof count === 'number' && count > 0)
+            .map(([key, count]) => `• ${count} ${associationLabels[key] ?? key}`)
+
+          const description = relatedItems.length > 0
+            ? ['Bu müşteri silinemez çünkü ilişkili veriler var:', ...relatedItems].join('\n')
+            : data.error || 'Müşteri silinirken bir hata oluştu.'
+
           toast({
             title: 'Silme Başarısız',
-            description: errorMessage,
+            description,
             variant: 'destructive',
           })
         } else {
           toast({
             title: 'Silme Başarısız',
-            description: data.error || 'Müşteri silinirken bir hata oluştu.',
+            description: data?.error || 'Müşteri silinirken bir hata oluştu.',
             variant: 'destructive',
           })
         }
@@ -319,15 +354,14 @@ export function CustomerList({
   }
 
   const handleForceDeleteCustomer = async () => {
-    if (!forceDeleteData) return
+    if (!forceDeleteData && !deleteCustomerId) return
 
-    console.log('🔥 Frontend: Starting FORCE delete for customer:', deleteCustomerId)
+    const customerIdToDelete = forceDeleteData?.customerId || deleteCustomerId
+    if (!customerIdToDelete) return
 
-    // Set the delete customer ID for the force delete
-    const customerIdToDelete = deleteCustomerId || forceDeleteData.customerId
-    setDeleteCustomerId(customerIdToDelete)
+    console.log('🔥 Frontend: Starting FORCE delete for customer:', customerIdToDelete)
 
-    await handleDeleteCustomer(true)
+    await handleDeleteCustomer(true, customerIdToDelete)
     setShowForceDeleteDialog(false)
     setForceDeleteData(null)
   }
@@ -704,7 +738,7 @@ export function CustomerList({
       )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteCustomerId} onOpenChange={() => setDeleteCustomerId(null)}>
+      <AlertDialog open={!!deleteCustomerId} onOpenChange={(open) => { if (!open) setDeleteCustomerId(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
@@ -738,7 +772,15 @@ export function CustomerList({
       </AlertDialog>
 
       {/* Force Delete Confirmation Dialog */}
-      <AlertDialog open={showForceDeleteDialog} onOpenChange={setShowForceDeleteDialog}>
+      <AlertDialog
+        open={showForceDeleteDialog}
+        onOpenChange={(open) => {
+          setShowForceDeleteDialog(open)
+          if (!open && !isDeleting) {
+            setForceDeleteData(null)
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
@@ -751,7 +793,7 @@ export function CustomerList({
                   ⚠️ Bu müşterinin aşağıdaki bağlı verileri bulunmaktadır:
                 </p>
 
-                {forceDeleteData && (
+                {forceDeleteData?.details && (
                   <div className="bg-red-50 border border-red-200 rounded-md p-3 space-y-2">
                     {forceDeleteData.details.quotes > 0 && (
                       <div className="flex items-center gap-2">

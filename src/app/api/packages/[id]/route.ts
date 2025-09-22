@@ -73,7 +73,7 @@ export async function PUT(
     }
 
     const data = await request.json()
-    const { name, type, description, images, isActive, isFeatured, items } = data
+    const { parentId, name, type, description, images, isActive, isFeatured, items } = data
 
     // Check if package exists and user has permission
     const existingPackage = await (prisma as any).package.findUnique({
@@ -127,6 +127,7 @@ export async function PUT(
     const updatedPackage = await (prisma as any).package.update({
       where: { id: params.id },
       data: {
+        ...(parentId !== undefined && { parentId }),
         ...(name && { name }),
         ...(type && { type }),
         ...(description !== undefined && { description }),

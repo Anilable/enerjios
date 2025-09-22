@@ -69,9 +69,9 @@ export function SignUpForm() {
     }
 
     // User type specific validation
-    if (formData.userType === 'kurumsal') {
+    if (formData.userType === 'epc') {
       if (!formData.companyName || !formData.taxNumber) {
-        setError('Kurumsal hesap için firma adı ve vergi numarası gereklidir')
+        setError('EPC hesap için firma adı ve vergi numarası gereklidir')
         setIsLoading(false)
         return
       }
@@ -100,7 +100,7 @@ export function SignUpForm() {
     }
 
     // Validate tax number format for companies
-    if ((formData.userType === 'kurumsal' || formData.userType === 'ges-firmasi') && formData.taxNumber) {
+    if ((formData.userType === 'epc' || formData.userType === 'ges-firmasi') && formData.taxNumber) {
       if (!/^\d{10}$/.test(formData.taxNumber)) {
         setError('Vergi numarası 10 haneli olmalıdır')
         setIsLoading(false)
@@ -156,7 +156,7 @@ export function SignUpForm() {
     switch (userType) {
       case 'bireysel':
         return <User className="h-4 w-4" />
-      case 'kurumsal':
+      case 'epc':
         return <Building className="h-4 w-4" />
       case 'ges-firmasi':
         return <Factory className="h-4 w-4" />
@@ -171,8 +171,8 @@ export function SignUpForm() {
     switch (userType) {
       case 'bireysel':
         return 'Ev güneş enerjisi sistemi için bireysel başvuru'
-      case 'kurumsal':
-        return 'İşletme güneş enerjisi sistemi için kurumsal başvuru'
+      case 'epc':
+        return 'İşletme güneş enerjisi sistemi için EPC başvuru'
       case 'ges-firmasi':
         return 'GES kurulum ve danışmanlık hizmeti veren firma'
       case 'ciftci':
@@ -231,7 +231,7 @@ export function SignUpForm() {
             <div className="grid grid-cols-1 gap-3">
               {[
                 { value: 'bireysel', label: 'Bireysel', icon: <User className="h-5 w-5" /> },
-                { value: 'kurumsal', label: 'Kurumsal', icon: <Building className="h-5 w-5" /> },
+                { value: 'epc', label: 'EPC', icon: <Building className="h-5 w-5" /> },
                 { value: 'ges-firmasi', label: 'GES Firması', icon: <Factory className="h-5 w-5" /> },
                 { value: 'ciftci', label: 'Çiftçi', icon: <Tractor className="h-5 w-5" /> }
               ].map((option) => (
@@ -307,8 +307,8 @@ export function SignUpForm() {
             </>
           )}
 
-          {/* Kurumsal Fields */}
-          {formData.userType === 'kurumsal' && (
+          {/* EPC Fields */}
+          {formData.userType === 'epc' && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="companyName">Firma Adı</Label>

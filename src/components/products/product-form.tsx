@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Checkbox } from '@/components/ui/checkbox'
-import { PricingGuard } from '@/components/ui/permission-guard'
+import { PricingGuard, RoleGuard } from '@/components/ui/permission-guard'
 import {
   Dialog,
   DialogContent,
@@ -55,6 +55,7 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
     specifications: {},
     pricing: {
       basePrice: 0,
+      costPrice: 0,
       currency: 'TRY',
       discountTiers: [],
       priceHistory: [],
@@ -95,6 +96,26 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
   const [activeTab, setActiveTab] = useState('general')
 
   const categories = ProductCategoryManager.getCategories()
+
+  // Initialize form data from existing product
+  useEffect(() => {
+    if (product) {
+      setFormData(prev => ({
+        ...prev,
+        ...product,
+        pricing: {
+          ...prev.pricing,
+          basePrice: (product as any).price || 0,
+          costPrice: (product as any).purchasePrice || 0,
+          currency: 'TRY',
+          discountTiers: prev.pricing?.discountTiers || [],
+          priceHistory: prev.pricing?.priceHistory || [],
+          vatRate: prev.pricing?.vatRate || 20,
+          isVatIncluded: prev.pricing?.isVatIncluded ?? true
+        }
+      }))
+    }
+  }, [product])
 
   useEffect(() => {
     if (formData.categoryId) {
@@ -471,12 +492,9 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
 
       {/* Main Form */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="general">Genel</TabsTrigger>
           <TabsTrigger value="specifications">Özellikler</TabsTrigger>
-          <PricingGuard fallback={null}>
-            <TabsTrigger value="pricing">Fiyatlandırma</TabsTrigger>
-          </PricingGuard>
           <TabsTrigger value="inventory">Stok</TabsTrigger>
           <TabsTrigger value="documents">Belgeler</TabsTrigger>
           <TabsTrigger value="warranty">Garanti</TabsTrigger>
@@ -570,6 +588,72 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
                   </Select>
                 </div>
               </div>
+
+              {/* Admin-only Pricing Section */}
+              <RoleGuard allowedRoles={['ADMIN']}>
+                <Separator />
+                <div className="space-y-4 border-2 border-red-500 p-4 bg-red-50">
+                  <h4 className="text-lg font-bold text-red-900">🔒 ADMİN FİYATLANDIRMA BÖLÜMÜ</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="costPriceGeneral">Alış Fiyatı</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="costPriceGeneral"
+                          type="number"
+                          step="0.01"
+                          value={formData.pricing?.costPrice || 0}
+                          onChange={(e) => handleNestedInputChange('pricing', 'costPrice', parseFloat(e.target.value) || 0)}
+                          placeholder="0.00"
+                        />
+                        <Select
+                          value={formData.pricing?.currency || 'TRY'}
+                          onValueChange={(value) => handleNestedInputChange('pricing', 'currency', value)}
+                        >
+                          <SelectTrigger className="w-[70px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="TRY">₺</SelectItem>
+                            <SelectItem value="USD">$</SelectItem>
+                            <SelectItem value="EUR">€</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="basePriceGeneral">Satış Fiyatı *</Label>
+                      <Input
+                        id="basePriceGeneral"
+                        type="number"
+                        step="0.01"
+                        value={formData.pricing?.basePrice || 0}
+                        onChange={(e) => handleNestedInputChange('pricing', 'basePrice', parseFloat(e.target.value) || 0)}
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Profit Margin Display */}
+                  {formData.pricing?.costPrice && formData.pricing?.basePrice && formData.pricing.costPrice > 0 && (
+                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-blue-800 font-medium">Kar Marjı:</span>
+                        <div className="flex items-center gap-4">
+                          <span className="font-bold text-blue-900">
+                            {((formData.pricing.basePrice - formData.pricing.costPrice) / formData.pricing.costPrice * 100).toFixed(1)}%
+                          </span>
+                          <span className="text-blue-700">
+                            Kar: {(formData.pricing.basePrice - formData.pricing.costPrice).toFixed(2)} {formData.pricing.currency || 'TRY'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </RoleGuard>
             </CardContent>
           </Card>
 
@@ -707,164 +791,6 @@ export function ProductForm({ product, onSave, onCancel, isLoading = false }: Pr
           )}
         </TabsContent>
 
-        {/* Pricing Tab */}
-        <PricingGuard>
-          <TabsContent value="pricing" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Temel Fiyatlandırma</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="costPrice">Alış Fiyatı</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="costPrice"
-                      type="number"
-                      step="0.01"
-                      value={formData.pricing?.costPrice || 0}
-                      onChange={(e) => handleNestedInputChange('pricing', 'costPrice', parseFloat(e.target.value) || 0)}
-                    />
-                    <Select
-                      value={formData.pricing?.currency}
-                      onValueChange={(value) => handleNestedInputChange('pricing', 'currency', value)}
-                    >
-                      <SelectTrigger className="w-[100px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="TRY">₺</SelectItem>
-                        <SelectItem value="USD">$</SelectItem>
-                        <SelectItem value="EUR">€</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="basePrice">Satış Fiyatı *</Label>
-                  <Input
-                    id="basePrice"
-                    type="number"
-                    step="0.01"
-                    value={formData.pricing?.basePrice || 0}
-                    onChange={(e) => handleNestedInputChange('pricing', 'basePrice', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="purchaseDate">Alış Tarihi</Label>
-                  <Input
-                    id="purchaseDate"
-                    type="date"
-                    value={formData.pricing?.purchaseDate ? new Date(formData.pricing.purchaseDate).toISOString().split('T')[0] : ''}
-                    onChange={(e) => handleNestedInputChange('pricing', 'purchaseDate', e.target.value ? new Date(e.target.value).toISOString() : null)}
-                  />
-                </div>
-              </div>
-
-              {/* Margin calculation display */}
-              {formData.pricing?.basePrice && formData.pricing?.costPrice && formData.pricing.basePrice > 0 && formData.pricing.costPrice > 0 && (
-                <div className="p-3 bg-muted rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Kar Marjı:</span>
-                    <span className="font-medium">
-                      {(((formData.pricing.basePrice - formData.pricing.costPrice) / formData.pricing.basePrice) * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Kar Miktarı:</span>
-                    <span className="font-medium">
-                      {(formData.pricing.basePrice - formData.pricing.costPrice).toFixed(2)} {formData.pricing?.currency || 'TRY'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="vatRate">KDV Oranı (%)</Label>
-                  <Input
-                    id="vatRate"
-                    type="number"
-                    value={formData.pricing?.vatRate || 20}
-                    onChange={(e) => handleNestedInputChange('pricing', 'vatRate', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                <div className="flex items-center space-x-2 pt-8">
-                  <Switch
-                    checked={formData.pricing?.isVatIncluded || false}
-                    onCheckedChange={(checked) => handleNestedInputChange('pricing', 'isVatIncluded', checked)}
-                  />
-                  <Label>KDV Dahil</Label>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Discount Tiers */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>İndirim Kademeleri</CardTitle>
-                <Button onClick={addDiscountTier} size="sm">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Kademe Ekle
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {formData.pricing?.discountTiers?.map((tier, index) => (
-                <div key={index} className="flex gap-4 items-end mb-4 p-4 border rounded">
-                  <div className="flex-1">
-                    <Label>Min. Miktar</Label>
-                    <Input
-                      type="number"
-                      value={tier.minQuantity}
-                      onChange={(e) => updateDiscountTier(index, 'minQuantity', parseInt(e.target.value) || 1)}
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <Label>İndirim</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={tier.discount}
-                      onChange={(e) => updateDiscountTier(index, 'discount', parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="w-32">
-                    <Label>Tip</Label>
-                    <Select
-                      value={tier.discountType}
-                      onValueChange={(value) => updateDiscountTier(index, 'discountType', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="PERCENTAGE">%</SelectItem>
-                        <SelectItem value="FIXED">Sabit</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => removeDiscountTier(index)}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
-              {(!formData.pricing?.discountTiers || formData.pricing.discountTiers.length === 0) && (
-                <div className="text-center py-8 text-muted-foreground">
-                  Henüz indirim kademesi eklenmemiş
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          </TabsContent>
-        </PricingGuard>
 
         {/* Inventory Tab */}
         <TabsContent value="inventory" className="space-y-6">

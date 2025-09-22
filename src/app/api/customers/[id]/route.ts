@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/get-session'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 /**
  * Delete a customer (Admin only)
  */
@@ -48,10 +51,34 @@ export async function DELETE(
     const customer = await prisma.customer.findUnique({
       where: { id },
       include: {
-        quotes: true,
-        projectRequests: true,
-        photoRequests: true
-      }
+        user: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+        quotes: {
+          select: { id: true },
+        },
+        projectRequests: {
+          select: { id: true },
+        },
+        photoRequests: {
+          select: { id: true },
+        },
+        leads: {
+          select: { id: true },
+        },
+        quoteRequests: {
+          select: { id: true },
+        },
+        partnerReviews: {
+          select: { id: true },
+        },
+        projects: {
+          select: { id: true },
+        },
+      },
     })
     console.log('🔥 Customer found:', customer ? 'Yes' : 'No')
 
@@ -69,53 +96,73 @@ export async function DELETE(
       photoRequests: customer.photoRequests?.length || 0
     })
 
-    const hasAssociatedData =
-      (customer.quotes?.length || 0) > 0 ||
-      (customer.projectRequests?.length || 0) > 0 ||
-      (customer.photoRequests?.length || 0) > 0
+    const associatedCounts = {
+      quotes: customer.quotes?.length || 0,
+      projectRequests: customer.projectRequests?.length || 0,
+      photoRequests: customer.photoRequests?.length || 0,
+      leads: customer.leads?.length || 0,
+      quoteRequests: customer.quoteRequests?.length || 0,
+      partnerReviews: customer.partnerReviews?.length || 0,
+      projects: customer.projects?.length || 0,
+    }
+
+    const hasAssociatedData = Object.values(associatedCounts).some((count) => count > 0)
 
     if (hasAssociatedData && !forceDelete) {
       console.log('❌ Cannot delete customer - has associated data, but no force flag')
       return NextResponse.json(
         {
-          error: 'Bu müşteri silinemez çünkü teklif, proje talebi veya fotoğraf talebi bulunmaktadır',
+          error: 'Bu müşteri silinemez çünkü ilişkili kayıtlar bulunmaktadır',
           canForceDelete: true,
-          details: {
-            quotes: customer.quotes?.length || 0,
-            projectRequests: customer.projectRequests?.length || 0,
-            photoRequests: customer.photoRequests?.length || 0
-          }
+          details: associatedCounts,
         },
-        { status: 400 }
+        {
+          status: 400,
+          headers: {
+            'Cache-Control': 'no-store',
+          },
+        }
       )
-    }
-
-    if (hasAssociatedData && forceDelete) {
-      console.log('⚠️ Force deleting customer with associated data')
-      // Delete associated data first
-      await prisma.quote.deleteMany({
-        where: { customerId: id }
-      })
-      await prisma.projectRequest.deleteMany({
-        where: { customerId: id }
-      })
-      await prisma.photoRequest.deleteMany({
-        where: { customerId: id }
-      })
-      console.log('✅ Associated data deleted')
     }
 
     console.log('✅ Customer can be deleted')
 
-    // Delete the customer
-    await prisma.customer.delete({
-      where: { id }
+    await prisma.$transaction(async (tx) => {
+      if (forceDelete) {
+        console.log('⚠️ Force deleting customer with associated data')
+        await tx.quote.deleteMany({ where: { customerId: id } })
+        await tx.projectRequest.deleteMany({ where: { customerId: id } })
+        await tx.photoRequest.deleteMany({ where: { customerId: id } })
+        await tx.lead.deleteMany({ where: { customerId: id } })
+        await tx.quoteRequest.deleteMany({ where: { customerId: id } })
+        await tx.partnerReview.deleteMany({ where: { customerId: id } })
+        await tx.project.updateMany({ where: { customerId: id }, data: { customerId: null } })
+      } else if (associatedCounts.projects > 0) {
+        // Ensure we detach any remaining projects to avoid foreign key issues
+        await tx.project.updateMany({ where: { customerId: id }, data: { customerId: null } })
+      }
+
+      await tx.customer.delete({ where: { id } })
+
+      if (customer.user?.id) {
+        await tx.user.delete({ where: { id: customer.user.id } })
+      }
     })
 
-    return NextResponse.json({
-      message: 'Customer deleted successfully',
-      success: true
-    })
+    return NextResponse.json(
+      {
+        message: 'Customer deleted successfully',
+        success: true,
+        customerId: id,
+        removedUserId: customer.user?.id ?? null,
+        removedAssociations: associatedCounts,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error deleting customer:', error)
     return NextResponse.json(

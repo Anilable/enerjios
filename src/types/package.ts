@@ -26,6 +26,7 @@ export interface PackageItem {
 export interface Package {
   id: string
   companyId?: string
+  parentId?: string
   name: string
   type: PackageType
   description?: string
@@ -40,6 +41,8 @@ export interface Package {
   createdAt: string
   updatedAt: string
   items: PackageItem[]
+  parent?: Package
+  children?: Package[]
   company?: {
     id: string
     name: string
@@ -51,6 +54,7 @@ export interface Package {
 }
 
 export interface CreatePackageData {
+  parentId?: string
   name: string
   type: PackageType
   description?: string

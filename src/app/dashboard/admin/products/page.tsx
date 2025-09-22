@@ -511,7 +511,11 @@ export default function ProductManagementPage() {
       }
 
       setIsCreateModalOpen(false)
-      await fetchProducts() // Refresh list
+      // Refresh both products and categories to update counts
+      await Promise.all([
+        fetchProducts(),
+        fetchCategories()
+      ])
 
       // Optional: Show success message
       console.log('Product created successfully')
@@ -542,7 +546,11 @@ export default function ProductManagementPage() {
 
       setIsEditModalOpen(false)
       setSelectedProduct(null)
-      await fetchProducts() // Refresh list
+      // Refresh both products and categories to update counts
+      await Promise.all([
+        fetchProducts(),
+        fetchCategories()
+      ])
 
       // Optional: Show success message
       console.log('Product updated successfully')
@@ -655,7 +663,11 @@ export default function ProductManagementPage() {
       })
 
       if (response.ok) {
-        await fetchCategories()
+        // Refresh both categories and products to update counts
+        await Promise.all([
+          fetchCategories(),
+          fetchProducts()
+        ])
         setIsCategoryModalOpen(false)
         setSelectedCategory(null)
         setCategoryFormData({
@@ -684,7 +696,11 @@ export default function ProductManagementPage() {
       })
 
       if (response.ok) {
-        await fetchCategories()
+        // Refresh both categories and products to update counts
+        await Promise.all([
+          fetchCategories(),
+          fetchProducts()
+        ])
       } else {
         const error = await response.json()
         alert(error.error || 'Kategori silinemedi')
@@ -1113,7 +1129,7 @@ export default function ProductManagementPage() {
 
         {/* Create Product Modal */}
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-          <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
             <ProductForm
               onSave={handleCreateProduct}
               onCancel={() => setIsCreateModalOpen(false)}
@@ -1129,7 +1145,7 @@ export default function ProductManagementPage() {
             setSelectedProduct(null)
           }
         }}>
-          <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
             <ProductForm
               product={selectedProduct || undefined}
               onSave={handleEditProduct}

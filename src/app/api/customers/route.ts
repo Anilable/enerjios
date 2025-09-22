@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/get-session'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
+
 export async function POST(req: NextRequest) {
   try {
     console.log('🎯 CUSTOMER CREATE: Starting customer creation')
@@ -174,7 +178,12 @@ export async function POST(req: NextRequest) {
       }))
     }
 
-    return NextResponse.json(transformedCustomer, { status: 201 })
+    return NextResponse.json(transformedCustomer, {
+      status: 201,
+      headers: {
+        'Cache-Control': 'no-store',
+      },
+    })
 
   } catch (error) {
     console.error('Failed to create customer:', error)
@@ -283,7 +292,11 @@ export async function GET(req: NextRequest) {
       }))
     }))
 
-    return NextResponse.json(transformedCustomers)
+    return NextResponse.json(transformedCustomers, {
+      headers: {
+        'Cache-Control': 'no-store',
+      },
+    })
 
   } catch (error) {
     console.error('Failed to fetch customers:', error)

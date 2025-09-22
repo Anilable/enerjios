@@ -1341,15 +1341,7 @@ export default function ProductsPage() {
 
   // Package Management Functions
   const handleAddPackage = async () => {
-    console.log('🚀 handleAddPackage called with data:', packageFormData)
-    console.log('📝 Validation check:', {
-      name: !!packageFormData.name,
-      type: !!packageFormData.type,
-      itemsCount: packageFormData.items.length
-    })
-
     if (!packageFormData.name || !packageFormData.type || packageFormData.items.length === 0) {
-      console.log('❌ Validation failed')
       toast({
         title: "Hata",
         description: "Paket adı, tipi ve en az bir ürün gereklidir.",
@@ -1357,8 +1349,6 @@ export default function ProductsPage() {
       })
       return
     }
-
-    console.log('✅ Validation passed, creating package...')
 
     try {
       setSaving(true)
@@ -3439,17 +3429,7 @@ export default function ProductsPage() {
                     <Button variant="outline" onClick={() => setShowAddPackageDialog(false)} disabled={saving}>
                       İptal
                     </Button>
-                    <Button
-                      onClick={() => {
-                        console.log('🔘 Button clicked!', {
-                          saving,
-                          selectedProductsLength: selectedProducts.length,
-                          disabled: saving || selectedProducts.length === 0
-                        })
-                        handleAddPackage()
-                      }}
-                      disabled={saving || selectedProducts.length === 0}
-                    >
+                    <Button onClick={handleAddPackage} disabled={saving || selectedProducts.length === 0}>
                       {saving ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />

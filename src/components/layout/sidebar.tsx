@@ -7,7 +7,7 @@ import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { 
+import {
   LayoutDashboard,
   Building,
   Users,
@@ -37,7 +37,8 @@ import {
   Send,
   Compass,
   Camera,
-  FolderKanban
+  FolderKanban,
+  Package
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getRoleName } from '@/lib/role-utils'

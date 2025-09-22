@@ -8,9 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { 
+import {
   ArrowLeft,
   Plus,
   Trash2,
@@ -25,11 +24,8 @@ import {
   Send,
   Eye,
   Download,
-  Check,
-  X,
   Loader2,
-  ChevronLeft,
-  ChevronRight
+  Search
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { ProjectRequestAPI } from '@/lib/api/project-requests'
@@ -37,7 +33,6 @@ import { ProjectRequest } from '@/types/project-request'
 import { formatCurrency } from '@/lib/utils'
 import { QuotePreview } from '@/components/quotes/quote-preview'
 import { QuoteDeliveryModal } from '@/components/quotes/quote-delivery-modal'
-import html2canvas from 'html2canvas'
 import { ProductType } from '@prisma/client'
 
 // Quote item categories
@@ -86,12 +81,15 @@ const PACKAGE_TYPE_ICONS: Record<string, string> = {
 // Package type interface
 interface Package {
   id: string
+  parentId?: string
   name: string
   description?: string
   type: 'ON_GRID' | 'OFF_GRID' | 'HYBRID' | 'TARIMSAL_SULAMA' | 'AKILLI_SISTEM'
   totalPrice: number
   totalPower?: number
   isActive: boolean
+  parent?: Package
+  children?: Package[]
   items: Array<{
     productId?: string
     productName: string
@@ -153,7 +151,6 @@ interface QuoteData {
   createdAt?: Date
   validUntil?: Date
   version?: number
-  projectTitle?: string
   designData?: {
     location: string
     roofArea: number
@@ -194,6 +191,39 @@ export default function CreateQuotePage() {
   const { toast } = useToast()
   const projectId = params.projectId as string
 
+  // Filter packages based on search and type
+  const filterPackages = () => {
+    let filtered = allPackages
+
+    // Search filter
+    if (packageSearchTerm) {
+      filtered = filtered.filter(pkg => {
+        const searchInPackage = (p: Package): boolean => {
+          const nameMatch = p.name.toLowerCase().includes(packageSearchTerm.toLowerCase())
+          const descMatch = p.description?.toLowerCase().includes(packageSearchTerm.toLowerCase()) || false
+          const typeMatch = PACKAGE_TYPE_LABELS[p.type].toLowerCase().includes(packageSearchTerm.toLowerCase())
+
+          // Also search in children
+          const childMatch = p.children?.some(child => searchInPackage(child)) || false
+
+          return nameMatch || descMatch || typeMatch || childMatch
+        }
+        return searchInPackage(pkg)
+      })
+    }
+
+    // Type filter
+    if (packageTypeFilter !== 'all') {
+      filtered = filtered.filter(pkg => {
+        const typeMatch = pkg.type === packageTypeFilter
+        const childTypeMatch = pkg.children?.some(child => child.type === packageTypeFilter) || false
+        return typeMatch || childTypeMatch
+      })
+    }
+
+    setPackages(filtered)
+  }
+
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
@@ -202,7 +232,15 @@ export default function CreateQuotePage() {
   // Removed activeStep for single page layout
   const [products, setProducts] = useState<any[]>([])
   const [packages, setPackages] = useState<Package[]>([])
+  const [allPackages, setAllPackages] = useState<Package[]>([]) // Keep original list for filtering
   const [loadingPackages, setLoadingPackages] = useState(true)
+  const [packageSearchTerm, setPackageSearchTerm] = useState('')
+  const [packageTypeFilter, setPackageTypeFilter] = useState<string>('all')
+
+  // Apply filters when search term or type filter changes
+  useEffect(() => {
+    filterPackages()
+  }, [packageSearchTerm, packageTypeFilter, allPackages])
   
   const [quoteData, setQuoteData] = useState<QuoteData>({
     projectRequestId: projectId,
@@ -327,18 +365,21 @@ export default function CreateQuotePage() {
     loadProjectData()
   }, [projectId, toast])
 
-  // Load packages from database
+  // Load packages from database with hierarchy
   useEffect(() => {
     const loadPackages = async () => {
       try {
         setLoadingPackages(true)
         console.log('🔍 Fetching packages from API...')
-        const response = await fetch('/api/packages?isActive=true')
+        const response = await fetch('/api/packages?isActive=true&includeChildren=true')
         console.log('📡 Package API Response status:', response.status)
         if (response.ok) {
           const data = await response.json()
           console.log('📦 Packages from API:', data.packages)
-          setPackages(data.packages || [])
+          // Filter only root packages (no parentId) - children will be shown as nested
+          const rootPackages = data.packages?.filter((pkg: Package) => !pkg.parentId) || []
+          setAllPackages(rootPackages) // Store original for filtering
+          setPackages(rootPackages)
         } else {
           console.warn('Failed to fetch packages')
         }
@@ -479,9 +520,12 @@ export default function CreateQuotePage() {
       capacity: packageData.totalPower ? packageData.totalPower / 1000 : 0 // Convert W to kW
     }))
 
+    // Paket toplam fiyatını hesapla
+    calculateTotals(packageItems)
+
     toast({
       title: 'Paket Uygulandı',
-      description: `${packageData.name} başarıyla eklendi`
+      description: `${packageData.name} başarıyla eklendi - Toplam: ₺${packageData.totalPrice.toLocaleString()}`
     })
   }
 
@@ -775,7 +819,6 @@ export default function CreateQuotePage() {
       createdAt: new Date(),
       validUntil: new Date(Date.now() + quoteData.validity * 24 * 60 * 60 * 1000),
       version: 1,
-      projectTitle: `${systemPowerKw.toFixed(1)} kW Güneş Enerji Sistemi`,
       designData: {
         location: projectRequest?.location || 'Belirtilmemiş',
         roofArea: systemPowerKw * 8, // rough estimate (8 m² per kW)
@@ -977,145 +1020,221 @@ export default function CreateQuotePage() {
           </div>
         ) : (
           <>
-            {/* Project Information */}
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>Proje Bilgileri</CardTitle>
-                <CardDescription>
-                  Teklif için proje detaylarını girin
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="customerName">Müşteri Adı</Label>
-                    <Input
-                      id="customerName"
-                      value={quoteData.customerName}
-                      onChange={(e) => setQuoteData(prev => ({ ...prev, customerName: e.target.value }))}
-                      placeholder="Müşteri adını girin"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="customerEmail">E-posta</Label>
-                    <Input
-                      id="customerEmail"
-                      type="email"
-                      value={quoteData.customerEmail}
-                      onChange={(e) => setQuoteData(prev => ({ ...prev, customerEmail: e.target.value }))}
-                      placeholder="E-posta adresini girin"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="customerPhone">Telefon</Label>
-                    <Input
-                      id="customerPhone"
-                      value={quoteData.customerPhone || ''}
-                      onChange={(e) => setQuoteData(prev => ({ ...prev, customerPhone: e.target.value }))}
-                      placeholder="Telefon numarasını girin"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="projectType">Proje Türü</Label>
-                    <Select
-                      value={quoteData.projectType || ''}
-                      onValueChange={(value) => setQuoteData(prev => ({ ...prev, projectType: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Proje türü seçin" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="RESIDENTIAL">Konut</SelectItem>
-                        <SelectItem value="COMMERCIAL">Ticari</SelectItem>
-                        <SelectItem value="INDUSTRIAL">Endüstriyel</SelectItem>
-                        <SelectItem value="AGRICULTURAL">Tarımsal</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="capacity">Sistem Kapasitesi (kW)</Label>
-                    <Input
-                      id="capacity"
-                      type="number"
-                      value={quoteData.capacity || ''}
-                      onChange={(e) => setQuoteData(prev => ({ ...prev, capacity: parseFloat(e.target.value) || 0 }))}
-                      placeholder="Kapasite girin"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="quoteNumber">Teklif Numarası</Label>
-                    <Input
-                      id="quoteNumber"
-                      value={quoteData.quoteNumber || ''}
-                      onChange={(e) => setQuoteData(prev => ({ ...prev, quoteNumber: e.target.value }))}
-                      placeholder="Otomatik oluşturulacak"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Ready-made Packages from Database */}
-            {!loadingPackages && packages.length > 0 && (
+            {!loadingPackages && allPackages.length > 0 && (
               <Card className="mb-6">
                 <CardHeader>
                   <CardTitle>Hazır Paketler</CardTitle>
                   <CardDescription>
                     Hızlı teklif için hazır paketlerden birini seçin
                   </CardDescription>
+
+                  {/* Package Search and Filters */}
+                  <div className="flex gap-3 mt-4">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        placeholder="Paket ara (ad, açıklama, tür)..."
+                        value={packageSearchTerm}
+                        onChange={(e) => setPackageSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <Select
+                      value={packageTypeFilter}
+                      onValueChange={setPackageTypeFilter}
+                    >
+                      <SelectTrigger className="w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tüm Türler</SelectItem>
+                        {Object.entries(PACKAGE_TYPE_LABELS).map(([key, label]) => (
+                          <SelectItem key={key} value={key}>
+                            <span className="flex items-center gap-2">
+                              {PACKAGE_TYPE_ICONS[key as keyof typeof PACKAGE_TYPE_ICONS]}
+                              {label}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Search Results Info */}
+                  {(packageSearchTerm || packageTypeFilter !== 'all') && (
+                    <div className="mt-2 text-sm text-gray-600">
+                      {packages.length === 0 ? (
+                        <span className="text-orange-600">Arama kriterlerinize uygun paket bulunamadı</span>
+                      ) : (
+                        <span>
+                          {packages.length} paket bulundu
+                          {packageSearchTerm && ` "${packageSearchTerm}" için`}
+                          {packageTypeFilter !== 'all' && ` (${PACKAGE_TYPE_LABELS[packageTypeFilter as keyof typeof PACKAGE_TYPE_LABELS]})`}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-4">
                     {packages.map((pkg) => (
-                      <Card
-                        key={pkg.id}
-                        className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50"
-                        onClick={() => applyPackage(pkg)}
-                      >
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-lg flex items-center gap-2">
-                            <span className="text-lg">{PACKAGE_TYPE_ICONS[pkg.type]}</span>
-                            {pkg.name}
-                          </CardTitle>
-                          <Badge variant="outline" className="mt-1">
-                            {PACKAGE_TYPE_LABELS[pkg.type]}
-                          </Badge>
-                        </CardHeader>
-                        <CardContent>
-                          {pkg.description && (
-                            <p className="text-sm text-gray-600 mb-3">{pkg.description}</p>
-                          )}
-                          <div className="space-y-1">
-                            {pkg.totalPower && (
-                              <div className="flex justify-between text-sm">
-                                <span>Kapasite:</span>
-                                <span className="font-medium">{(pkg.totalPower / 1000).toFixed(1)} kW</span>
-                              </div>
+                      <div key={pkg.id} className="space-y-2">
+                        {/* Main Package */}
+                        <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50"
+                              onClick={() => applyPackage(pkg)}>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <span className="text-lg">{PACKAGE_TYPE_ICONS[pkg.type]}</span>
+                              {pkg.name}
+                              {pkg.children && pkg.children.length > 0 && (
+                                <Badge variant="secondary" className="ml-auto">
+                                  {pkg.children.length} alt paket
+                                </Badge>
+                              )}
+                            </CardTitle>
+                            <Badge variant="outline" className="mt-1 w-fit">
+                              {PACKAGE_TYPE_LABELS[pkg.type]}
+                            </Badge>
+                          </CardHeader>
+                          <CardContent>
+                            {pkg.description && (
+                              <p className="text-sm text-gray-600 mb-3">{pkg.description}</p>
                             )}
-                            <div className="flex justify-between text-sm">
-                              <span>Ürün Sayısı:</span>
-                              <span className="font-medium">{pkg.items.length} adet</span>
+                            <div className="space-y-1">
+                              {pkg.totalPower && (
+                                <div className="flex justify-between text-sm">
+                                  <span>Kapasite:</span>
+                                  <span className="font-medium">{(pkg.totalPower / 1000).toFixed(1)} kW</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between text-sm">
+                                <span>Ürün Sayısı:</span>
+                                <span className="font-medium">{pkg.items?.length || 0} adet</span>
+                              </div>
+
+                              {/* Package Items List */}
+                              {pkg.items && pkg.items.length > 0 && (
+                                <div className="mt-3 border rounded-lg p-2 bg-gray-50">
+                                  <p className="text-xs font-medium mb-2 text-gray-700">Paket İçeriği:</p>
+                                  <div className="space-y-1">
+                                    {pkg.items.slice(0, 4).map((item, index) => (
+                                      <div key={index} className="flex justify-between text-xs">
+                                        <span className="text-gray-600">
+                                          {item.quantity}x {item.productName || 'Ürün'}
+                                        </span>
+                                        <span className="font-medium text-gray-800">
+                                          ₺{((item.quantity || 1) * (item.unitPrice || 0)).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    ))}
+                                    {pkg.items.length > 4 && (
+                                      <div className="text-xs text-gray-500 italic">
+                                        +{pkg.items.length - 4} daha fazla ürün
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="flex justify-between items-center text-sm border-t pt-2 mt-2">
+                                <span className="font-medium">Toplam Fiyat:</span>
+                                <span className="text-lg font-bold text-primary bg-primary/10 px-3 py-1 rounded-lg">
+                                  ₺{pkg.totalPrice.toLocaleString()}
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex justify-between text-sm">
-                              <span>Toplam Fiyat:</span>
-                              <span className="font-medium text-primary">
-                                ₺{pkg.totalPrice.toLocaleString()}
-                              </span>
-                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full mt-3"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                applyPackage(pkg)
+                              }}
+                            >
+                              Bu Paketi Seç
+                            </Button>
+                          </CardContent>
+                        </Card>
+
+                        {/* Sub Packages */}
+                        {pkg.children && pkg.children.length > 0 && (
+                          <div className="ml-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {pkg.children.map((subPkg) => (
+                              <Card
+                                key={subPkg.id}
+                                className="cursor-pointer hover:shadow-md transition-shadow border border-gray-200 hover:border-primary/50 bg-gray-50/50"
+                                onClick={() => applyPackage(subPkg)}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-sm">📁</span>
+                                    <h4 className="font-medium text-sm">{subPkg.name}</h4>
+                                  </div>
+                                  {subPkg.description && (
+                                    <p className="text-xs text-gray-600 mb-2">{subPkg.description}</p>
+                                  )}
+                                  <div className="space-y-1 text-xs">
+                                    {subPkg.totalPower && (
+                                      <div className="flex justify-between">
+                                        <span>Kapasite:</span>
+                                        <span className="font-medium">{(subPkg.totalPower / 1000).toFixed(1)} kW</span>
+                                      </div>
+                                    )}
+                                    <div className="flex justify-between">
+                                      <span>Ürünler:</span>
+                                      <span className="font-medium">{subPkg.items?.length || 0} adet</span>
+                                    </div>
+
+                                    {/* Sub Package Items List */}
+                                    {subPkg.items && subPkg.items.length > 0 && (
+                                      <div className="mt-2 p-1 bg-white rounded border">
+                                        <div className="space-y-0.5">
+                                          {subPkg.items.slice(0, 3).map((item, index) => (
+                                            <div key={index} className="flex justify-between text-xs">
+                                              <span className="text-gray-600 truncate">
+                                                {item.quantity}x {(item.productName || 'Ürün').substring(0, 15)}
+                                              </span>
+                                              <span className="font-medium">
+                                                ₺{((item.quantity || 1) * (item.unitPrice || 0)).toLocaleString()}
+                                              </span>
+                                            </div>
+                                          ))}
+                                          {subPkg.items.length > 3 && (
+                                            <div className="text-xs text-gray-500 italic">
+                                              +{subPkg.items.length - 3} daha
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    <div className="flex justify-between items-center border-t pt-1 mt-1">
+                                      <span className="font-medium">Fiyat:</span>
+                                      <span className="font-bold text-primary">
+                                        ₺{subPkg.totalPrice.toLocaleString()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full mt-2 h-7 text-xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      applyPackage(subPkg)
+                                    }}
+                                  >
+                                    Alt Paketi Seç
+                                  </Button>
+                                </CardContent>
+                              </Card>
+                            ))}
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full mt-3"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              applyPackage(pkg)
-                            }}
-                          >
-                            Bu Paketi Seç
-                          </Button>
-                        </CardContent>
-                      </Card>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </CardContent>

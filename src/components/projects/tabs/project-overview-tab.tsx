@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useFinancialRates, useProjectCostCalculator } from '@/hooks/use-exchange-rates'
+import { useExchangeRates, formatCurrency } from '@/hooks/use-exchange-rates'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -60,17 +60,19 @@ const performanceData = [
 
 export function ProjectOverviewTab({ project }: ProjectOverviewTabProps) {
   const [newNote, setNewNote] = useState('')
-  const { formatCurrency, majorRates, loading: ratesLoading } = useFinancialRates()
-  const { calculateProjectCosts, calculateROI } = useProjectCostCalculator()
+  const { rates, loading: ratesLoading } = useExchangeRates()
   
-  // Calculate real-time project costs using exchange rates
-  const projectCosts = calculateProjectCosts(
-    project.technical.systemSize,
-    0.8, // Panel price per watt in USD
-    1200, // Inverter cost per kW in USD
-    500, // Installation cost per kW in TRY
-    5000 // Additional costs in TRY
-  )
+  // Simplified project costs calculation
+  const systemSizeKW = project.technical.systemSize
+  const projectCosts = {
+    breakdown: {
+      panels: { cost: systemSizeKW * 15000 },
+      inverter: { cost: systemSizeKW * 8000 },
+      installation: { cost: systemSizeKW * 5000 },
+      additional: { cost: systemSizeKW * 2000 }
+    },
+    total: { cost: systemSizeKW * 30000 }
+  }
   
   // Calculate financial breakdown based on real costs
   const financialBreakdown = [
@@ -269,9 +271,9 @@ export function ProjectOverviewTab({ project }: ProjectOverviewTabProps) {
                   {ratesLoading ? '...' : formatCurrency(projectCosts.total.cost)}
                 </p>
                 <p className="text-xs text-blue-600 font-medium">Güncel Maliyet</p>
-                {majorRates.USD && (
+                {rates && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    ${Math.round(projectCosts.total.cost / (majorRates.USD.selling || 30))}
+                    ${Math.round(projectCosts.total.cost / (rates.USD || 30))}
                   </p>
                 )}
               </div>
@@ -315,9 +317,9 @@ export function ProjectOverviewTab({ project }: ProjectOverviewTabProps) {
                 ))}
               </div>
               
-              {!ratesLoading && majorRates.USD && (
+              {!ratesLoading && rates && (
                 <div className="mt-3 p-2 bg-muted/30 rounded text-xs text-muted-foreground">
-                  Döviz kuru: $1 = {formatCurrency(majorRates.USD.selling || 30)} 
+                  Döviz kuru: $1 = {formatCurrency(rates.USD)} 
                   <span className="ml-2">Son güncelleme: {new Date().toLocaleTimeString('tr-TR')}</span>
                 </div>
               )}
