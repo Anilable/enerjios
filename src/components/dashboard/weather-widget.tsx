@@ -14,7 +14,15 @@ import {
 } from 'lucide-react'
 
 export function WeatherWidget() {
-  const { data: weather, loading, error, refetch } = useDashboardWeather()
+  const {
+    data: weather,
+    loading,
+    error,
+    refetch,
+    locationError,
+    isUsingFallback,
+    requestLocationPermission
+  } = useDashboardWeather()
   const alerts = useWeatherAlerts(weather)
   const [showDetails, setShowDetails] = useState(false)
 
@@ -91,12 +99,31 @@ export function WeatherWidget() {
         <div className="flex items-center gap-1 text-sm text-muted-foreground">
           <MapPin className="w-3 h-3" />
           {location.name}
+          {isUsingFallback && (
+            <Badge variant="outline" className="ml-2 text-xs">
+              Varsayılan Konum
+            </Badge>
+          )}
           <Clock className="w-3 h-3 ml-2" />
-          {new Date(current.lastUpdated).toLocaleTimeString('tr-TR', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
+          {new Date(current.lastUpdated).toLocaleTimeString('tr-TR', {
+            hour: '2-digit',
+            minute: '2-digit'
           })}
         </div>
+
+        {locationError && (
+          <div className="text-xs text-amber-600 flex items-center gap-1 mt-1">
+            <AlertTriangle className="w-3 h-3" />
+            {locationError}
+          </div>
+        )}
+
+        {/* Debug info in development */}
+        {process.env.NODE_ENV === 'development' && weather?.location && (
+          <div className="text-xs text-gray-500 mt-1">
+            Debug: {weather.location.coordinates[1]?.toFixed(4)}, {weather.location.coordinates[0]?.toFixed(4)}
+          </div>
+        )}
       </CardHeader>
       
       <CardContent className="space-y-4">
@@ -295,12 +322,23 @@ export function WeatherWidget() {
           </div>
         )}
 
-        {/* Refresh Button */}
-        <div className="flex justify-center pt-2">
+        {/* Action Buttons */}
+        <div className="flex justify-center gap-2 pt-2">
           <Button variant="outline" size="sm" onClick={refetch} disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             {loading ? 'Güncelleniyor...' : 'Güncelle'}
           </Button>
+          {isUsingFallback && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={requestLocationPermission}
+              title="Konum erişimini yeniden dene"
+            >
+              <MapPin className="w-4 h-4 mr-2" />
+              Konumu Al
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

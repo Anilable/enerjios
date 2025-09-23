@@ -667,7 +667,7 @@ export function HeroSection() {
                 </div>
                 <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg shadow-sm">
                   <Zap className="w-5 h-5 text-blue-600" />
-                  <span className="font-semibold text-gray-700">Hagel</span>
+                  <span className="font-semibold text-gray-700">Hegel</span>
                 </div>
                 <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg shadow-sm">
                   <Shield className="w-5 h-5 text-red-600" />

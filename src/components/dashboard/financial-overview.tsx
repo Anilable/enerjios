@@ -64,22 +64,8 @@ export function FinancialOverview() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <DollarSign className="h-5 w-5" />
-          Finansal Genel Bakış
-        </CardTitle>
-        <CardDescription>
-          Döviz kurları ve finansal veriler
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ExchangeRateDisplay />
-        <div className="mt-4 text-sm text-gray-600">
-          Kur bilgileri otomatik olarak güncellenmektedir.
-        </div>
-      </CardContent>
-    </Card>
+    <div className="h-full">
+      <ExchangeRateDisplay />
+    </div>
   )
 }

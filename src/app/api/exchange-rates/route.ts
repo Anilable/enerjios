@@ -263,72 +263,95 @@ export async function GET(request: NextRequest) {
       ? result.Tarih_Date.Currency 
       : [result.Tarih_Date.Currency]
 
-    // Use fallback realistic rates for demo
-    const rates: ExchangeRate[] = [
-      {
-        code: 'USD',
-        name: 'US DOLLAR',
-        unit: 1,
-        buying: 30.0234,
-        selling: 30.4456,
-        forexBuying: 30.1234,
-        forexSelling: 30.3456
-      },
-      {
-        code: 'EUR',
-        name: 'EURO', 
-        unit: 1,
-        buying: 32.7765,
-        selling: 33.2234,
-        forexBuying: 32.8765,
-        forexSelling: 33.1234
-      },
-      {
-        code: 'GBP',
-        name: 'POUND STERLING',
-        unit: 1,
-        buying: 38.3567,
-        selling: 38.8890,
-        forexBuying: 38.4567,
-        forexSelling: 38.7890
-      },
-      {
-        code: 'JPY',
-        name: 'JAPANESE YEN',
-        unit: 100,
-        buying: 20.0234,
-        selling: 20.4456,
-        forexBuying: 20.1234,
-        forexSelling: 20.3456
-      },
-      {
-        code: 'CHF',
-        name: 'SWISS FRANK',
-        unit: 1,
-        buying: 33.4678,
-        selling: 33.9901,
-        forexBuying: 33.5678,
-        forexSelling: 33.8901
-      },
-      {
-        code: 'CAD',
-        name: 'CANADIAN DOLLAR',
-        unit: 1,
-        buying: 22.0234,
-        selling: 22.4456,
-        forexBuying: 22.1234,
-        forexSelling: 22.3456
-      },
-      {
-        code: 'CNY',
-        name: 'CHINESE YUAN',
-        unit: 1,
-        buying: 4.0734,
-        selling: 4.2956,
-        forexBuying: 4.1234,
-        forexSelling: 4.2456
+    // Parse TCMB data or use fallback realistic rates
+    const rates: ExchangeRate[] = []
+
+    currencies.forEach((currency: TCMBCurrencyData) => {
+      const currencyCode = currency['@_CurrencyCode']
+      const currencyName = currency['@_CurrencyName']
+      const unit = parseInt(currency['@_Unit'] || '1')
+
+      const rate: ExchangeRate = {
+        code: currencyCode,
+        name: currencyName,
+        unit: unit,
+        buying: parseRate(currency.BanknoteBuying),
+        selling: parseRate(currency.BanknoteSelling),
+        forexBuying: parseRate(currency.ForexBuying),
+        forexSelling: parseRate(currency.ForexSelling)
       }
-    ]
+
+      rates.push(rate)
+    })
+
+    // Fallback rates if TCMB data is empty
+    if (rates.length === 0) {
+      rates.push(
+        {
+          code: 'USD',
+          name: 'US DOLLAR',
+          unit: 1,
+          buying: 30.0234,
+          selling: 30.4456,
+          forexBuying: 30.1234,
+          forexSelling: 30.3456
+        },
+        {
+          code: 'EUR',
+          name: 'EURO',
+          unit: 1,
+          buying: 32.7765,
+          selling: 33.2234,
+          forexBuying: 32.8765,
+          forexSelling: 33.1234
+        },
+        {
+          code: 'GBP',
+          name: 'POUND STERLING',
+          unit: 1,
+          buying: 38.3567,
+          selling: 38.8890,
+          forexBuying: 38.4567,
+          forexSelling: 38.7890
+        },
+        {
+          code: 'JPY',
+          name: 'JAPANESE YEN',
+          unit: 100,
+          buying: 20.0234,
+          selling: 20.4456,
+          forexBuying: 20.1234,
+          forexSelling: 20.3456
+        },
+        {
+          code: 'CHF',
+          name: 'SWISS FRANK',
+          unit: 1,
+          buying: 33.4678,
+          selling: 33.9901,
+          forexBuying: 33.5678,
+          forexSelling: 33.8901
+        },
+        {
+          code: 'CAD',
+          name: 'CANADIAN DOLLAR',
+          unit: 1,
+          buying: 22.0234,
+          selling: 22.4456,
+          forexBuying: 22.1234,
+          forexSelling: 22.3456
+        },
+        {
+          code: 'CNY',
+          name: 'CHINESE YUAN',
+          unit: 1,
+          buying: 4.0734,
+          selling: 4.2956,
+          forexBuying: 4.1234,
+          forexSelling: 4.2456
+        }
+      )
+    }
 
     // Manuel kurları uygula (override TCMB data)
     if (Object.keys(manualOverrides).length > 0) {

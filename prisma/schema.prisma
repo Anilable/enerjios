@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,59 +8,43 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// ==================== USER & AUTH MODELS ====================
-
-enum UserRole {
-  ADMIN
-  COMPANY
-  CUSTOMER
-  FARMER
-  BANK
-  INSTALLATION_TEAM
-}
-
-enum UserStatus {
-  ACTIVE
-  INACTIVE
-  SUSPENDED
-  PENDING
-}
-
 model User {
-  id            String     @id @default(cuid())
-  email         String     @unique
-  emailVerified DateTime?
-  name          String?
-  password      String?
-  image         String?
-  phone         String?
-  role          UserRole   @default(CUSTOMER)
-  status        UserStatus @default(PENDING)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-
-  // Relations
-  company                 Company?
-  customer                Customer?
-  farmer                  Farmer?
-  projects                Project[]                     @relation("ProjectOwner")
-  quotes                  Quote[]                       @relation("QuoteCreatedBy")
-  quotesApproved          Quote[]                       @relation("QuoteApprovedBy")
-  sessions                Session[]
+  id                      String                        @id @default(cuid())
+  email                   String                        @unique
+  emailVerified           DateTime?
+  name                    String?
+  password                String?
+  image                   String?
+  phone                   String?
+  role                    UserRole                      @default(CUSTOMER)
+  status                  UserStatus                    @default(PENDING)
+  createdAt               DateTime                      @default(now())
+  updatedAt               DateTime                      @updatedAt
   accounts                Account[]
-  notifications           Notification[]
   activities              Activity[]
-  photoRequestsCreated    PhotoRequest[]                @relation("PhotoRequestCreator")
-  photoRequestsReviewed   PhotoRequest[]                @relation("PhotoRequestReviewer")
-  assignedProjectRequests ProjectRequest[]              @relation("AssignedEngineer")
-  projectRequestHistory   ProjectRequestStatusHistory[] @relation("ProjectRequestHistory")
-  projectRequestNotes     ProjectRequestNote[]          @relation("ProjectRequestNotes")
-  completedNextSteps      ProjectRequestNextStep[]      @relation("NextStepCompletedBy")
+  company                 Company?
+  cookieConsents          CookieConsent[]               @relation("UserCookieConsent")
+  customer                Customer?
+  designs                 Design[]
+  farmer                  Farmer?
+  kvkkApplications        KVKKApplication[]             @relation("KVKKApplicationProcessor")
+  kvkkAuditLogs           KVKKAuditLog[]                @relation("UserKVKKAudit")
   manualExchangeRates     ManualExchangeRate[]
-  productsCreated         Product[]                     @relation("ProductCreatedBy")
-  productsUpdated         Product[]                     @relation("ProductUpdatedBy")
+  notifications           Notification[]
   packagesCreated         Package[]                     @relation("PackageCreatedBy")
   packagesUpdated         Package[]                     @relation("PackageUpdatedBy")
+  photoRequestsCreated    PhotoRequest[]                @relation("PhotoRequestCreator")
+  photoRequestsReviewed   PhotoRequest[]                @relation("PhotoRequestReviewer")
+  productsCreated         Product[]                     @relation("ProductCreatedBy")
+  productsUpdated         Product[]                     @relation("ProductUpdatedBy")
+  projects                Project[]                     @relation("ProjectOwner")
+  assignedProjectRequests ProjectRequest[]              @relation("AssignedEngineer")
+  completedNextSteps      ProjectRequestNextStep[]      @relation("NextStepCompletedBy")
+  projectRequestNotes     ProjectRequestNote[]          @relation("ProjectRequestNotes")
+  projectRequestHistory   ProjectRequestStatusHistory[] @relation("ProjectRequestHistory")
+  quotesApproved          Quote[]                       @relation("QuoteApprovedBy")
+  quotes                  Quote[]                       @relation("QuoteCreatedBy")
+  sessions                Session[]
 }
 
 model Session {
@@ -73,8 +54,7 @@ model Session {
   sessionToken String   @unique
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Account {
@@ -90,173 +70,101 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
 
-// ==================== BUSINESS MODELS ====================
-
-enum CompanyType {
-  INSTALLER // GES kurulum firması
-  MANUFACTURER // Panel/ekipman üreticisi
-  CONSULTANT // Danışmanlık firması
-  BANK // Finansal kuruluş
-}
-
 model Company {
-  id          String      @id @default(cuid())
-  userId      String      @unique
-  name        String
-  taxNumber   String      @unique
-  type        CompanyType
-  address     String?
-  city        String?
-  district    String?
-  phone       String?
-  website     String?
-  logo        String?
-  description String?
-  rating      Float       @default(0)
-  verified    Boolean     @default(false)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  // Relations
+  id            String         @id @default(cuid())
+  userId        String         @unique
+  name          String
+  taxNumber     String         @unique
+  type          CompanyType
+  address       String?
+  city          String?
+  district      String?
+  phone         String?
+  website       String?
+  logo          String?
+  description   String?
+  rating        Float          @default(0)
+  verified      Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  certificates  Certificate[]
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  departments   Department[]   @relation("CompanyDepartments")
+  employees     Employee[]     @relation("CompanyEmployees")
+  installations Installation[]
+  packages      Package[]
+  partner       Partner?
+  products      Product[]
   projects      Project[]      @relation("CompanyProjects")
   quotes        Quote[]        @relation("CompanyQuotes")
-  products      Product[]
-  packages      Package[]
-  installations Installation[]
   reviews       Review[]
-  certificates  Certificate[]
-  partner       Partner?
-}
-
-// ==================== CUSTOMER MODELS ====================
-
-enum CustomerType {
-  INDIVIDUAL // Bireysel
-  CORPORATE // Kurumsal
-  FARMER // Çiftçi
 }
 
 model Customer {
-  id             String       @id @default(cuid())
-  userId         String       @unique
-  type           CustomerType
-  firstName      String?
-  lastName       String?
-  companyName    String?
-  taxNumber      String?
-  identityNumber String?
-  address        String?
-  city           String?
-  district       String?
-  phone          String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-
-  // Relations
+  id              String           @id @default(cuid())
+  userId          String           @unique
+  type            CustomerType
+  firstName       String?
+  lastName        String?
+  companyName     String?
+  taxNumber       String?
+  identityNumber  String?
+  address         String?
+  city            String?
+  district        String?
+  phone           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  projects        Project[]        @relation("CustomerProjects")
-  quotes          Quote[]          @relation("CustomerQuotes")
   leads           Lead[]
-  photoRequests   PhotoRequest[]
-  projectRequests ProjectRequest[]
-  quoteRequests   QuoteRequest[]
   partnerReviews  PartnerReview[]
-}
-
-// ==================== PROJECT MODELS ====================
-
-enum ProjectType {
-  ROOFTOP // Çatı GES
-  LAND // Arazi GES
-  AGRISOLAR // Tarımsal GES
-  INDUSTRIAL // Endüstriyel GES
-  CARPARK // Otopark GES
-  RESIDENTIAL // Konut (for project requests)
-  COMMERCIAL // Ticari (for project requests) 
-  AGRICULTURAL // Tarımsal (for project requests)
-}
-
-enum ProjectStatus {
-  DRAFT
-  PLANNED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
+  photoRequests   PhotoRequest[]
+  projects        Project[]        @relation("CustomerProjects")
+  projectRequests ProjectRequest[]
+  quotes          Quote[]          @relation("CustomerQuotes")
+  quoteRequests   QuoteRequest[]
 }
 
 model Project {
-  id             String        @id @default(cuid())
-  name           String
-  type           ProjectType
-  status         ProjectStatus @default(DRAFT)
-  ownerId        String
-  customerId     String?
-  companyId      String?
-  locationId     String?       @unique
-  capacity       Float // kWp
-  estimatedCost  Float?
-  actualCost     Float?
-  startDate      DateTime?
-  completionDate DateTime?
-  description    String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-
-  // Relations
-  owner           User             @relation("ProjectOwner", fields: [ownerId], references: [id])
-  customer        Customer?        @relation("CustomerProjects", fields: [customerId], references: [id])
-  company         Company?         @relation("CompanyProjects", fields: [companyId], references: [id])
-  location        Location?        @relation(fields: [locationId], references: [id])
-  quotes          Quote[]
-  installations   Installation[]
-  documents       Document[]
-  panels          PanelPlacement[]
-  financial       Financial?
+  id              String           @id @default(cuid())
+  name            String
+  type            ProjectType
+  status          ProjectStatus    @default(DRAFT)
+  ownerId         String
+  customerId      String?
+  companyId       String?
+  locationId      String?          @unique
+  capacity        Float
+  estimatedCost   Float?
+  actualCost      Float?
+  startDate       DateTime?
+  completionDate  DateTime?
+  description     String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   agriSolar       AgriSolar?
-  monitoring      Monitoring[]
-  photoRequests   PhotoRequest[]
-  projectRequests ProjectRequest[] @relation("ProjectRequests")
   commissions     Commission[]
-}
-
-// ==================== PROJECT REQUEST MODELS ====================
-
-enum ProjectRequestStatus {
-  OPEN // Açık
-  CONTACTED // İletişime Geçildi
-  ASSIGNED // Atama Yapıldı
-  SITE_VISIT // Saha Ziyareti
-  CONVERTED_TO_PROJECT // Projeye Dönüştürüldü
-  LOST // Kaybedildi
-}
-
-enum Priority {
-  LOW
-  MEDIUM
-  HIGH
-}
-
-enum RequestSource {
-  WEBSITE
-  PHONE
-  EMAIL
-  REFERRAL
-  SOCIAL_MEDIA
-  WALK_IN
-  PARTNER_REFERRAL
-  WHATSAPP
-  OTHER
+  documents       Document[]
+  financial       Financial?
+  installations   Installation[]
+  monitoring      Monitoring[]
+  panels          PanelPlacement[]
+  photoRequests   PhotoRequest[]
+  company         Company?         @relation("CompanyProjects", fields: [companyId], references: [id])
+  customer        Customer?        @relation("CustomerProjects", fields: [customerId], references: [id])
+  location        Location?        @relation(fields: [locationId], references: [id])
+  owner           User             @relation("ProjectOwner", fields: [ownerId], references: [id])
+  projectRequests ProjectRequest[] @relation("ProjectRequests")
+  quotes          Quote[]
 }
 
 model ProjectRequest {
-  id                 String               @id @default(cuid())
+  id                 String                        @id @default(cuid())
   customerId         String?
   assignedEngineerId String?
   title              String?
@@ -266,30 +174,27 @@ model ProjectRequest {
   location           String?
   address            String?
   projectType        ProjectType
-  estimatedCapacity  Float? // kW
-  estimatedBudget    Float? // TL
-  estimatedRevenue   Float? // TL
+  estimatedCapacity  Float?
+  estimatedBudget    Float?
+  estimatedRevenue   Float?
   description        String?
-  status             ProjectRequestStatus @default(OPEN)
-  priority           Priority             @default(MEDIUM)
-  source             RequestSource        @default(WEBSITE)
-  hasPhotos          Boolean              @default(false)
+  status             ProjectRequestStatus          @default(OPEN)
+  priority           Priority                      @default(MEDIUM)
+  source             RequestSource                 @default(WEBSITE)
+  hasPhotos          Boolean                       @default(false)
   scheduledVisitDate DateTime?
-  tags               Json? // Array of strings
-  notes              Json? // Array of strings
-  contactPreference  String? // Phone, Email, WhatsApp
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  customer         Customer?                     @relation(fields: [customerId], references: [id])
-  assignedEngineer User?                         @relation("AssignedEngineer", fields: [assignedEngineerId], references: [id])
-  project          Project?                      @relation("ProjectRequests", fields: [projectId], references: [id])
-  projectId        String?
-  statusHistory    ProjectRequestStatusHistory[]
-  requestNotes     ProjectRequestNote[]
-  nextSteps        ProjectRequestNextStep[]
+  tags               Json?
+  notes              Json?
+  contactPreference  String?
+  createdAt          DateTime                      @default(now())
+  updatedAt          DateTime                      @updatedAt
+  projectId          String?
+  assignedEngineer   User?                         @relation("AssignedEngineer", fields: [assignedEngineerId], references: [id])
+  customer           Customer?                     @relation(fields: [customerId], references: [id])
+  project            Project?                      @relation("ProjectRequests", fields: [projectId], references: [id])
+  nextSteps          ProjectRequestNextStep[]
+  requestNotes       ProjectRequestNote[]
+  statusHistory      ProjectRequestStatusHistory[]
 
   @@index([status])
   @@index([customerId])
@@ -306,32 +211,28 @@ model ProjectRequestStatusHistory {
   userName         String
   note             String?
   timestamp        DateTime              @default(now())
-
-  // Relations
-  projectRequest ProjectRequest @relation(fields: [projectRequestId], references: [id], onDelete: Cascade)
-  user           User?          @relation("ProjectRequestHistory", fields: [userId], references: [id])
+  projectRequest   ProjectRequest        @relation(fields: [projectRequestId], references: [id], onDelete: Cascade)
+  user             User?                 @relation("ProjectRequestHistory", fields: [userId], references: [id])
 
   @@index([projectRequestId])
   @@index([timestamp])
 }
 
 model ProjectRequestNote {
-  id               String    @id @default(cuid())
+  id               String         @id @default(cuid())
   projectRequestId String
   content          String
-  tags             Json? // Array of strings
-  priority         Priority? @default(MEDIUM)
-  isPrivate        Boolean   @default(false)
-  isEdited         Boolean   @default(false)
+  tags             Json?
+  priority         Priority?      @default(MEDIUM)
+  isPrivate        Boolean        @default(false)
+  isEdited         Boolean        @default(false)
   createdBy        String
   createdByName    String
   createdByRole    String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  // Relations
-  projectRequest ProjectRequest @relation(fields: [projectRequestId], references: [id], onDelete: Cascade)
-  user           User           @relation("ProjectRequestNotes", fields: [createdBy], references: [id])
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  user             User           @relation("ProjectRequestNotes", fields: [createdBy], references: [id])
+  projectRequest   ProjectRequest @relation(fields: [projectRequestId], references: [id], onDelete: Cascade)
 
   @@index([projectRequestId])
   @@index([createdBy])
@@ -339,39 +240,24 @@ model ProjectRequestNote {
   @@index([priority])
 }
 
-// ==================== NEXT STEP AUTOMATION MODELS ====================
-
-enum NextStepType {
-  CONTACT_CUSTOMER
-  SCHEDULE_SITE_VISIT
-  SEND_QUOTE
-  FOLLOW_UP_QUOTE
-  PROJECT_KICKOFF
-  FOLLOW_UP_GENERAL
-  CUSTOM
-}
-
 model ProjectRequestNextStep {
-  id               String       @id @default(cuid())
+  id               String         @id @default(cuid())
   projectRequestId String
   stepType         NextStepType
   title            String
   description      String?
   dueDate          DateTime
-  isOverdue        Boolean      @default(false)
-  isCompleted      Boolean      @default(false)
+  isOverdue        Boolean        @default(false)
+  isCompleted      Boolean        @default(false)
   completedAt      DateTime?
   completedBy      String?
-  priority         Priority     @default(MEDIUM)
-  automationRule   String? // Reference to automation rule that created this
-  metadata         Json? // Additional step-specific data
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  projectRequest  ProjectRequest @relation(fields: [projectRequestId], references: [id], onDelete: Cascade)
-  completedByUser User?          @relation("NextStepCompletedBy", fields: [completedBy], references: [id])
+  priority         Priority       @default(MEDIUM)
+  automationRule   String?
+  metadata         Json?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  completedByUser  User?          @relation("NextStepCompletedBy", fields: [completedBy], references: [id])
+  projectRequest   ProjectRequest @relation(fields: [projectRequestId], references: [id], onDelete: Cascade)
 
   @@index([projectRequestId])
   @@index([dueDate])
@@ -391,181 +277,128 @@ model NextStepAutomationRule {
   daysAfterStatusChange Int
   priority              Priority             @default(MEDIUM)
   isActive              Boolean              @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
 
   @@index([triggerStatus])
   @@index([isActive])
 }
 
-// ==================== LOCATION & 3D MODELS ====================
-
 model Location {
-  id         String  @id @default(cuid())
-  latitude   Float
-  longitude  Float
-  altitude   Float?
-  address    String?
-  city       String?
-  district   String?
-  postalCode String?
-
-  // 3D Data
-  roofArea       Float? // m²
-  landArea       Float? // m²
-  roofType       String? // flat, gable, hip, etc.
-  roofAngle      Float? // degrees
-  orientation    Float? // azimuth degrees
-  shading        Json? // Shading analysis data
-  boundaryPoints Json? // Polygon boundary coordinates
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  project     Project?
-  weatherData WeatherData[]
+  id             String        @id @default(cuid())
+  latitude       Float
+  longitude      Float
+  altitude       Float?
+  address        String?
+  city           String?
+  district       String?
+  postalCode     String?
+  roofArea       Float?
+  landArea       Float?
+  roofType       String?
+  roofAngle      Float?
+  orientation    Float?
+  shading        Json?
+  boundaryPoints Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  project        Project?
+  weatherData    WeatherData[]
 }
 
 model PanelPlacement {
   id        String   @id @default(cuid())
   projectId String
   panelId   String
-  x         Float // X coordinate
-  y         Float // Y coordinate
-  z         Float // Z coordinate
-  tilt      Float // Panel tilt angle
-  azimuth   Float // Panel azimuth
+  x         Float
+  y         Float
+  z         Float
+  tilt      Float
+  azimuth   Float
   row       Int?
   column    Int?
   createdAt DateTime @default(now())
-
-  // Relations
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  panel   Product @relation(fields: [panelId], references: [id])
+  panel     Product  @relation(fields: [panelId], references: [id])
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
-// ==================== PRODUCT CATALOG ====================
-
-enum ProductType {
-  SOLAR_PANEL
-  INVERTER
-  BATTERY
-  MOUNTING_SYSTEM
-  CABLE
-  MONITORING
-  ACCESSORY
-}
-
-// Dynamic category system
 model Category {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  slug      String   @unique // URL-friendly version
-  icon      String   @default("Package") // Icon name
-  color     String   @default("blue") // Color theme
-  order     Int      @default(0) // Display order
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  products Product[] @relation("ProductCategory")
+  id        String    @id @default(cuid())
+  name      String    @unique
+  slug      String    @unique
+  icon      String    @default("Package")
+  color     String    @default("blue")
+  order     Int       @default(0)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[] @relation("ProductCategory")
 
   @@index([slug])
   @@index([isActive])
 }
 
 model Product {
-  id             String       @id @default(cuid())
-  companyId      String?
-  type           ProductType  // Keep for backward compatibility
-  categoryId     String?      // New dynamic category reference
-  brand          String
-  model          String
-  name           String
-  description    String?
-  specifications Json // Technical specs as JSON
-
-  // Pricing
-  price        Float  // Sale price (Satış fiyatı)
-  purchasePrice Float? // Purchase price (Alış fiyatı)
-  currency     String @default("TRY")
-  unitType     String // piece, meter, kg, etc.
-
-  // Solar Panel Specific
-  power      Float? // Watt
-  efficiency Float? // %
-  warranty   Int? // years
-
-  // Inventory
-  stock         Int      @default(0)
-  isAvailable   Boolean  @default(true)
-  purchaseDate  DateTime? // Alış tarihi
-  editDate      DateTime? // Düzenleme tarihi
-
-  images    String // JSON array of image URLs
-  datasheet String? // PDF URL
-  manual    String? // Manual/User guide PDF URL
-
-  // Metadata
-  createdById String?
-  updatedById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  company         Company?         @relation(fields: [companyId], references: [id])
+  id              String           @id @default(cuid())
+  companyId       String?
+  type            ProductType
+  brand           String
+  model           String
+  name            String
+  description     String?
+  specifications  Json
+  price           Float
+  currency        String           @default("TRY")
+  unitType        String
+  power           Float?
+  efficiency      Float?
+  warranty        Int?
+  stock           Int              @default(0)
+  isAvailable     Boolean          @default(true)
+  images          String
+  datasheet       String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  createdById     String?
+  updatedById     String?
+  categoryId      String?
+  purchaseDate    DateTime?
+  purchasePrice   Float?
+  editDate        DateTime?
+  manual          String?
+  packageItems    PackageItem[]
+  panelPlacements PanelPlacement[]
   category        Category?        @relation("ProductCategory", fields: [categoryId], references: [id])
+  company         Company?         @relation(fields: [companyId], references: [id])
   createdBy       User?            @relation("ProductCreatedBy", fields: [createdById], references: [id])
   updatedBy       User?            @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
   quoteItems      QuoteItem[]
-  panelPlacements PanelPlacement[]
-  packageItems    PackageItem[]
-}
-
-// ==================== PACKAGE SYSTEM ====================
-
-enum PackageType {
-  ON_GRID         // Standard grid-tied solar systems
-  OFF_GRID        // Battery backup systems
-  TARIMSAL_SULAMA // Agricultural irrigation systems
-  DC_POMPALAR     // DC pump systems
 }
 
 model Package {
-  id          String      @id @default(cuid())
-  companyId   String?
-  parentId    String?     // For sub-packages hierarchy
-  name        String
-  type        PackageType
-  description String?
-
-  // Calculated totals
-  totalPrice       Float // Auto-calculated from items
-  totalPower       Float? // kW - for solar packages
-  estimatedSavings Float? // Annual savings estimate
-
-  // Display
-  images      String? // JSON array of image URLs
-  isActive    Boolean @default(true)
-  isFeatured  Boolean @default(false)
-
-  // Metadata
-  createdById String?
-  updatedById String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  company     Company?      @relation(fields: [companyId], references: [id])
-  parent      Package?      @relation("PackageHierarchy", fields: [parentId], references: [id])
-  children    Package[]     @relation("PackageHierarchy")
-  createdBy   User?         @relation("PackageCreatedBy", fields: [createdById], references: [id])
-  updatedBy   User?         @relation("PackageUpdatedBy", fields: [updatedById], references: [id])
-  items       PackageItem[]
-  quoteItems  QuoteItem[]   @relation("PackageQuoteItems")
+  id               String        @id @default(cuid())
+  companyId        String?
+  name             String
+  type             PackageType
+  description      String?
+  totalPrice       Float
+  totalPower       Float?
+  estimatedSavings Float?
+  images           String?
+  isActive         Boolean       @default(true)
+  isFeatured       Boolean       @default(false)
+  createdById      String?
+  updatedById      String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  parentId         String?
+  company          Company?      @relation(fields: [companyId], references: [id])
+  createdBy        User?         @relation("PackageCreatedBy", fields: [createdById], references: [id])
+  parent           Package?      @relation("PackageHierarchy", fields: [parentId], references: [id])
+  children         Package[]     @relation("PackageHierarchy")
+  updatedBy        User?         @relation("PackageUpdatedBy", fields: [updatedById], references: [id])
+  items            PackageItem[]
+  quoteItems       QuoteItem[]   @relation("PackageQuoteItems")
 
   @@index([type])
   @@index([isActive])
@@ -574,492 +407,336 @@ model Package {
 }
 
 model PackageItem {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   packageId   String
   productId   String
   quantity    Float
-  unitPrice   Float   // Price per unit when package was created
-  total       Float   // quantity * unitPrice
-  description String? // Custom description for this item in package
-  order       Int     @default(0) // Display order
+  unitPrice   Float
+  total       Float
+  description String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  package     Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  package Package @relation(fields: [packageId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
-
+  @@unique([packageId, productId])
   @@index([packageId])
   @@index([productId])
-  @@unique([packageId, productId]) // Prevent duplicate products in same package
-}
-
-// ==================== QUOTE SYSTEM ====================
-
-enum QuoteStatus {
-  DRAFT
-  SENT
-  VIEWED
-  APPROVED
-  REJECTED
-  EXPIRED
-}
-
-enum DeliveryChannel {
-  EMAIL
-  WHATSAPP
-  SMS
-  MANUAL
 }
 
 model Quote {
-  id          String      @id @default(cuid())
-  projectId   String
-  customerId  String?
-  companyId   String?
-  createdById String
-  quoteNumber String      @unique
-  status      QuoteStatus @default(DRAFT)
-
-  // Pricing
-  subtotal Float
-  tax      Float
-  discount Float @default(0)
-  total    Float
-
-  // Validity
-  validUntil DateTime
-  terms      String?
-  notes      String?
-
-  // PDF & Delivery
-  pdfUrl      String?
-  sentAt      DateTime?
-  viewedAt    DateTime?
-  respondedAt DateTime?
-  approvedAt  DateTime?
-  approvedById String?
-  rejectedAt  DateTime?
-  expiredAt   DateTime?
-
-  // Delivery Tracking
+  id               String           @id @default(cuid())
+  projectId        String
+  customerId       String?
+  companyId        String?
+  createdById      String
+  quoteNumber      String           @unique
+  status           QuoteStatus      @default(DRAFT)
+  subtotal         Float
+  tax              Float
+  discount         Float            @default(0)
+  total            Float
+  validUntil       DateTime
+  terms            String?
+  notes            String?
+  pdfUrl           String?
+  sentAt           DateTime?
+  viewedAt         DateTime?
+  respondedAt      DateTime?
+  approvedAt       DateTime?
+  rejectedAt       DateTime?
+  expiredAt        DateTime?
   deliveryChannel  DeliveryChannel?
   deliveryEmail    String?
   deliveryPhone    String?
   deliveryToken    String?          @unique
-  deliveryTracking Json? // Store delivery confirmations, read receipts
-
-  // Customer Interaction
+  deliveryTracking Json?
   customerIP       String?
   customerAgent    String?
-  signatureData    String? // Base64 signature
+  signatureData    String?
   customerComments String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  project   Project     @relation(fields: [projectId], references: [id])
-  customer  Customer?   @relation("CustomerQuotes", fields: [customerId], references: [id])
-  company   Company?    @relation("CompanyQuotes", fields: [companyId], references: [id])
-  createdBy User        @relation("QuoteCreatedBy", fields: [createdById], references: [id])
-  approvedBy User?      @relation("QuoteApprovedBy", fields: [approvedById], references: [id])
-  items     QuoteItem[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  approvedById     String?
+  approvedBy       User?            @relation("QuoteApprovedBy", fields: [approvedById], references: [id])
+  company          Company?         @relation("CompanyQuotes", fields: [companyId], references: [id])
+  createdBy        User             @relation("QuoteCreatedBy", fields: [createdById], references: [id])
+  customer         Customer?        @relation("CustomerQuotes", fields: [customerId], references: [id])
+  project          Project          @relation(fields: [projectId], references: [id])
+  items            QuoteItem[]
 }
 
 model QuoteItem {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   quoteId     String
   productId   String?
-  packageId   String? // New: for package-based quote items
   description String?
   quantity    Float
   unitPrice   Float
   total       Float
-
-  // Item type indicator
-  isPackage   Boolean @default(false)
-
-  // Relations
-  quote   Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-  product Product? @relation(fields: [productId], references: [id])
-  package Package? @relation("PackageQuoteItems", fields: [packageId], references: [id])
-
-  // Ensure either productId or packageId is set, but not both (enforced at application level)
-}
-
-// ==================== INSTALLATION ====================
-
-enum InstallationStatus {
-  SCHEDULED
-  IN_PROGRESS
-  COMPLETED
-  DELAYED
-  CANCELLED
+  isPackage   Boolean  @default(false)
+  packageId   String?
+  package     Package? @relation("PackageQuoteItems", fields: [packageId], references: [id])
+  product     Product? @relation(fields: [productId], references: [id])
+  quote       Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 }
 
 model Installation {
-  id        String             @id @default(cuid())
-  projectId String
-  companyId String
-  status    InstallationStatus @default(SCHEDULED)
-
+  id             String              @id @default(cuid())
+  projectId      String
+  companyId      String
+  status         InstallationStatus  @default(SCHEDULED)
   scheduledDate  DateTime
   startDate      DateTime?
   completionDate DateTime?
-
-  teamLeader String?
-  teamSize   Int?
-  notes      String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  project     Project             @relation(fields: [projectId], references: [id])
-  company     Company             @relation(fields: [companyId], references: [id])
-  checkpoints InstallCheckpoint[]
-  photos      InstallPhoto[]
+  teamLeader     String?
+  teamSize       Int?
+  notes          String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  checkpoints    InstallCheckpoint[]
+  photos         InstallPhoto[]
+  company        Company             @relation(fields: [companyId], references: [id])
+  project        Project             @relation(fields: [projectId], references: [id])
 }
 
 model InstallCheckpoint {
-  id             String    @id @default(cuid())
+  id             String       @id @default(cuid())
   installationId String
   name           String
   description    String?
-  completed      Boolean   @default(false)
+  completed      Boolean      @default(false)
   completedAt    DateTime?
   completedBy    String?
   order          Int
-
-  // Relations
-  installation Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  installation   Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
 }
 
 model InstallPhoto {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   installationId String
   url            String
   caption        String?
-  takenAt        DateTime @default(now())
-
-  // Relations
-  installation Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  takenAt        DateTime     @default(now())
+  installation   Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
 }
 
-// ==================== FINANCIAL ANALYSIS ====================
-
 model Financial {
-  id        String @id @default(cuid())
-  projectId String @unique
-
-  // Investment
-  systemCost       Float // Total sistem maliyeti
-  installationCost Float // Kurulum maliyeti
-  maintenanceCost  Float // Yıllık bakım maliyeti
-
-  // Production
-  annualProduction Float // kWh/yıl
-  degradationRate  Float @default(0.7) // %/yıl
-
-  // Savings
-  electricityRate Float // TL/kWh
-  annualSaving    Float // TL/yıl
-  co2Reduction    Float // ton/yıl
-
-  // ROI Metrics
-  paybackPeriod Float // yıl
-  roi25Year     Float // %
-  irr           Float // Internal Rate of Return %
-  npv           Float // Net Present Value
-
-  // Financing
-  loanAmount     Float? // Kredi tutarı
-  loanRate       Float? // Faiz oranı %
-  loanTerm       Int? // Vade (ay)
-  monthlyPayment Float? // Aylık ödeme
-
-  // Incentives
-  feedInTariff  Float? // YEKDEM tarife (TL/kWh)
-  taxReduction  Float? // Vergi indirimi
-  subsidyAmount Float? // Devlet desteği
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  cashFlows CashFlow[]
+  id               String     @id @default(cuid())
+  projectId        String     @unique
+  systemCost       Float
+  installationCost Float
+  maintenanceCost  Float
+  annualProduction Float
+  degradationRate  Float      @default(0.7)
+  electricityRate  Float
+  annualSaving     Float
+  co2Reduction     Float
+  paybackPeriod    Float
+  roi25Year        Float
+  irr              Float
+  npv              Float
+  loanAmount       Float?
+  loanRate         Float?
+  loanTerm         Int?
+  monthlyPayment   Float?
+  feedInTariff     Float?
+  taxReduction     Float?
+  subsidyAmount    Float?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  cashFlows        CashFlow[]
+  project          Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model CashFlow {
-  id          String @id @default(cuid())
+  id          String    @id @default(cuid())
   financialId String
   year        Int
-  production  Float // kWh
-  revenue     Float // TL
-  opex        Float // Operating expense
-  cashFlow    Float // Net cash flow
-  cumulative  Float // Cumulative cash flow
-
-  // Relations
-  financial Financial @relation(fields: [financialId], references: [id], onDelete: Cascade)
+  production  Float
+  revenue     Float
+  opex        Float
+  cashFlow    Float
+  cumulative  Float
+  financial   Financial @relation(fields: [financialId], references: [id], onDelete: Cascade)
 
   @@unique([financialId, year])
 }
 
-// ==================== FARMER SPECIFIC MODELS ====================
-
 model Farmer {
-  id             String  @id @default(cuid())
-  userId         String  @unique
-  farmSize       Float // Dönüm
-  irrigationType String? // Drip, Sprinkler, etc.
-  mainCrops      String // JSON array of main crops
-  livestockCount Int? // Hayvan sayısı
-
-  // Energy needs
-  monthlyConsumption Float? // kWh/ay
-  irrigationPumps    Int? // Sulama pompası sayısı
-  coldStorage        Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  farms      Farm[]
-  agriSolars AgriSolar[]
+  id                 String      @id @default(cuid())
+  userId             String      @unique
+  farmSize           Float
+  irrigationType     String?
+  mainCrops          String
+  livestockCount     Int?
+  monthlyConsumption Float?
+  irrigationPumps    Int?
+  coldStorage        Boolean     @default(false)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  agriSolars         AgriSolar[]
+  farms              Farm[]
+  user               User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Farm {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   farmerId    String
   name        String
   location    String
-  size        Float // Dönüm
+  size        Float
   soilType    String?
   waterSource String?
-  coordinates Json? // GeoJSON
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  farmer Farmer @relation(fields: [farmerId], references: [id], onDelete: Cascade)
-  crops  Crop[]
+  coordinates Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  crops       Crop[]
+  farmer      Farmer   @relation(fields: [farmerId], references: [id], onDelete: Cascade)
 }
 
 model Crop {
-  id            String    @id @default(cuid())
-  farmId        String
-  name          String
-  type          String // Wheat, Corn, Tomato, etc.
-  plantingDate  DateTime
-  harvestDate   DateTime?
-  area          Float // Dönüm
-  expectedYield Float? // Ton
-  actualYield   Float? // Ton
-
-  // Agrivoltaic compatibility
-  shadeToleranceMin Float? // Min % gölge toleransı
-  shadeToleranceMax Float? // Max % gölge toleransı
-  waterNeed         String? // Low, Medium, High
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  id                String    @id @default(cuid())
+  farmId            String
+  name              String
+  type              String
+  plantingDate      DateTime
+  harvestDate       DateTime?
+  area              Float
+  expectedYield     Float?
+  actualYield       Float?
+  shadeToleranceMin Float?
+  shadeToleranceMax Float?
+  waterNeed         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  farm              Farm      @relation(fields: [farmId], references: [id], onDelete: Cascade)
 }
 
 model AgriSolar {
-  id        String @id @default(cuid())
-  projectId String @unique
-  farmerId  String
-
-  // System design
-  systemType   String // Fixed, Tracking, Elevated
-  mountHeight  Float // Metre
-  rowSpacing   Float // Metre
-  transparency Float? // Panel transparency %
-
-  // Agricultural impact
-  shadingRatio    Float // % gölgeleme
-  cropYieldImpact Float? // % verim etkisi
-  waterSaving     Float? // % su tasarrufu
-
-  // Benefits
-  dualIncome     Boolean @default(true)
-  cropProtection Boolean @default(false) // Dolu, don koruması
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  farmer  Farmer  @relation(fields: [farmerId], references: [id])
+  id              String   @id @default(cuid())
+  projectId       String   @unique
+  farmerId        String
+  systemType      String
+  mountHeight     Float
+  rowSpacing      Float
+  transparency    Float?
+  shadingRatio    Float
+  cropYieldImpact Float?
+  waterSaving     Float?
+  dualIncome      Boolean  @default(true)
+  cropProtection  Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  farmer          Farmer   @relation(fields: [farmerId], references: [id])
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
-// ==================== TURKEY SPECIFIC MODELS ====================
-
 model Region {
-  id       String  @id @default(cuid())
-  name     String
-  code     String  @unique // Plaka kodu
-  city     String
-  district String?
-
-  // Solar data
-  annualSunHours  Float // Yıllık güneşlenme saati
-  solarIrradiance Float // kWh/m²/yıl
-
-  // Economic data
-  electricityRate  Float // TL/kWh bölgesel tarife
-  agriculturalZone Boolean @default(false)
-  industrialZone   Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  incentives  Incentive[]
-  weatherData WeatherData[]
+  id               String        @id @default(cuid())
+  name             String
+  code             String        @unique
+  city             String
+  district         String?
+  annualSunHours   Float
+  solarIrradiance  Float
+  electricityRate  Float
+  agriculturalZone Boolean       @default(false)
+  industrialZone   Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  incentives       Incentive[]
+  weatherData      WeatherData[]
 }
 
 model Incentive {
   id           String    @id @default(cuid())
   regionId     String?
   name         String
-  type         String // YEKDEM, Tax, Subsidy, etc.
+  type         String
   description  String
-  amount       Float? // TL or %
+  amount       Float?
   validFrom    DateTime
   validUntil   DateTime?
-  requirements String // JSON array of requirements
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  region Region? @relation(fields: [regionId], references: [id])
+  requirements String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  region       Region?   @relation(fields: [regionId], references: [id])
 }
 
 model Regulation {
   id            String    @id @default(cuid())
   title         String
   code          String    @unique
-  category      String // Licensing, Technical, Environmental
+  category      String
   description   String
   effectiveDate DateTime
   expiryDate    DateTime?
   documentUrl   String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
-// ==================== MONITORING & ANALYTICS ====================
-
 model Monitoring {
-  id        String   @id @default(cuid())
-  projectId String
-  timestamp DateTime @default(now())
-
-  // Production data
-  power     Float // kW
-  energy    Float // kWh
-  voltage   Float // V
-  current   Float // A
-  frequency Float // Hz
-
-  // Environmental
-  irradiance  Float? // W/m²
-  temperature Float? // °C
-  windSpeed   Float? // m/s
-
-  // Performance
-  pr           Float? // Performance Ratio %
-  availability Float? // %
-
-  // Relations
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  projectId    String
+  timestamp    DateTime @default(now())
+  power        Float
+  energy       Float
+  voltage      Float
+  current      Float
+  frequency    Float
+  irradiance   Float?
+  temperature  Float?
+  windSpeed    Float?
+  pr           Float?
+  availability Float?
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId, timestamp])
 }
 
 model WeatherData {
-  id         String   @id @default(cuid())
-  locationId String?
-  regionId   String?
-  date       DateTime
-
-  temperature   Float // °C
-  humidity      Float // %
-  pressure      Float // hPa
-  windSpeed     Float // m/s
-  windDirection Float // degrees
-  cloudCover    Float // %
-  precipitation Float // mm
-  irradiance    Float // W/m²
-
-  // Relations
-  location Location? @relation(fields: [locationId], references: [id])
-  region   Region?   @relation(fields: [regionId], references: [id])
+  id            String    @id @default(cuid())
+  locationId    String?
+  regionId      String?
+  date          DateTime
+  temperature   Float
+  humidity      Float
+  pressure      Float
+  windSpeed     Float
+  windDirection Float
+  cloudCover    Float
+  precipitation Float
+  irradiance    Float
+  location      Location? @relation(fields: [locationId], references: [id])
+  region        Region?   @relation(fields: [regionId], references: [id])
 
   @@index([date])
   @@index([locationId, date])
 }
 
-// ==================== CRM & COMMUNICATION ====================
-
-enum LeadStatus {
-  NEW
-  CONTACTED
-  QUALIFIED
-  PROPOSAL
-  NEGOTIATION
-  WON
-  LOST
-}
-
 model Lead {
-  id         String     @id @default(cuid())
-  customerId String?
-  name       String
-  email      String
-  phone      String?
-  source     String? // Website, Referral, Campaign, etc.
-  status     LeadStatus @default(NEW)
-  score      Int        @default(0) // Lead scoring 0-100
-
-  // Interest
+  id              String       @id @default(cuid())
+  customerId      String?
+  name            String
+  email           String
+  phone           String?
+  source          String?
+  status          LeadStatus   @default(NEW)
+  score           Int          @default(0)
   projectType     ProjectType?
   estimatedBudget Float?
-  timeframe       String? // Immediate, 3months, 6months, etc.
+  timeframe       String?
   notes           String?
-
-  assignedTo  String? // Sales rep
-  convertedAt DateTime? // When converted to customer
-  lostReason  String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  customer   Customer?  @relation(fields: [customerId], references: [id])
-  activities Activity[]
-}
-
-enum ActivityType {
-  CALL
-  EMAIL
-  MEETING
-  SITE_VISIT
-  PROPOSAL_SENT
-  CONTRACT_SIGNED
-  NOTE
+  assignedTo      String?
+  convertedAt     DateTime?
+  lostReason      String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  activities      Activity[]
+  customer        Customer?    @relation(fields: [customerId], references: [id])
 }
 
 model Activity {
@@ -1070,29 +747,13 @@ model Activity {
   subject     String
   description String?
   date        DateTime
-  duration    Int? // minutes
+  duration    Int?
   outcome     String?
   nextAction  String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  user User  @relation(fields: [userId], references: [id])
-  lead Lead? @relation(fields: [leadId], references: [id])
-}
-
-// ==================== DOCUMENTS & FILES ====================
-
-enum DocumentType {
-  CONTRACT
-  INVOICE
-  REPORT
-  PERMIT
-  CERTIFICATE
-  DATASHEET
-  PHOTO
-  OTHER
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  lead        Lead?        @relation(fields: [leadId], references: [id])
+  user        User         @relation(fields: [userId], references: [id])
 }
 
 model Document {
@@ -1103,26 +764,11 @@ model Document {
   description String?
   url         String
   mimeType    String
-  size        Int // bytes
+  size        Int
   uploadedBy  String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  project Project? @relation(fields: [projectId], references: [id])
-}
-
-// ==================== NOTIFICATIONS ====================
-
-enum NotificationType {
-  QUOTE_RECEIVED
-  QUOTE_ACCEPTED
-  PROJECT_UPDATE
-  PAYMENT_DUE
-  INSTALLATION_SCHEDULED
-  MAINTENANCE_REMINDER
-  SYSTEM_ALERT
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  project     Project?     @relation(fields: [projectId], references: [id])
 }
 
 model Notification {
@@ -1133,59 +779,37 @@ model Notification {
   message   String
   read      Boolean          @default(false)
   actionUrl String?
-
-  createdAt DateTime @default(now())
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ==================== REVIEWS & RATINGS ====================
-
 model Review {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   companyId   String
   authorName  String
   authorEmail String?
-  rating      Int // 1-5
+  rating      Int
   comment     String?
-  verified    Boolean @default(false) // Verified purchase
-  helpful     Int     @default(0) // Helpful votes
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  company Company @relation(fields: [companyId], references: [id])
+  verified    Boolean  @default(false)
+  helpful     Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  company     Company  @relation(fields: [companyId], references: [id])
 }
-
-// ==================== CERTIFICATES & COMPLIANCE ====================
 
 model Certificate {
   id          String    @id @default(cuid())
   companyId   String
-  type        String // ISO, CE, TSE, etc.
+  type        String
   name        String
   issuedBy    String
   issuedDate  DateTime
   expiryDate  DateTime?
   documentUrl String?
   verified    Boolean   @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  company Company @relation(fields: [companyId], references: [id])
-}
-
-// ==================== PHOTO REQUEST SYSTEM ====================
-
-enum PhotoRequestStatus {
-  PENDING
-  UPLOADED
-  REVIEWED
-  EXPIRED
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  company     Company   @relation(fields: [companyId], references: [id])
 }
 
 model PhotoRequest {
@@ -1206,65 +830,587 @@ model PhotoRequest {
   uploadedAt    DateTime?
   reviewedAt    DateTime?
   reviewedById  String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  customer    Customer?     @relation(fields: [customerId], references: [id])
-  project     Project?      @relation(fields: [projectId], references: [id])
-  requestedBy User          @relation("PhotoRequestCreator", fields: [requestedById], references: [id])
-  reviewedBy  User?         @relation("PhotoRequestReviewer", fields: [reviewedById], references: [id])
-  photos      PhotoUpload[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  customer      Customer?          @relation(fields: [customerId], references: [id])
+  project       Project?           @relation(fields: [projectId], references: [id])
+  requestedBy   User               @relation("PhotoRequestCreator", fields: [requestedById], references: [id])
+  reviewedBy    User?              @relation("PhotoRequestReviewer", fields: [reviewedById], references: [id])
+  photos        PhotoUpload[]
 }
 
 model PhotoUpload {
-  id              String   @id @default(cuid())
+  id              String       @id @default(cuid())
   photoRequestId  String
   filename        String
   originalName    String
   mimeType        String
-  fileSize        Int // bytes
+  fileSize        Int
   storageUrl      String
   thumbnailUrl    String?
-  metadata        Json? // EXIF data, GPS, etc.
+  metadata        Json?
   notes           String?
-  approved        Boolean? // null = pending, true = approved, false = rejected
+  approved        Boolean?
   rejectionReason String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  photoRequest PhotoRequest @relation(fields: [photoRequestId], references: [id], onDelete: Cascade)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  photoRequest    PhotoRequest @relation(fields: [photoRequestId], references: [id], onDelete: Cascade)
 }
 
-// ==================== MANUAL EXCHANGE RATES ====================
-
-// Manuel döviz kuru override tablosu - TCMB verilerini geçersiz kılar
 model ManualExchangeRate {
-  id          String  @id @default(cuid())
-  currency    String // USD, EUR, CNY
-  rate        Float // Manuel girilen kur
-  description String? // Admin notları
+  id          String   @id @default(cuid())
+  currency    String
+  rate        Float
+  description String?
+  isActive    Boolean  @default(true)
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  creator     User     @relation(fields: [createdBy], references: [id])
 
-  // Metadata
-  isActive  Boolean @default(true)
-  createdBy String // Admin kullanıcı ID
-
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  creator User @relation(fields: [createdBy], references: [id])
-
-  // Unique constraint - her para birimi için bir aktif kayıt
   @@unique([currency, isActive])
   @@index([currency])
 }
 
-// ==================== PARTNER SYSTEM ====================
+model Partner {
+  id                  String                @id @default(cuid())
+  companyId           String                @unique
+  type                PartnerType
+  status              PartnerStatus         @default(PENDING_VERIFICATION)
+  serviceAreas        Json
+  specialties         Json
+  minimumProjectSize  Float?
+  maximumProjectSize  Float?
+  responseTimeHours   Int                   @default(24)
+  portfolioImages     Json
+  certifications      Json
+  description         String?
+  preferredContact    String                @default("EMAIL")
+  totalLeads          Int                   @default(0)
+  convertedLeads      Int                   @default(0)
+  averageResponseTime Float?
+  customerRating      Float                 @default(0)
+  totalRevenue        Float                 @default(0)
+  totalProjects       Int                   @default(0)
+  commissionRate      Float                 @default(0.05)
+  tier                String                @default("BASIC")
+  verifiedAt          DateTime?
+  verifiedBy          String?
+  verificationNotes   String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  commissions         Commission[]
+  company             Company               @relation(fields: [companyId], references: [id])
+  quoteRequests       PartnerQuoteRequest[]
+  partnerReviews      PartnerReview[]
+
+  @@index([status])
+  @@index([type])
+}
+
+model QuoteRequest {
+  id                   String                @id @default(cuid())
+  customerId           String?
+  customerName         String
+  customerEmail        String
+  customerPhone        String?
+  projectType          ProjectType
+  location             String
+  address              String?
+  estimatedCapacity    Float?
+  budget               Float?
+  description          String?
+  urgency              String                @default("NORMAL")
+  status               QuoteRequestStatus    @default(OPEN)
+  preferredPartnerType PartnerType?
+  maxPartnersToContact Int                   @default(5)
+  expectedStartDate    DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  expiresAt            DateTime
+  partnerRequests      PartnerQuoteRequest[]
+  customer             Customer?             @relation(fields: [customerId], references: [id])
+
+  @@index([status])
+  @@index([location])
+  @@index([projectType])
+}
+
+model PartnerQuoteRequest {
+  id                   String                    @id @default(cuid())
+  partnerId            String
+  quoteRequestId       String
+  status               PartnerQuoteRequestStatus @default(SENT)
+  sentAt               DateTime                  @default(now())
+  respondedAt          DateTime?
+  viewedAt             DateTime?
+  declinedAt           DateTime?
+  selectedAt           DateTime?
+  quotedPrice          Float?
+  currency             String                    @default("TRY")
+  timeline             String?
+  notes                String?
+  attachments          Json?
+  validUntil           DateTime?
+  installationIncluded Boolean                   @default(true)
+  warrantyYears        Int?
+  maintenanceIncluded  Boolean                   @default(false)
+  financingAvailable   Boolean                   @default(false)
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  partner              Partner                   @relation(fields: [partnerId], references: [id])
+  quoteRequest         QuoteRequest              @relation(fields: [quoteRequestId], references: [id])
+
+  @@unique([partnerId, quoteRequestId])
+  @@index([status])
+  @@index([partnerId])
+}
+
+model Commission {
+  id             String           @id @default(cuid())
+  partnerId      String
+  projectId      String?
+  quoteRequestId String?
+  amount         Float
+  currency       String           @default("TRY")
+  rate           Float
+  projectValue   Float
+  status         CommissionStatus @default(PENDING)
+  dueDate        DateTime
+  paidAt         DateTime?
+  invoiceUrl     String?
+  paymentMethod  String?
+  description    String?
+  notes          String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  partner        Partner          @relation(fields: [partnerId], references: [id])
+  project        Project?         @relation(fields: [projectId], references: [id])
+
+  @@index([status])
+  @@index([partnerId])
+  @@index([dueDate])
+}
+
+model PartnerReview {
+  id                  String       @id @default(cuid())
+  partnerId           String
+  customerId          String?
+  customerName        String
+  customerEmail       String?
+  rating              Int
+  review              String?
+  projectType         ProjectType?
+  projectValue        Float?
+  verified            Boolean      @default(false)
+  helpful             Int          @default(0)
+  qualityRating       Int?
+  timelinessRating    Int?
+  communicationRating Int?
+  approved            Boolean      @default(true)
+  moderatedBy         String?
+  moderatedAt         DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  customer            Customer?    @relation(fields: [customerId], references: [id])
+  partner             Partner      @relation(fields: [partnerId], references: [id])
+
+  @@index([partnerId])
+  @@index([rating])
+}
+
+model Design {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  designData   Json
+  location     String?
+  coordinates  Json?
+  calculations Json?
+  status       String   @default("ACTIVE")
+  userId       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Department {
+  id          String     @id @default(cuid())
+  companyId   String
+  name        String
+  description String?
+  managerId   String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  company     Company    @relation("CompanyDepartments", fields: [companyId], references: [id], onDelete: Cascade)
+  manager     Employee?  @relation("DepartmentManager", fields: [managerId], references: [id])
+  employees   Employee[] @relation("EmployeeDepartment")
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+model Employee {
+  id                 String             @id @default(cuid())
+  companyId          String
+  firstName          String
+  lastName           String
+  email              String             @unique
+  employeeCode       String             @unique
+  department         String?
+  departmentId       String?
+  position           String
+  salary             Float?
+  startDate          DateTime
+  endDate            DateTime?
+  isActive           Boolean            @default(true)
+  profileImage       String?
+  phoneNumber        String?
+  address            String?
+  emergencyContact   Json?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  managedDepartments Department[]       @relation("DepartmentManager")
+  company            Company            @relation("CompanyEmployees", fields: [companyId], references: [id], onDelete: Cascade)
+  employeeDepartment Department?        @relation("EmployeeDepartment", fields: [departmentId], references: [id])
+  documents          EmployeeDocument[]
+  leaveRequests      LeaveRequest[]
+  timeEntries        TimeEntry[]
+
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([isActive])
+  @@index([email])
+  @@index([employeeCode])
+}
+
+model TimeEntry {
+  id            String          @id @default(cuid())
+  employeeId    String
+  date          DateTime        @db.Date
+  clockIn       DateTime?
+  clockOut      DateTime?
+  breakDuration Int?
+  totalHours    Float?
+  status        TimeEntryStatus @default(OUT)
+  notes         String?
+  location      String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  employee      Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([date])
+}
+
+model LeaveRequest {
+  id         String      @id @default(cuid())
+  employeeId String
+  type       LeaveType
+  startDate  DateTime    @db.Date
+  endDate    DateTime    @db.Date
+  totalDays  Float
+  reason     String?
+  status     LeaveStatus @default(PENDING)
+  approvedBy String?
+  approvedAt DateTime?
+  rejectedAt DateTime?
+  notes      String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+}
+
+model EmployeeDocument {
+  id           String          @id @default(cuid())
+  employeeId   String
+  title        String
+  documentType DocumentType_HR
+  fileUrl      String
+  uploadDate   DateTime        @default(now())
+  expiryDate   DateTime?
+  notes        String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  employee     Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([documentType])
+  @@index([expiryDate])
+}
+
+model CookieConsent {
+  id        String   @id @default(cuid())
+  userId    String?
+  sessionId String?
+  consent   Json
+  ipAddress String?
+  userAgent String?
+  version   String   @default("1.0.0")
+  timestamp DateTime @default(now())
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User?    @relation("UserCookieConsent", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([timestamp])
+  @@index([expiresAt])
+}
+
+model KVKKApplication {
+  id              String            @id @default(cuid())
+  applicationNo   String            @unique
+  applicantType   ApplicationType   @default(INDIVIDUAL)
+  firstName       String?
+  lastName        String?
+  email           String
+  phone           String?
+  idNumber        String?
+  applicantName   String?
+  applicantTcNo   String?
+  applicantEmail  String?
+  applicantPhone  String?
+  applicantAddress String?
+  applicantCity   String?
+  applicantDistrict String?
+  applicantPostalCode String?
+  requestType     KVKKRequestType
+  description     String?
+  requestDetails  String?
+  attachments     Json?
+  previousApplication Boolean @default(false)
+  previousApplicationNo String?
+  status          ApplicationStatus @default(PENDING)
+  submittedAt     DateTime          @default(now())
+  responseDeadline DateTime?
+  processedAt     DateTime?
+  responseText    String?
+  responseFiles   Json?
+  responseDetails String?
+  assignedTo      String?
+  processedBy     String?
+  processingNotes String?
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  processor       User?             @relation("KVKKApplicationProcessor", fields: [processedBy], references: [id])
+
+  @@index([applicationNo])
+  @@index([email])
+  @@index([status])
+  @@index([requestType])
+  @@index([submittedAt])
+}
+
+model KVKKAuditLog {
+  id            String   @id @default(cuid())
+  userId        String?
+  sessionId     String?
+  applicationId String?
+  action        String
+  details       Json
+  performedBy   String?
+  ipAddress     String?
+  userAgent     String?
+  performedAt   DateTime @default(now())
+  timestamp     DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+  user          User?    @relation("UserKVKKAudit", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([applicationId])
+  @@index([action])
+  @@index([performedAt])
+  @@index([timestamp])
+}
+
+enum UserRole {
+  ADMIN
+  COMPANY
+  CUSTOMER
+  FARMER
+  BANK
+  INSTALLATION_TEAM
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum CompanyType {
+  INSTALLER
+  MANUFACTURER
+  CONSULTANT
+  BANK
+}
+
+enum CustomerType {
+  INDIVIDUAL
+  CORPORATE
+  FARMER
+}
+
+enum ProjectType {
+  ROOFTOP
+  LAND
+  AGRISOLAR
+  INDUSTRIAL
+  CARPARK
+  RESIDENTIAL
+  COMMERCIAL
+  AGRICULTURAL
+}
+
+enum ProjectStatus {
+  DRAFT
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ProjectRequestStatus {
+  OPEN
+  CONTACTED
+  ASSIGNED
+  SITE_VISIT
+  CONVERTED_TO_PROJECT
+  LOST
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum RequestSource {
+  WEBSITE
+  PHONE
+  EMAIL
+  REFERRAL
+  SOCIAL_MEDIA
+  WALK_IN
+  PARTNER_REFERRAL
+  WHATSAPP
+  OTHER
+}
+
+enum NextStepType {
+  CONTACT_CUSTOMER
+  SCHEDULE_SITE_VISIT
+  SEND_QUOTE
+  FOLLOW_UP_QUOTE
+  PROJECT_KICKOFF
+  FOLLOW_UP_GENERAL
+  CUSTOM
+}
+
+enum ProductType {
+  SOLAR_PANEL
+  INVERTER
+  BATTERY
+  MOUNTING_SYSTEM
+  CABLE
+  MONITORING
+  ACCESSORY
+}
+
+enum PackageType {
+  ON_GRID
+  OFF_GRID
+  TARIMSAL_SULAMA
+  DC_POMPALAR
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  VIEWED
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum DeliveryChannel {
+  EMAIL
+  WHATSAPP
+  SMS
+  MANUAL
+}
+
+enum InstallationStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  CANCELLED
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  SITE_VISIT
+  PROPOSAL_SENT
+  CONTRACT_SIGNED
+  NOTE
+}
+
+enum DocumentType {
+  CONTRACT
+  INVOICE
+  REPORT
+  PERMIT
+  CERTIFICATE
+  DATASHEET
+  PHOTO
+  OTHER
+}
+
+enum NotificationType {
+  QUOTE_RECEIVED
+  QUOTE_ACCEPTED
+  PROJECT_UPDATE
+  PAYMENT_DUE
+  INSTALLATION_SCHEDULED
+  MAINTENANCE_REMINDER
+  SYSTEM_ALERT
+}
+
+enum PhotoRequestStatus {
+  PENDING
+  UPLOADED
+  REVIEWED
+  EXPIRED
+}
 
 enum PartnerType {
   INSTALLATION_COMPANY
@@ -1280,53 +1426,6 @@ enum PartnerStatus {
   REJECTED
 }
 
-model Partner {
-  id                 String        @id @default(cuid())
-  companyId          String        @unique
-  type               PartnerType
-  status             PartnerStatus @default(PENDING_VERIFICATION)
-  serviceAreas       Json // Array of cities/regions served
-  specialties        Json // Array of specialization tags
-  minimumProjectSize Float? // Minimum kW capacity
-  maximumProjectSize Float? // Maximum kW capacity
-  responseTimeHours  Int           @default(24)
-  portfolioImages    Json // Array of portfolio image URLs
-  certifications     Json // Array of certification documents
-  description        String? // Partner description
-
-  // Contact preferences
-  preferredContact String @default("EMAIL") // EMAIL, PHONE, WHATSAPP
-
-  // Performance metrics
-  totalLeads          Int    @default(0)
-  convertedLeads      Int    @default(0)
-  averageResponseTime Float? // Hours
-  customerRating      Float  @default(0)
-  totalRevenue        Float  @default(0)
-  totalProjects       Int    @default(0)
-
-  // Commission settings
-  commissionRate Float  @default(0.05) // 5% default
-  tier           String @default("BASIC") // BASIC, SILVER, GOLD, PLATINUM
-
-  // Verification data
-  verifiedAt        DateTime?
-  verifiedBy        String? // Admin user ID
-  verificationNotes String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  company        Company               @relation(fields: [companyId], references: [id])
-  quoteRequests  PartnerQuoteRequest[]
-  commissions    Commission[]
-  partnerReviews PartnerReview[]
-
-  @@index([status])
-  @@index([type])
-}
-
 enum QuoteRequestStatus {
   OPEN
   PARTNER_RESPONSES_RECEIVED
@@ -1338,41 +1437,6 @@ enum QuoteRequestStatus {
   CANCELLED
 }
 
-model QuoteRequest {
-  id                String             @id @default(cuid())
-  customerId        String?
-  customerName      String
-  customerEmail     String
-  customerPhone     String?
-  projectType       ProjectType
-  location          String
-  address           String?
-  estimatedCapacity Float? // kW
-  budget            Float?
-  description       String?
-  urgency           String             @default("NORMAL") // URGENT, NORMAL, FLEXIBLE
-  status            QuoteRequestStatus @default(OPEN)
-
-  // Matching criteria
-  preferredPartnerType PartnerType?
-  maxPartnersToContact Int          @default(5)
-
-  // Timeline
-  expectedStartDate DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  expiresAt DateTime // Auto-expire after 30 days
-
-  // Relations
-  customer        Customer?             @relation(fields: [customerId], references: [id])
-  partnerRequests PartnerQuoteRequest[]
-
-  @@index([status])
-  @@index([location])
-  @@index([projectType])
-}
-
 enum PartnerQuoteRequestStatus {
   SENT
   VIEWED
@@ -1380,43 +1444,6 @@ enum PartnerQuoteRequestStatus {
   DECLINED
   EXPIRED
   SELECTED
-}
-
-model PartnerQuoteRequest {
-  id             String                    @id @default(cuid())
-  partnerId      String
-  quoteRequestId String
-  status         PartnerQuoteRequestStatus @default(SENT)
-  sentAt         DateTime                  @default(now())
-  respondedAt    DateTime?
-  viewedAt       DateTime?
-  declinedAt     DateTime?
-  selectedAt     DateTime?
-
-  // Quote response
-  quotedPrice Float?
-  currency    String    @default("TRY")
-  timeline    String? // "2-4 weeks"
-  notes       String?
-  attachments Json? // Array of file URLs
-  validUntil  DateTime? // Quote validity
-
-  // Response details
-  installationIncluded Boolean @default(true)
-  warrantyYears        Int?
-  maintenanceIncluded  Boolean @default(false)
-  financingAvailable   Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  partner      Partner      @relation(fields: [partnerId], references: [id])
-  quoteRequest QuoteRequest @relation(fields: [quoteRequestId], references: [id])
-
-  @@unique([partnerId, quoteRequestId])
-  @@index([status])
-  @@index([partnerId])
 }
 
 enum CommissionStatus {
@@ -1427,69 +1454,59 @@ enum CommissionStatus {
   CANCELLED
 }
 
-model Commission {
-  id             String           @id @default(cuid())
-  partnerId      String
-  projectId      String?
-  quoteRequestId String?
-  amount         Float
-  currency       String           @default("TRY")
-  rate           Float // Commission rate applied
-  projectValue   Float // Total project value
-  status         CommissionStatus @default(PENDING)
-
-  // Payment details
-  dueDate       DateTime
-  paidAt        DateTime?
-  invoiceUrl    String? // Generated invoice PDF
-  paymentMethod String? // BANK_TRANSFER, etc.
-
-  // Reference data
-  description String?
-  notes       String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  partner Partner  @relation(fields: [partnerId], references: [id])
-  project Project? @relation(fields: [projectId], references: [id])
-
-  @@index([status])
-  @@index([partnerId])
-  @@index([dueDate])
+enum TimeEntryStatus {
+  IN
+  OUT
+  BREAK
 }
 
-model PartnerReview {
-  id            String       @id @default(cuid())
-  partnerId     String
-  customerId    String?
-  customerName  String
-  customerEmail String?
-  rating        Int // 1-5 stars
-  review        String?
-  projectType   ProjectType?
-  projectValue  Float? // For context
-  verified      Boolean      @default(false)
-  helpful       Int          @default(0)
+enum LeaveType {
+  SICK
+  VACATION
+  PERSONAL
+  MATERNITY
+  PATERNITY
+  BEREAVEMENT
+  OTHER
+}
 
-  // Review categories
-  qualityRating       Int? // 1-5 stars for quality
-  timelinessRating    Int? // 1-5 stars for timeline
-  communicationRating Int? // 1-5 stars for communication
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
 
-  // Moderation
-  approved    Boolean   @default(true)
-  moderatedBy String? // Admin user ID
-  moderatedAt DateTime?
+enum DocumentType_HR {
+  CONTRACT
+  ID_COPY
+  DIPLOMA
+  CERTIFICATE
+  PERFORMANCE_REVIEW
+  MEDICAL_REPORT
+  RESIGNATION
+  OTHER_HR
+}
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum ApplicationType {
+  INDIVIDUAL
+  CORPORATE
+}
 
-  // Relations
-  partner  Partner   @relation(fields: [partnerId], references: [id])
-  customer Customer? @relation(fields: [customerId], references: [id])
+enum KVKKRequestType {
+  DATA_ACCESS
+  DATA_CORRECTION
+  DATA_DELETION
+  DATA_OBJECTION
+  DATA_PORTABILITY
+  OTHER
+}
 
-  @@index([partnerId])
-  @@index([rating])
+enum ApplicationStatus {
+  PENDING
+  IN_PROGRESS
+  IN_REVIEW
+  COMPLETED
+  REJECTED
+  CANCELLED
+  EXPIRED
 }

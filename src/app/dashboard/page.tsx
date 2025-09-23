@@ -185,7 +185,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <DashboardLayout 
+    <DashboardLayout
       title={`Hoş geldiniz, ${user.name}! 👋`}
       breadcrumbs={[
         { label: 'Anasayfa', href: '/' },
@@ -194,7 +194,7 @@ export default function DashboardPage() {
     >
       <div className="mb-6">
         <p className="text-gray-600 dark:text-gray-300">
-          EnerjiOS dashboard'unuza hoş geldiniz. 
+          EnerjiOS dashboard'unuza hoş geldiniz.
           {user.role === 'COMPANY' && ' Firma projelerinizi ve tekliflerinizi buradan yönetebilirsiniz.'}
           {user.role === 'FARMER' && ' Çiftlik projelerinizi ve tarımsal GES sistemlerinizi buradan takip edebilirsiniz.'}
           {user.role === 'CUSTOMER' && ' GES projelerinizi ve tasarruf analizlerinizi buradan görüntüleyebilirsiniz.'}
@@ -254,7 +254,7 @@ export default function DashboardPage() {
                 </div>
               </Button>
             </Link>
-            
+
             {user.role !== 'INSTALLATION_TEAM' && (
               <Link href="/dashboard/calculator">
                 <Button

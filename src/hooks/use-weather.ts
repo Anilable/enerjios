@@ -109,14 +109,122 @@ export function useWeather(
 
 // Specialized hook for dashboard weather widget
 export function useDashboardWeather() {
-  // Use Lüleburgaz, Kırklareli coordinates (company location)
-  const LULEBURGAZ_LAT = 41.4023
-  const LULEBURGAZ_LNG = 27.3564
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [locationError, setLocationError] = useState<string | null>(null)
 
-  return useWeather(LULEBURGAZ_LAT, LULEBURGAZ_LNG, undefined, {
-    autoFetch: true,
-    refreshInterval: 10 * 60 * 1000, // 10 minutes
-  })
+  // Fallback coordinates (Beşiktaş, İstanbul - company location)
+  const FALLBACK_LAT = 41.0766
+  const FALLBACK_LNG = 29.0159
+
+  useEffect(() => {
+    // Get user's current location
+    console.log('🗺️ Starting geolocation request...')
+
+    if (navigator.geolocation) {
+      console.log('🗺️ Geolocation API available, requesting position...')
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          console.log('🗺️ Geolocation success:', {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          })
+
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          })
+          setLocationError(null)
+        },
+        (error) => {
+          console.warn('🗺️ Geolocation failed:', error.message, error.code)
+
+          let errorMessage = 'Konum erişimi reddedildi, varsayılan konum kullanılıyor'
+
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = 'Konum izni reddedildi'
+              break
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'Konum bilgisi mevcut değil'
+              break
+            case error.TIMEOUT:
+              errorMessage = 'Konum alma zaman aşımı'
+              break
+          }
+
+          setLocationError(errorMessage + ', varsayılan konum kullanılıyor')
+
+          // Use fallback location
+          console.log('🗺️ Using fallback location: Istanbul/Beşiktaş')
+          setUserLocation({
+            lat: FALLBACK_LAT,
+            lng: FALLBACK_LNG
+          })
+        },
+        {
+          enableHighAccuracy: false,
+          timeout: 10000,
+          maximumAge: 0 // Don't use cached position, always get fresh
+        }
+      )
+    } else {
+      console.log('🗺️ Geolocation API not available')
+      setLocationError('Konum desteği mevcut değil, varsayılan konum kullanılıyor')
+      setUserLocation({
+        lat: FALLBACK_LAT,
+        lng: FALLBACK_LNG
+      })
+    }
+  }, [])
+
+  const weatherResult = useWeather(
+    userLocation?.lat,
+    userLocation?.lng,
+    undefined,
+    {
+      autoFetch: !!userLocation,
+      refreshInterval: 10 * 60 * 1000, // 10 minutes
+    }
+  )
+
+  const requestLocationPermission = useCallback(() => {
+    console.log('🗺️ Manually requesting location permission...')
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          console.log('🗺️ Manual geolocation success:', {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          })
+
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          })
+          setLocationError(null)
+        },
+        (error) => {
+          console.warn('🗺️ Manual geolocation failed:', error.message, error.code)
+          setLocationError('Konum erişimi başarısız, varsayılan konum kullanılıyor')
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
+        }
+      )
+    }
+  }, [])
+
+  return {
+    ...weatherResult,
+    locationError,
+    isUsingFallback: userLocation?.lat === FALLBACK_LAT && userLocation?.lng === FALLBACK_LNG,
+    requestLocationPermission
+  }
 }
 
 // Hook for project-specific weather

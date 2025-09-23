@@ -46,10 +46,10 @@ export function Footer() {
   ]
 
   const legalLinks = [
-    { href: '/privacy', label: 'Gizlilik Politikası' },
-    { href: '/terms', label: 'Kullanım Şartları' },
-    { href: '/cookies', label: 'Çerez Politikası' },
-    { href: '/gdpr', label: 'KVKK' },
+    { href: '/kvkk', label: 'KVKK Aydınlatma Metni' },
+    { href: '/cerez-politikasi', label: 'Çerez Politikası' },
+    { href: '/gizlilik-politikasi', label: 'Gizlilik Politikası' },
+    { href: '/kvkk-basvuru', label: 'KVKK Başvuru' },
   ]
 
   return (
@@ -71,7 +71,7 @@ export function Footer() {
             <div className="space-y-3">
               <div className="flex items-center space-x-3 text-sm text-gray-400">
                 <MapPin className="h-4 w-4" />
-                <span>8 Kasım Mah Tekcan Cad 52/A 39750 Lüleburgaz / Kırklareli</span>
+                <span>Levazım, Vadi Cd Zorlu Center , 34340 Beşiktaş/İstanbul</span>
               </div>
               <div className="flex items-center space-x-3 text-sm text-gray-400">
                 <Phone className="h-4 w-4" />

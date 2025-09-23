@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { AlertCircle, Eye, EyeOff, Sun, Building, User, Tractor, Factory } from 'lucide-react'
 
 export function SignUpForm() {
@@ -36,6 +37,8 @@ export function SignUpForm() {
     farmSize: '',
     crops: [],
   })
+
+  const [kvkkAccepted, setKvkkAccepted] = useState(false)
   
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -50,6 +53,12 @@ export function SignUpForm() {
     setSuccess('')
 
     // Validation
+    if (!kvkkAccepted) {
+      setError('KVKK Aydınlatma Metni\'ni kabul etmeniz gereklidir')
+      setIsLoading(false)
+      return
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Şifreler eşleşmiyor')
       setIsLoading(false)
@@ -586,10 +595,38 @@ export function SignUpForm() {
             </div>
           </div>
 
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={isLoading}
+          {/* KVKK Consent */}
+          <div className="flex items-start space-x-2">
+            <Checkbox
+              id="kvkk-consent"
+              checked={kvkkAccepted}
+              onCheckedChange={(checked) => setKvkkAccepted(checked === true)}
+              className="mt-0.5"
+            />
+            <div className="grid gap-1.5 leading-none">
+              <Label
+                htmlFor="kvkk-consent"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                <Link
+                  href="/kvkk"
+                  target="_blank"
+                  className="text-primary hover:underline"
+                >
+                  KVKK Aydınlatma Metni
+                </Link>
+                'ni okudum ve kabul ediyorum
+              </Label>
+              <p className="text-xs text-gray-500">
+                Kişisel verilerinizin işlenmesine ilişkin aydınlatma metnini kabul etmeniz gerekmektedir.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isLoading || !kvkkAccepted}
           >
             {isLoading ? 'Kayıt yapılıyor...' : 'Kayıt Ol'}
           </Button>

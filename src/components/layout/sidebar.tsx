@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -38,7 +38,11 @@ import {
   Compass,
   Camera,
   FolderKanban,
-  Package
+  Package,
+  UserCog,
+  ClockIcon,
+  Briefcase,
+  FileX
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getRoleName } from '@/lib/role-utils'
@@ -93,11 +97,25 @@ export const getNavItemsByRole = (role: string): NavItem[] => {
           ]
         },
         {
+          title: 'İnsan Kaynakları',
+          href: '/dashboard/hr',
+          icon: UserCog,
+          subItems: [
+            { title: 'Personel Yönetimi', href: '/dashboard/hr/employees', icon: Users },
+            { title: 'Mesai Takibi', href: '/dashboard/hr/time-tracking', icon: ClockIcon },
+            { title: 'İzin Yönetimi', href: '/dashboard/hr/leave-management', icon: Calendar },
+            { title: 'Departmanlar', href: '/dashboard/hr/departments', icon: Briefcase },
+            { title: 'Raporlar', href: '/dashboard/hr/reports', icon: BarChart3 },
+          ]
+        },
+        {
           title: 'Sistem Yönetimi',
           href: '/dashboard/system',
           icon: Settings,
           subItems: [
             { title: 'Veritabanı', href: '/dashboard/database', icon: Database },
+            { title: 'KVKK Yönetimi', href: '/dashboard/kvkk', icon: Shield, badge: 'KVKK' },
+            { title: 'KVKK Raporları', href: '/dashboard/kvkk-reports', icon: BarChart3, badge: 'KVKK' },
             { title: 'Ayarlar', href: '/dashboard/settings', icon: Settings },
             { title: 'Güvenlik', href: '/dashboard/security', icon: Shield },
           ]
@@ -417,6 +435,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const navItems = getNavItemsByRole(session.user.role)
 
+  // Auto-expand parent menu if current page is a sub-item
+  useEffect(() => {
+    navItems.forEach(item => {
+      if (item.subItems && item.subItems.some(subItem => pathname === subItem.href)) {
+        setExpandedItems(prev => prev.includes(item.href) ? prev : [...prev, item.href])
+      }
+    })
+  }, [pathname, navItems])
+
   const toggleExpanded = (href: string) => {
     setExpandedItems(prev => 
       prev.includes(href) 
@@ -427,16 +454,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const renderNavItem = (item: NavItem, depth = 0) => {
     const Icon = item.icon
-    const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-    const isExpanded = expandedItems.includes(item.href)
+    const isActive = pathname === item.href || (depth === 0 && item.subItems && item.subItems.some(subItem => pathname === subItem.href))
+    const isExpanded = expandedItems.includes(item.href) || (item.subItems && item.subItems.some(subItem => pathname === subItem.href))
     const hasSubItems = item.subItems && item.subItems.length > 0
 
     return (
       <div key={item.href}>
         <Link
-          href={hasSubItems ? '#' : item.href}
+          href={hasSubItems && depth === 0 ? '#' : item.href}
           onClick={(e) => {
-            if (hasSubItems) {
+            if (hasSubItems && depth === 0) {
               e.preventDefault()
               toggleExpanded(item.href)
             } else {
@@ -446,8 +473,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           className={cn(
             'flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors',
             depth > 0 ? 'ml-4 pl-8' : '',
-            isActive 
-              ? 'bg-primary text-primary-foreground' 
+            isActive || (depth > 0 && pathname === item.href)
+              ? 'bg-primary text-primary-foreground'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
           )}
         >

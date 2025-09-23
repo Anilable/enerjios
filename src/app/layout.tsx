@@ -6,8 +6,8 @@ import { GeistMono } from "geist/font/mono";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { PWAInitializer } from "@/components/pwa/pwa-initializer";
-import { ChatSupport } from "@/components/chat/chat-support";
-import ChatWidget from "@/components/chat/ChatWidget";
+import CookieBanner from "@/components/legal/cookie-banner";
+import { ComplianceBanner } from "@/components/legal/compliance-banner";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -85,10 +85,10 @@ export default function RootLayout({
         <ThemeProvider defaultTheme="system">
           <AuthProvider>
             {children}
+            <ComplianceBanner />
             <Toaster position="top-right" />
             <PWAInitializer />
-            <ChatSupport />
-            <ChatWidget />
+            <CookieBanner />
           </AuthProvider>
         </ThemeProvider>
         

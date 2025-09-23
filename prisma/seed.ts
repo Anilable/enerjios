@@ -573,6 +573,220 @@ async function main() {
     console.log('✅ Sample project with quote created!')
   }
 
+  // 6. HR Sistemi - Sample data ekle
+  console.log('👥 Adding HR system sample data...')
+
+  if (companyEntity) {
+    // Departmanlar oluştur
+    const departments = [
+      { name: 'İnsan Kaynakları', description: 'Personel yönetimi ve işe alım süreçleri' },
+      { name: 'Satış', description: 'Müşteri ilişkileri ve satış süreçleri' },
+      { name: 'Teknik', description: 'Mühendislik ve teknik destek' },
+      { name: 'Muhasebe', description: 'Mali işler ve finans yönetimi' }
+    ]
+
+    const createdDepartments = []
+    for (const dept of departments) {
+      const department = await prisma.department.create({
+        data: {
+          companyId: companyEntity.id,
+          ...dept
+        }
+      })
+      createdDepartments.push(department)
+    }
+
+    // Çalışanlar oluştur
+    const employees = [
+      {
+        firstName: 'Ayşe',
+        lastName: 'Kaya',
+        email: 'ayse.kaya@enerjios.com',
+        employeeCode: 'EOS001',
+        department: 'İnsan Kaynakları',
+        position: 'İK Müdürü',
+        salary: 25000,
+        phoneNumber: '0532 111 1111',
+        address: 'Nişantaşı, İstanbul',
+        emergencyContact: { name: 'Mehmet Kaya', phone: '0532 111 1112', relationship: 'Eş' }
+      },
+      {
+        firstName: 'Can',
+        lastName: 'Özdemir',
+        email: 'can.ozdemir@enerjios.com',
+        employeeCode: 'EOS002',
+        department: 'Satış',
+        position: 'Satış Müdürü',
+        salary: 22000,
+        phoneNumber: '0532 222 2222',
+        address: 'Beşiktaş, İstanbul',
+        emergencyContact: { name: 'Zeynep Özdemir', phone: '0532 222 2223', relationship: 'Eş' }
+      },
+      {
+        firstName: 'Elif',
+        lastName: 'Yıldız',
+        email: 'elif.yildiz@enerjios.com',
+        employeeCode: 'EOS003',
+        department: 'Satış',
+        position: 'Satış Uzmanı',
+        salary: 15000,
+        phoneNumber: '0532 333 3333',
+        address: 'Kadıköy, İstanbul',
+        emergencyContact: { name: 'Ali Yıldız', phone: '0532 333 3334', relationship: 'Baba' }
+      },
+      {
+        firstName: 'Murat',
+        lastName: 'Şen',
+        email: 'murat.sen@enerjios.com',
+        employeeCode: 'EOS004',
+        department: 'Teknik',
+        position: 'Kıdemli Mühendis',
+        salary: 28000,
+        phoneNumber: '0532 444 4444',
+        address: 'Şişli, İstanbul',
+        emergencyContact: { name: 'Fatma Şen', phone: '0532 444 4445', relationship: 'Anne' }
+      },
+      {
+        firstName: 'Zehra',
+        lastName: 'Çelik',
+        email: 'zehra.celik@enerjios.com',
+        employeeCode: 'EOS005',
+        department: 'Teknik',
+        position: 'Mühendis',
+        salary: 18000,
+        phoneNumber: '0532 555 5555',
+        address: 'Ataşehir, İstanbul',
+        emergencyContact: { name: 'Ahmet Çelik', phone: '0532 555 5556', relationship: 'Kardeş' }
+      },
+      {
+        firstName: 'Hasan',
+        lastName: 'Demir',
+        email: 'hasan.demir@enerjios.com',
+        employeeCode: 'EOS006',
+        department: 'Muhasebe',
+        position: 'Mali Müşavir',
+        salary: 20000,
+        phoneNumber: '0532 666 6666',
+        address: 'Üsküdar, İstanbul',
+        emergencyContact: { name: 'Emine Demir', phone: '0532 666 6667', relationship: 'Eş' }
+      }
+    ]
+
+    const createdEmployees = []
+    for (const emp of employees) {
+      const department = createdDepartments.find(d => d.name === emp.department)
+      const employee = await prisma.employee.create({
+        data: {
+          companyId: companyEntity.id,
+          departmentId: department?.id,
+          startDate: new Date(2024, 0, 15), // 15 Ocak 2024
+          ...emp
+        }
+      })
+      createdEmployees.push(employee)
+    }
+
+    // Departman yöneticilerini ata
+    await prisma.department.update({
+      where: { id: createdDepartments[0].id }, // İK
+      data: { managerId: createdEmployees[0].id }
+    })
+    await prisma.department.update({
+      where: { id: createdDepartments[1].id }, // Satış
+      data: { managerId: createdEmployees[1].id }
+    })
+    await prisma.department.update({
+      where: { id: createdDepartments[2].id }, // Teknik
+      data: { managerId: createdEmployees[3].id }
+    })
+
+    // Son 30 gün için mesai kayıtları
+    console.log('⏰ Adding time entries for last 30 days...')
+    const today = new Date()
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(today.getDate() - i)
+
+      // Hafta sonu kontrolü
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6
+
+      for (const employee of createdEmployees) {
+        // Hafta sonları bazı çalışanlar gelmeyebilir
+        if (isWeekend && Math.random() > 0.3) continue
+
+        // Bazen izinli/hastalık olabilir
+        if (Math.random() > 0.95) continue
+
+        const clockIn = new Date(date)
+        clockIn.setHours(8 + Math.floor(Math.random() * 2), Math.floor(Math.random() * 60)) // 08:00-09:59 arası
+
+        const clockOut = new Date(clockIn)
+        clockOut.setHours(clockIn.getHours() + 8 + Math.floor(Math.random() * 2), Math.floor(Math.random() * 60)) // 8-9 saat çalışma
+
+        const totalHours = (clockOut.getTime() - clockIn.getTime()) / (1000 * 60 * 60)
+        const breakMinutes = 30 + Math.floor(Math.random() * 30) // 30-60 dk mola
+
+        await prisma.timeEntry.create({
+          data: {
+            employeeId: employee.id,
+            date: date,
+            clockIn: clockIn,
+            clockOut: clockOut,
+            breakDuration: breakMinutes,
+            totalHours: totalHours - (breakMinutes / 60),
+            status: 'OUT',
+            location: 'Ofis'
+          }
+        })
+      }
+    }
+
+    // İzin talepleri
+    console.log('🏖️ Adding leave requests...')
+    const leaveRequests = [
+      {
+        employeeId: createdEmployees[0].id,
+        type: 'VACATION' as const,
+        startDate: new Date(2024, 11, 23), // 23 Aralık
+        endDate: new Date(2024, 11, 27), // 27 Aralık
+        totalDays: 5,
+        reason: 'Yılbaşı tatili',
+        status: 'APPROVED' as const,
+        approvedBy: createdEmployees[0].id
+      },
+      {
+        employeeId: createdEmployees[1].id,
+        type: 'SICK' as const,
+        startDate: new Date(2024, 9, 15), // 15 Ekim
+        endDate: new Date(2024, 9, 16), // 16 Ekim
+        totalDays: 2,
+        reason: 'Grip',
+        status: 'APPROVED' as const,
+        approvedBy: createdEmployees[0].id
+      },
+      {
+        employeeId: createdEmployees[2].id,
+        type: 'VACATION' as const,
+        startDate: new Date(2024, 11, 30), // 30 Aralık
+        endDate: new Date(2025, 0, 3), // 3 Ocak
+        totalDays: 4,
+        reason: 'Aile ziyareti',
+        status: 'PENDING' as const
+      }
+    ]
+
+    for (const leave of leaveRequests) {
+      await prisma.leaveRequest.create({
+        data: {
+          ...leave,
+          approvedAt: leave.status === 'APPROVED' ? new Date() : undefined
+        }
+      })
+    }
+
+    console.log('✅ HR system data seeded!')
+  }
+
   console.log('🎉 Database seeding completed successfully!')
 }
 

@@ -47,6 +47,22 @@ const QUOTE_CATEGORIES = {
   OTHER: 'Diğer'
 }
 
+// Helper function to convert project type to Turkish
+const getProjectTypeInTurkish = (type: string | undefined) => {
+  if (!type) return 'Güneş Enerji Projesi'
+  const typeMap: Record<string, string> = {
+    'RESIDENTIAL': 'Konut',
+    'COMMERCIAL': 'Ticari',
+    'INDUSTRIAL': 'Endüstriyel',
+    'AGRICULTURAL': 'Tarımsal',
+    'ROOFTOP': 'Çatı GES',
+    'LAND': 'Arazi GES',
+    'AGRISOLAR': 'Tarımsal GES',
+    'CARPARK': 'Otopark GES'
+  }
+  return typeMap[type] || 'Güneş Enerji Projesi'
+}
+
 // Helper function to map ProductType to category
 function getCategoryFromType(type: ProductType): string {
   const categoryMap: Record<ProductType, string> = {
@@ -495,10 +511,11 @@ export default function CreateQuotePage() {
     }))
   }
 
-  // Apply package from database
+  // Apply package from database - ADDS to existing items
   const applyPackage = (packageData: Package) => {
+    const timestamp = Date.now()
     const packageItems: ExtendedQuoteItem[] = packageData.items.map((item, index) => ({
-      id: `package-${Date.now()}-${index}`,
+      id: `package-${timestamp}-${index}`,
       category: 'OTHER', // Default category, user can change later
       productId: item.productId,
       name: item.productName,
@@ -514,18 +531,21 @@ export default function CreateQuotePage() {
       specifications: undefined
     }))
 
+    // IMPORTANT: Combine existing items with new package items
+    const combinedItems = [...quoteData.items, ...packageItems]
+
     setQuoteData(prev => ({
       ...prev,
-      items: packageItems,
-      capacity: packageData.totalPower ? packageData.totalPower / 1000 : 0 // Convert W to kW
+      items: combinedItems,
+      capacity: prev.capacity + (packageData.totalPower ? packageData.totalPower / 1000 : 0) // Add to existing capacity
     }))
 
-    // Paket toplam fiyatını hesapla
-    calculateTotals(packageItems)
+    // Calculate totals for all items
+    calculateTotals(combinedItems)
 
     toast({
-      title: 'Paket Uygulandı',
-      description: `${packageData.name} başarıyla eklendi - Toplam: ₺${packageData.totalPrice.toLocaleString()}`
+      title: 'Paket Eklendi',
+      description: `${packageData.name} başarıyla eklendi - Paket Fiyatı: ₺${packageData.totalPrice.toLocaleString()}`
     })
   }
 
@@ -567,14 +587,57 @@ export default function CreateQuotePage() {
     calculateTotals(updatedItems)
   }
 
-  // Remove item
+  // Remove item with confirmation
   const removeItem = (itemId: string) => {
+    const item = quoteData.items.find(i => i.id === itemId)
+    if (!item) return
+
+    // Show confirmation for expensive items
+    const itemTotal = item.totalPrice || item.total || 0
+    if (itemTotal > 10000) {
+      const confirmRemove = window.confirm(`${item.name} (₺${itemTotal.toLocaleString()}) öğesini kaldırmak istediğinize emin misiniz?`)
+      if (!confirmRemove) return
+    }
+
     const updatedItems = quoteData.items.filter(item => item.id !== itemId)
     setQuoteData(prev => ({
       ...prev,
       items: updatedItems
     }))
     calculateTotals(updatedItems)
+
+    toast({
+      title: 'Ürün Kaldırıldı',
+      description: `${item.name} listeden kaldırıldı`
+    })
+  }
+
+  // Clear all items with confirmation
+  const clearAllItems = () => {
+    if (quoteData.items.length === 0) {
+      toast({
+        title: 'Liste Zaten Boş',
+        description: 'Kaldırılacak ürün bulunmuyor',
+        variant: 'default'
+      })
+      return
+    }
+
+    const confirmClear = window.confirm(`Tüm seçili ürünleri (${quoteData.items.length} adet) kaldırmak istediğinize emin misiniz?`)
+    if (!confirmClear) return
+
+    setQuoteData(prev => ({
+      ...prev,
+      items: [],
+      subtotal: 0,
+      tax: 0,
+      total: 0
+    }))
+
+    toast({
+      title: 'Liste Temizlendi',
+      description: 'Tüm ürünler listeden kaldırıldı'
+    })
   }
 
   // Save quote
@@ -779,14 +842,26 @@ export default function CreateQuotePage() {
     return totalPower
   }
 
-  // Generate preview data
+  // Generate preview data - MUST MATCH PDF DATA
   const generatePreviewData = (): any => {
     const systemPowerKw = calculateSystemPower()
     const annualProduction = Math.round(systemPowerKw * 1450) // kWh per year
-    const annualSavings = Math.round(annualProduction * 2.2) // TL per kWh
+    const annualSavings = Math.round(annualProduction * 5.20) // TL per kWh - MUST MATCH PDF (was 2.2)
     const paybackPeriod = quoteData.total > 0 && annualSavings > 0
       ? Math.round((quoteData.total / annualSavings) * 10) / 10
       : 0
+
+    // Calculate labor cost from actual items
+    const laborCost = quoteData.items
+      .filter(item => item.category === 'LABOR')
+      .reduce((sum, item) => sum + item.total, 0)
+
+    // Recalculate totals to match PDF logic exactly
+    const calculatedSubtotal = quoteData.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0)
+    const discountAmount = calculatedSubtotal * ((quoteData.discount || 0) / 100)
+    const subtotalAfterDiscount = calculatedSubtotal - discountAmount
+    const calculatedTax = subtotalAfterDiscount * 0.20 // Fixed 20% tax rate
+    const calculatedTotal = subtotalAfterDiscount + calculatedTax
 
     return {
       id: quoteData.id || 'preview',
@@ -811,10 +886,12 @@ export default function CreateQuotePage() {
           efficiency: 20
         }
       })),
-      laborCost: quoteData.items.filter(item => item.category === 'LABOR').reduce((sum, item) => sum + item.total, 0) || 15000,
-      subtotal: quoteData.subtotal,
-      tax: (quoteData.subtotal - (quoteData.subtotal * (quoteData.discount / 100))) * 0.20,
-      total: quoteData.total,
+      laborCost: laborCost, // Use actual labor cost
+      subtotal: calculatedSubtotal, // Use recalculated value to match PDF
+      tax: calculatedTax, // Use recalculated tax to match PDF
+      taxPercent: 20, // Fixed 20% tax rate
+      discount: quoteData.discount, // Include discount for consistency
+      total: calculatedTotal, // Use recalculated total to match PDF
       status: quoteData.status,
       createdAt: new Date(),
       validUntil: new Date(Date.now() + quoteData.validity * 24 * 60 * 60 * 1000),
@@ -951,15 +1028,15 @@ export default function CreateQuotePage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => router.back()}
+              onClick={() => showPreview ? setShowPreview(false) : router.back()}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Geri
+              {showPreview ? 'Düzenlemeye Dön' : 'Geri'}
             </Button>
             <div>
               <h1 className="text-2xl font-bold">Teklif Oluştur</h1>
               <p className="text-muted-foreground">
-                {projectRequest?.customerName} - {projectRequest?.estimatedCapacity} kW {projectRequest?.projectType}
+                {projectRequest?.customerName} - {projectRequest?.estimatedCapacity} kW {getProjectTypeInTurkish(projectRequest?.projectType)}
               </p>
             </div>
           </div>
@@ -1268,7 +1345,20 @@ export default function CreateQuotePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {quoteData.items.map((item) => (
+                      {quoteData.items.length === 0 ? (
+                        <tr>
+                          <td colSpan={11} className="py-12 text-center">
+                            <div className="flex flex-col items-center justify-center space-y-3">
+                              <Package className="w-12 h-12 text-gray-300" />
+                              <p className="text-gray-500 text-lg">Henüz ürün veya paket eklenmedi</p>
+                              <p className="text-gray-400 text-sm">
+                                Yukarıdaki "Malzeme Listesi" veya "Paketler" bölümlerinden ürün ekleyebilirsiniz
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        quoteData.items.map((item) => (
                         <tr key={item.id} className="border-b hover:bg-gray-50">
                           <td className="py-3 px-4">
                             <div className="flex items-center space-x-2">
@@ -1445,24 +1535,47 @@ export default function CreateQuotePage() {
                               size="sm"
                               variant="ghost"
                               onClick={() => removeItem(item.id)}
+                              className="hover:bg-red-50 transition-colors"
+                              title="Ürünü Kaldır"
                             >
-                              <Trash2 className="w-4 h-4 text-red-500" />
+                              <Trash2 className="w-4 h-4 text-red-500 hover:text-red-600" />
                             </Button>
                           </td>
                         </tr>
-                      ))}
+                      ))
+                    )}
                     </tbody>
                     <tfoot>
                       <tr>
                         <td colSpan={11} className="py-3 px-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={addItem}
-                          >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Yeni Satır Ekle
-                          </Button>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={addItem}
+                              >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Yeni Satır Ekle
+                              </Button>
+                              {quoteData.items.length > 0 && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={clearAllItems}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-300"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Tümünü Temizle ({quoteData.items.length})
+                                </Button>
+                              )}
+                            </div>
+                            {quoteData.items.length > 0 && (
+                              <div className="text-sm text-gray-600">
+                                Toplam {quoteData.items.length} ürün - ₺{quoteData.total.toLocaleString()}
+                              </div>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     </tfoot>

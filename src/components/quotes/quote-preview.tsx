@@ -402,7 +402,7 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
                   <span>₺{quote.laborCost?.toLocaleString() || '0'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>KDV (%{quote.taxPercent || 1}):</span>
+                  <span>KDV (%{quote.taxPercent || 20}):</span>
                   <span>₺{quote.tax.toLocaleString()}</span>
                 </div>
                 <Separator />
@@ -508,7 +508,7 @@ export function QuotePreview({ quote, onEdit, onSend, onDownload }: QuotePreview
               <div className="mt-4 text-xs text-gray-600 bg-gray-50 p-3 rounded">
                 <p><strong>Hesaplama Notları:</strong></p>
                 <ul className="mt-1 space-y-1 list-disc list-inside">
-                  <li>Elektrik fiyatı 2.20 TL/kWh baz alınmıştır</li>
+                  <li>Elektrik fiyatı 5.20 TL/kWh baz alınmıştır</li>
                   <li>Yıllık %5 elektrik fiyat artışı hesaplanmıştır</li>
                   <li>Sistem verimliliği %90 olarak kabul edilmiştir</li>
                   <li>Panel performansı 25 yılda %80'e düşer varsayımı kullanılmıştır</li>

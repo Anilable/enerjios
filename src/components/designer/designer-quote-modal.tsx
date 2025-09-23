@@ -135,20 +135,31 @@ export function DesignerQuoteModal({ isOpen, onClose, designerState }: DesignerQ
     }
   }
 
-  const exportDesignData = () => {
-    const exportData = {
-      projectData: designerState,
-      customerInfo: formData,
-      timestamp: new Date().toISOString()
+  const exportDesignData = async () => {
+    try {
+      if (!designerState.location || designerState.calculations.totalPanels === 0) {
+        alert('PDF oluşturma için önce konum seçin ve panel yerleştirin.')
+        return
+      }
+
+      const { exportDesignToPDF } = await import('@/lib/design-export')
+
+      const exportData = {
+        projectName: formData.name ? `${formData.name} - Solar Tasarım` : 'Güneş Enerji Projesi',
+        customerName: formData.name || undefined,
+        location: designerState.location.address,
+        coordinates: designerState.location.coordinates,
+        calculations: designerState.calculations,
+        irradiance: designerState.location.irradiance,
+        timestamp: new Date()
+      }
+
+      await exportDesignToPDF('designer-map-container', exportData)
+
+    } catch (error) {
+      console.error('Error exporting design:', error)
+      alert('PDF oluşturulurken hata oluştu: ' + (error as Error).message)
     }
-    
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `solar-design-${Date.now()}.json`
-    a.click()
-    URL.revokeObjectURL(url)
   }
 
   if (submitted) {
@@ -167,7 +178,7 @@ export function DesignerQuoteModal({ isOpen, onClose, designerState }: DesignerQ
             <div className="flex gap-3">
               <Button variant="outline" onClick={exportDesignData}>
                 <Download className="w-4 h-4 mr-2" />
-                Tasarımı İndir
+                Tasarım Raporu İndir
               </Button>
               <Button onClick={onClose}>
                 Tamam
@@ -478,7 +489,7 @@ export function DesignerQuoteModal({ isOpen, onClose, designerState }: DesignerQ
           <div className="flex items-center gap-4 w-full">
             <Button variant="outline" onClick={exportDesignData}>
               <Download className="w-4 h-4 mr-2" />
-              Tasarımı İndir
+              Tasarım Raporu İndir
             </Button>
             <div className="flex-1" />
             <Button variant="outline" onClick={onClose}>

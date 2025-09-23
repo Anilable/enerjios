@@ -80,9 +80,9 @@ export function TrustSection() {
       description: 'Türkiye\'nin öncü güneş enerjisi çözümleri sağlayıcısı'
     },
     {
-      name: 'Hagel',
+      name: 'Hegel',
       type: 'Panel Üreticisi',
-      logo: '/logos/hagel.png',
+      logo: '/logos/hegel.png',
       description: 'Yüksek verimli güneş paneli üretimi'
     },
     {

@@ -46,12 +46,12 @@ export function useExchangeRates(): UseExchangeRatesReturn {
         response = await fetch('/api/exchange-rates')
         if (response.ok) {
           data = await response.json()
-          if (data.rates) {
+          if (data.majorCurrencies) {
             const rates: ExchangeRates = {
-              USD: data.rates.USD || 0,
-              EUR: data.rates.EUR || 0,
-              GBP: data.rates.GBP || 0,
-              updatedAt: data.updatedAt || new Date().toISOString()
+              USD: data.majorCurrencies.USD?.selling || data.majorCurrencies.USD?.forexSelling || data.majorCurrencies.USD?.buying || data.majorCurrencies.USD?.forexBuying || 33.5,
+              EUR: data.majorCurrencies.EUR?.selling || data.majorCurrencies.EUR?.forexSelling || data.majorCurrencies.EUR?.buying || data.majorCurrencies.EUR?.forexBuying || 36.2,
+              GBP: data.majorCurrencies.GBP?.selling || data.majorCurrencies.GBP?.forexSelling || data.majorCurrencies.GBP?.buying || data.majorCurrencies.GBP?.forexBuying || 42.1,
+              updatedAt: data.lastUpdated || new Date().toISOString()
             }
             setRates(rates)
             ratesCache = { rates, timestamp: Date.now() }
@@ -174,17 +174,42 @@ export function ExchangeRateDisplay() {
   if (!rates) return null
 
   return (
-    <div className="flex gap-4 text-sm">
-      <span>USD: ₺{rates.USD.toFixed(2)}</span>
-      <span>EUR: ₺{rates.EUR.toFixed(2)}</span>
-      <span>GBP: ₺{rates.GBP.toFixed(2)}</span>
-      <button
-        onClick={refresh}
-        className="text-blue-600 hover:text-blue-800"
-        title="Kurları yenile"
-      >
-        ↻
-      </button>
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-4 text-sm">
+        <div className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+          <span className="font-medium">USD:</span>
+          <span className="text-green-600 font-bold">₺{rates.USD.toFixed(4)}</span>
+        </div>
+        <div className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+          <span className="font-medium">EUR:</span>
+          <span className="text-blue-600 font-bold">₺{rates.EUR.toFixed(4)}</span>
+        </div>
+        <div className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+          <span className="font-medium">GBP:</span>
+          <span className="text-purple-600 font-bold">₺{rates.GBP.toFixed(4)}</span>
+        </div>
+      </div>
+
+      <div className="flex gap-2 text-xs">
+        <button
+          onClick={refresh}
+          className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+          title="Kurları yenile"
+        >
+          🔄 Yenile
+        </button>
+        <a
+          href="/dashboard/admin/exchange-rates"
+          className="px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+          title="Manuel düzenleme"
+        >
+          ✏️ Manuel Düzenle
+        </a>
+      </div>
+
+      <div className="text-xs text-gray-500">
+        Son güncelleme: {new Date(rates.updatedAt).toLocaleString('tr-TR')}
+      </div>
     </div>
   )
 }

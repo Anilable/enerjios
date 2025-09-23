@@ -63,6 +63,7 @@ export function ProjectRequestDetails({
 
   if (!request) return null
 
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'HIGH': return 'bg-red-100 text-red-800 border-red-200'
@@ -620,8 +621,9 @@ export function ProjectRequestDetails({
           </div>
 
           {/* Right Column - Status History & Actions */}
-          <div className="space-y-6 overflow-y-auto bg-slate-50/50 rounded-lg p-4">
-            <div className="space-y-4">
+          <div className="flex flex-col bg-slate-50/50 rounded-lg overflow-hidden">
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {/* Status History */}
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
                 <div className="flex items-center gap-2 mb-3">
@@ -739,55 +741,51 @@ export function ProjectRequestDetails({
                 </div>
               )}
 
-              {/* Actions */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                    <Wrench className="w-4 h-4 text-red-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">Hızlı İşlemler</h3>
-                    <p className="text-slate-500 text-xs">Müşteri etkileşimi</p>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <Button 
-                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all"
-                    onClick={() => {
-                      window.open(`tel:${request.customerPhone}`)
-                    }}
-                  >
-                    <Phone className="w-4 h-4 mr-2" />
-                    Müşteriyi Ara
-                  </Button>
-                  <Button 
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all"
-                    onClick={() => {
-                      window.open(`mailto:${request.customerEmail}`)
-                    }}
-                  >
-                    <Mail className="w-4 h-4 mr-2" />
-                    E-posta Gönder
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full border-2 border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300 transition-all"
+            </div>
+
+            {/* Sticky Action Buttons */}
+            <div className="flex-shrink-0 p-4 bg-white border-t border-slate-200">
+              <div className="space-y-3">
+                <Button
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all"
+                  onClick={() => {
+                    window.open(`tel:${request.customerPhone}`)
+                  }}
+                >
+                  <Phone className="w-4 h-4 mr-2" />
+                  Müşteriyi Ara
+                </Button>
+                <Button
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all"
+                  onClick={() => {
+                    window.open(`mailto:${request.customerEmail}`)
+                  }}
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  E-posta Gönder
+                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-2 border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300 transition-all"
                     onClick={() => {
                       // TODO: Ziyaret planlama modal'ı
                       alert('Ziyaret planlama özelliği henüz aktif değil')
                     }}
                   >
-                    <Calendar className="w-4 h-4 mr-2" />
+                    <Calendar className="w-4 h-4 mr-1" />
                     Ziyaret Planla
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full border-2 border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-300 transition-all"
+                    size="sm"
+                    className="border-2 border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-300 transition-all"
                     onClick={() => {
                       window.open(`/dashboard/quotes/create/${request.id}`, '_blank')
                     }}
                   >
-                    <FileText className="w-4 h-4 mr-2" />
+                    <FileText className="w-4 h-4 mr-1" />
                     {hasQuote ? 'Teklif Düzenle' : 'Teklif Oluştur'}
                   </Button>
                 </div>

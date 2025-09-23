@@ -554,7 +554,7 @@ export const QuotePDF: React.FC<QuotePDFProps> = ({ quote }) => {
               <Text style={styles.companyTagline}>{sanitizeText('Güneş Enerjisi Yönetim Platformu')}</Text>
               <View style={{ marginTop: 2 }}>
                 <Text style={styles.companyContact}>
-                  8 Kasım Mah Tekcan Cad 52/A 39750 Lüleburgaz / Kırklareli
+                  Levazım, Vadi Cd Zorlu Center , 34340 Beşiktaş/İstanbul
                 </Text>
                 <Text style={styles.companyContact}>
                   +90 541 593 26 55 • +90 288 415 20 05
@@ -913,7 +913,7 @@ export const ProjectPDF: React.FC<ProjectPDFProps> = ({ project }) => {
               <Text style={styles.companyTagline}>{sanitizeText('Güneş Enerjisi Yönetim Platformu')}</Text>
               <View style={{ marginTop: 2 }}>
                 <Text style={styles.companyContact}>
-                  8 Kasım Mah Tekcan Cad 52/A 39750 Lüleburgaz / Kırklareli
+                  Levazım, Vadi Cd Zorlu Center , 34340 Beşiktaş/İstanbul
                 </Text>
                 <Text style={styles.companyContact}>
                   +90 541 593 26 55 • +90 288 415 20 05
@@ -1082,5 +1082,346 @@ export const ProjectPDF: React.FC<ProjectPDFProps> = ({ project }) => {
   )
 }
 
+// Project Request data interface
+interface ProjectRequestData {
+  id: string
+  requestNumber: string
+  customerName: string
+  customerEmail: string
+  customerPhone?: string
+  location?: string
+  address?: string
+  projectType: string
+  estimatedCapacity?: number
+  estimatedBudget?: number
+  estimatedRevenue?: number
+  description?: string
+  status: string
+  priority: string
+  source: string
+  hasPhotos?: boolean
+  scheduledVisitDate?: string
+  assignedEngineerName?: string
+  tags?: string[]
+  notes?: string[]
+  contactPreference?: string
+  createdAt: string | Date
+  updatedAt: string | Date
+  customer?: {
+    firstName?: string
+    lastName?: string
+    companyName?: string
+    email?: string
+    phone?: string
+  }
+  assignedUser?: {
+    name?: string
+    email?: string
+  }
+}
+
+interface ProjectRequestPDFProps {
+  projectRequest: ProjectRequestData
+}
+
+export const ProjectRequestPDF: React.FC<ProjectRequestPDFProps> = ({ projectRequest }) => {
+  const formatDate = (date?: string | Date) => {
+    if (!date) return 'N/A'
+    const dateObj = typeof date === 'string' ? new Date(date) : date
+    return new Intl.DateTimeFormat('tr-TR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    }).format(dateObj)
+  }
+
+  const formatCurrency = (amount?: number) => {
+    if (!amount) return 'N/A'
+    return formatTurkishCurrency(amount)
+  }
+
+  const getCustomerName = () => {
+    if (projectRequest.customer?.companyName) {
+      return projectRequest.customer.companyName
+    }
+    const firstName = projectRequest.customer?.firstName || ''
+    const lastName = projectRequest.customer?.lastName || ''
+    const fullName = `${firstName} ${lastName}`.trim()
+    return fullName || projectRequest.customerName || 'N/A'
+  }
+
+  const getStatusLabel = (status: string) => {
+    const statusLabels: Record<string, string> = {
+      'OPEN': 'Açık',
+      'CONTACTED': 'İletişime Geçildi',
+      'ASSIGNED': 'Atama Yapıldı',
+      'SITE_VISIT': 'Saha Ziyareti',
+      'CONVERTED_TO_PROJECT': 'Projeye Dönüştürüldü',
+      'LOST': 'Kaybedildi'
+    }
+    return statusLabels[status] || status
+  }
+
+  const getPriorityLabel = (priority: string) => {
+    const priorityLabels: Record<string, string> = {
+      'LOW': 'Düşük',
+      'MEDIUM': 'Orta',
+      'HIGH': 'Yüksek'
+    }
+    return priorityLabels[priority] || priority
+  }
+
+  const getProjectTypeLabel = (type: string) => {
+    const typeLabels: Record<string, string> = {
+      'RESIDENTIAL': 'Konut',
+      'COMMERCIAL': 'Ticari',
+      'INDUSTRIAL': 'Endüstriyel',
+      'AGRICULTURAL': 'Tarımsal',
+      'ROOFTOP': 'Çatı GES',
+      'LAND': 'Arazi GES',
+      'AGRISOLAR': 'Tarımsal GES',
+      'CARPARK': 'Otopark GES',
+      'ONGRID': 'Şebeke Bağlantılı (On-Grid)',
+      'OFFGRID': 'Şebekeden Bağımsız (Off-Grid)',
+      'STORAGE': 'Enerji Depolama',
+      'HYBRID': 'Hibrit Sistem'
+    }
+    return typeLabels[type] || type
+  }
+
+  const getSourceLabel = (source: string) => {
+    const sourceLabels: Record<string, string> = {
+      'WEBSITE': 'Web Sitesi',
+      'PHONE': 'Telefon',
+      'EMAIL': 'E-posta',
+      'REFERRAL': 'Referans',
+      'SOCIAL_MEDIA': 'Sosyal Medya',
+      'WALK_IN': 'Ziyaretçi',
+      'PARTNER_REFERRAL': 'Partner Referansı',
+      'WHATSAPP': 'WhatsApp',
+      'OTHER': 'Diğer'
+    }
+    return sourceLabels[source] || source
+  }
+
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        {/* Company Header with Logo */}
+        <View style={styles.header}>
+          <View style={styles.logoSection}>
+            <View style={{ width: 85, height: 30, marginRight: 15 }}>
+              <EnerjiOSLogo width={80} height={26} />
+            </View>
+            <View style={styles.companyInfo}>
+              <View style={styles.companyName}>
+                <Text style={styles.companyNameEnerji}>Enerji</Text>
+                <Text style={styles.companyNameOS}>OS</Text>
+              </View>
+              <Text style={styles.companyTagline}>{sanitizeText('Güneş Enerjisi Yönetim Platformu')}</Text>
+              <View style={{ marginTop: 2 }}>
+                <Text style={styles.companyContact}>
+                  Levazım, Vadi Cd Zorlu Center , 34340 Beşiktaş/İstanbul
+                </Text>
+                <Text style={styles.companyContact}>
+                  +90 541 593 26 55 • +90 288 415 20 05
+                </Text>
+                <Text style={styles.companyContact}>
+                  info@enerjios.com • www.enerjios.com
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Document Title */}
+        <View style={{ marginTop: 20, marginBottom: 30 }}>
+          <Text style={[styles.projectTitle, { fontSize: 24, color: '#2563eb' }]}>PROJE TALEBİ</Text>
+        </View>
+
+        {/* Request and Customer Info */}
+        <View style={styles.twoColumnContainer}>
+          <View style={styles.column}>
+            <Text style={styles.sectionTitle}>Talep Bilgileri</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Talep No:</Text>
+              <Text style={styles.infoValue}>{projectRequest.requestNumber}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Tarih:</Text>
+              <Text style={styles.infoValue}>{formatDate(projectRequest.createdAt)}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Son Güncelleme:</Text>
+              <Text style={styles.infoValue}>{formatDate(projectRequest.updatedAt)}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Durum:</Text>
+              <Text style={styles.infoValue}>{getStatusLabel(projectRequest.status)}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Öncelik:</Text>
+              <Text style={styles.infoValue}>{getPriorityLabel(projectRequest.priority)}</Text>
+            </View>
+          </View>
+
+          <View style={styles.column}>
+            <Text style={styles.sectionTitle}>{sanitizeText('Müşteri Bilgileri')}</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Müşteri:</Text>
+              <Text style={styles.infoValue}>{getCustomerName()}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Email:</Text>
+              <Text style={styles.infoValue}>{projectRequest.customer?.email || projectRequest.customerEmail}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Telefon:</Text>
+              <Text style={styles.infoValue}>{projectRequest.customer?.phone || projectRequest.customerPhone || 'N/A'}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Kaynak:</Text>
+              <Text style={styles.infoValue}>{getSourceLabel(projectRequest.source)}</Text>
+            </View>
+            {projectRequest.contactPreference && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>İletişim Tercihi:</Text>
+                <Text style={styles.infoValue}>{projectRequest.contactPreference}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Project Details */}
+        <View style={styles.systemOverview}>
+          <Text style={styles.overviewTitle}>Proje Detayları</Text>
+          <View style={styles.statsContainer}>
+            <View style={styles.statCard}>
+              <Text style={[styles.statValue, styles.statValuePrimary]}>
+                {getProjectTypeLabel(projectRequest.projectType)}
+              </Text>
+              <Text style={styles.statLabel}>Proje Tipi</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={[styles.statValue, styles.statValueBlue]}>
+                {projectRequest.estimatedCapacity || 0} kW
+              </Text>
+              <Text style={styles.statLabel}>Tahmini Kapasite</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={[styles.statValue, styles.statValueGreen]}>
+                {formatCurrency(projectRequest.estimatedBudget)}
+              </Text>
+              <Text style={styles.statLabel}>Tahmini Bütçe</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={[styles.statValue, styles.statValueOrange]}>
+                {formatCurrency(projectRequest.estimatedRevenue)}
+              </Text>
+              <Text style={styles.statLabel}>Tahmini Gelir</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Location Information */}
+        {(projectRequest.location || projectRequest.address) && (
+          <View style={styles.technicalDetails}>
+            <Text style={styles.sectionTitle}>Konum Bilgileri</Text>
+            <View style={styles.detailsGrid}>
+              <View style={styles.detailsColumn}>
+                {projectRequest.location && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Konum:</Text>
+                    <Text style={styles.infoValue}>{projectRequest.location}</Text>
+                  </View>
+                )}
+                {projectRequest.address && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Adres:</Text>
+                    <Text style={styles.infoValue}>{projectRequest.address}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Assignment Information */}
+        {projectRequest.assignedEngineerName && (
+          <View style={styles.technicalDetails}>
+            <Text style={styles.sectionTitle}>Atama Bilgileri</Text>
+            <View style={styles.detailsGrid}>
+              <View style={styles.detailsColumn}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Atanan Mühendis:</Text>
+                  <Text style={styles.infoValue}>{projectRequest.assignedEngineerName}</Text>
+                </View>
+                {projectRequest.scheduledVisitDate && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Planlanan Ziyaret:</Text>
+                    <Text style={styles.infoValue}>{formatDate(projectRequest.scheduledVisitDate)}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Tags */}
+        {projectRequest.tags && projectRequest.tags.length > 0 && (
+          <View style={styles.termsSection}>
+            <Text style={styles.sectionTitle}>Etiketler</Text>
+            <Text style={[styles.termItem, { lineHeight: 1.5 }]}>
+              {projectRequest.tags.join(', ')}
+            </Text>
+          </View>
+        )}
+
+        {/* Project Description */}
+        {projectRequest.description && (
+          <View style={styles.termsSection}>
+            <Text style={styles.sectionTitle}>Proje Açıklaması</Text>
+            <Text style={[styles.termItem, { lineHeight: 1.5 }]}>{projectRequest.description}</Text>
+          </View>
+        )}
+
+        {/* Notes */}
+        {projectRequest.notes && projectRequest.notes.length > 0 && (
+          <View style={styles.termsSection}>
+            <Text style={styles.sectionTitle}>Notlar</Text>
+            {projectRequest.notes.map((note, index) => (
+              <Text key={index} style={[styles.termItem, { lineHeight: 1.5, marginBottom: 5 }]}>
+                • {note}
+              </Text>
+            ))}
+          </View>
+        )}
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerMessage}>
+            Bu talep {formatDate(new Date())} tarihinde oluşturulmuştur.
+          </Text>
+
+          <View style={styles.signatureContainer}>
+            <View style={styles.signatureBox}>
+              <Text style={styles.signatureTitle}>EnerjiOS</Text>
+              <Text style={styles.signatureLine}>Talep Sorumlusu</Text>
+            </View>
+            <View style={styles.signatureBox}>
+              <Text style={styles.signatureTitle}>Müşteri Onayı</Text>
+              <Text style={styles.signatureLine}>İmza & Tarih</Text>
+            </View>
+          </View>
+
+          <Text style={styles.footerCopyright}>
+            Bu talep EnerjiOS tarafından hazırlanmış olup, tüm hakları saklıdır.
+          </Text>
+        </View>
+      </Page>
+    </Document>
+  )
+}
+
 // Export as default for easier importing
-export default { QuotePDF, ProjectPDF }
+export default { QuotePDF, ProjectPDF, ProjectRequestPDF }

@@ -82,13 +82,13 @@ export function CompaniesSection() {
       specialization: 'Panel & Ekipman Üreticisi'
     },
     {
-      id: 'hagel',
-      name: 'Hagel',
+      id: 'hegel',
+      name: 'Hegel',
       type: 'MANUFACTURER',
       location: 'Ankara',
       description: 'Yüksek verimli güneş paneli üretimi ve enerji depolama sistemleri konusunda uzman.',
       rating: 4.8,
-      website: 'hagel.com.tr',
+      website: 'hegel.com.tr',
       projectCount: 650,
       reviewCount: 180,
       specialization: 'Panel & Ekipman Üreticisi'

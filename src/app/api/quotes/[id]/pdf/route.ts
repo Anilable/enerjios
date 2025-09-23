@@ -59,7 +59,19 @@ export async function GET(
         },
         project: {
           include: {
-            location: true
+            location: true,
+            projectRequests: {
+              orderBy: {
+                createdAt: 'desc'
+              },
+              select: {
+                customerName: true,
+                customerEmail: true,
+                customerPhone: true,
+                address: true,
+                location: true
+              }
+            }
           }
         },
         items: {
@@ -133,10 +145,56 @@ export async function GET(
     }
 
     // Transform data to match PDF template interface
-    // Use project name if available, otherwise use customer name with project type
     const projectTypeInTurkish = quote.project?.type ? getProjectTypeInTurkish(quote.project.type) : 'Güneş Enerji Projesi'
+    let projectRequestContact: {
+      customerName: string;
+      customerEmail: string;
+      customerPhone: string | null;
+      address: string | null;
+      location: string | null;
+    } | undefined = quote.project?.projectRequests?.find(req => {
+      return Boolean(req.customerName?.trim() || req.customerEmail?.trim() || req.customerPhone?.trim())
+    }) || quote.project?.projectRequests?.[0]
+
+    if (!projectRequestContact && quote.projectId) {
+      const fallbackProjectRequest = await prisma.projectRequest.findFirst({
+        where: { projectId: quote.projectId },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          customerName: true,
+          customerEmail: true,
+          customerPhone: true,
+          address: true,
+          location: true
+        }
+      })
+      projectRequestContact = fallbackProjectRequest || undefined
+    }
+
+    const customerName = `${quote.customer?.firstName || ''} ${quote.customer?.lastName || ''}`.trim() ||
+      projectRequestContact?.customerName?.trim() ||
+      quote.project?.name ||
+      ''
+
+    const customerEmail = quote.customer?.user?.email ||
+      projectRequestContact?.customerEmail?.trim() ||
+      quote.deliveryEmail ||
+      ''
+
+    const customerPhone = quote.customer?.phone ||
+      projectRequestContact?.customerPhone?.trim() ||
+      quote.deliveryPhone ||
+      ''
+
+    const siteLocation = quote.project?.location?.address ||
+      projectRequestContact?.address?.trim() ||
+      projectRequestContact?.location?.trim() ||
+      'Türkiye'
+
+    // Use project name if available, otherwise fallback to customer name with project type
     const projectName = quote.project?.name ||
-      `${quote.customer?.firstName || ''} ${quote.customer?.lastName || ''} - ${projectTypeInTurkish}`.trim()
+      [customerName, projectTypeInTurkish].filter(Boolean).join(' - ') ||
+      projectTypeInTurkish
 
     // Recalculate totals on the fly to ensure accuracy
     const calculatedSubtotal = quote.items?.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0) || 0
@@ -157,9 +215,9 @@ export async function GET(
     const quoteData = {
       id: quote.id,
       quoteNumber: quote.quoteNumber,
-      customerName: `${quote.customer?.firstName || ''} ${quote.customer?.lastName || ''}`.trim(),
-      customerEmail: quote.customer?.user?.email || '',
-      customerPhone: quote.customer?.phone,
+      customerName,
+      customerEmail,
+      customerPhone,
       projectTitle: projectName,
       systemSize: systemPowerKw,
       panelCount: panelCount,
@@ -211,7 +269,7 @@ export async function GET(
         irr: 12
       },
       designData: {
-        location: quote.project?.location?.address || 'Türkiye',
+        location: siteLocation,
         roofArea: systemPowerKw * 8, // rough estimate (8 m² per kW)
         tiltAngle: 30,
         azimuth: 180,

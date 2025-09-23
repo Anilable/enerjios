@@ -117,12 +117,65 @@ export default function DesignerPage() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const handleSave = () => {
-    console.log('Saving design...', designerState)
+  const handleSave = async () => {
+    // Create save modal to get name and description
+    const name = prompt('Tasarım adı giriniz:')
+    if (!name) return
+
+    const description = prompt('Tasarım açıklaması (opsiyonel):') || ''
+
+    try {
+      const response = await fetch('/api/designs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          description,
+          designerState,
+          location: designerState.location,
+          calculations: designerState.calculations
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        alert('Tasarım başarıyla kaydedildi!')
+        console.log('Design saved with ID:', result.id)
+      } else {
+        throw new Error('Failed to save design')
+      }
+    } catch (error) {
+      console.error('Error saving design:', error)
+      alert('Tasarım kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.')
+    }
   }
 
-  const handleExport = () => {
-    console.log('Exporting design...', designerState)
+  const handleExport = async () => {
+    try {
+      if (!designerState.location || designerState.calculations.totalPanels === 0) {
+        alert('Dışa aktarma için önce konum seçin ve panel yerleştirin.')
+        return
+      }
+
+      const { exportDesignToPDF } = await import('@/lib/design-export')
+
+      const exportData = {
+        projectName: designerState.location.address || 'Güneş Enerji Projesi',
+        location: designerState.location.address,
+        coordinates: designerState.location.coordinates,
+        calculations: designerState.calculations,
+        irradiance: designerState.location.irradiance,
+        timestamp: new Date()
+      }
+
+      await exportDesignToPDF('designer-map-container', exportData)
+
+    } catch (error) {
+      console.error('Error exporting design:', error)
+      alert('Dışa aktarma sırasında bir hata oluştu: ' + (error as Error).message)
+    }
   }
 
   return (
@@ -252,15 +305,15 @@ export default function DesignerPage() {
             </div>
 
             {/* 3D/Map Viewport */}
-            <div className="flex-1 relative bg-gray-100 min-h-0">
+            <div id="designer-map-container" className="flex-1 relative bg-gray-100 min-h-0">
               {designerState.mode === '3D' ? (
-                <Designer3D 
+                <Designer3D
                   designerState={designerState}
                   updateDesignerState={updateDesignerState}
                   showLayers={showLayers}
                 />
               ) : (
-                <GoogleMapsDesigner 
+                <GoogleMapsDesigner
                   designerState={designerState}
                   updateDesignerState={updateDesignerState}
                   showLayers={showLayers}
