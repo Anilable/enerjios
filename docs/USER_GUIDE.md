@@ -8,6 +8,7 @@ Complete user guide for the Trakya Solar energy management platform.
 - [Dashboard Overview](#dashboard-overview)
 - [Project Management](#project-management)
 - [Analytics & Monitoring](#analytics--monitoring)
+- [Finance Management](#finance-management)
 - [Customer Management](#customer-management)
 - [System Settings](#system-settings)
 - [Mobile App](#mobile-app)
@@ -243,6 +244,255 @@ Upload and organize project documents:
 - Regulatory updates
 - Weather warnings
 
+## Finance Management
+
+### Financial Dashboard
+
+The Finance Management module provides comprehensive financial tracking and analysis for your solar energy business.
+
+#### Key Financial Metrics
+- **Monthly Revenue**: Total revenue from approved quotes and completed projects
+- **Monthly Expenses**: Project costs and operational expenses
+- **Net Profit**: Revenue minus expenses for profitability analysis
+- **Pending Amount**: Outstanding invoices awaiting payment
+- **Pending Count**: Number of unpaid invoices
+
+#### Revenue Tracking
+- Real-time revenue calculations based on approved quotes
+- Monthly revenue trends over 6-month periods
+- Profit margin analysis with visual indicators
+- Revenue vs. expense comparison charts
+
+### Invoice Management
+
+#### Invoice Overview
+- **Quote-Based Invoicing**: Automatic invoice generation from approved quotes
+- **Customer Information**: Complete customer and project details
+- **Payment Status Tracking**: Real-time status updates (Paid, Pending, Overdue)
+- **Due Date Management**: Automatic due date calculations and reminders
+
+#### Invoice Features
+- **Search and Filter**: Find invoices by customer, project, or invoice number
+- **Status Indicators**: Color-coded badges for payment status
+- **Export Options**: Export invoice data for accounting systems
+- **Payment Tracking**: Monitor payment collection and overdue accounts
+
+#### Invoice Status Types
+- **Paid**: Invoice has been fully paid (Green indicator)
+- **Pending**: Invoice sent but payment not received (Yellow indicator)
+- **Overdue**: Invoice past due date (Red indicator)
+
+### Expense Management
+
+#### Expense Tracking
+- **Project-Based Expenses**: Automatic expense calculation from project costs
+- **Expense Categories**: Organized expense tracking by category
+- **Vendor Management**: Track expenses by vendor or supplier
+- **Date-Based Filtering**: View expenses by date ranges
+
+#### Expense Types
+- **Project Costs**: Direct costs from solar installations
+- **Operational Expenses**: Business operational costs
+- **Equipment Costs**: Solar panels, inverters, and components
+- **Labor Costs**: Installation and maintenance labor
+
+### Financial Reports
+
+#### Monthly Revenue Analysis
+- **6-Month Trend**: Historical revenue and expense data
+- **Profit Margins**: Monthly profit percentage calculations
+- **Growth Analysis**: Month-over-month growth indicators
+- **Performance Metrics**: Revenue per project and customer
+
+#### Financial Insights
+- **Profitability Analysis**: Detailed profit and loss calculations
+- **Cash Flow Tracking**: Monitor incoming and outgoing payments
+- **ROI Calculations**: Return on investment for projects
+- **Budget vs. Actual**: Compare projected vs. actual financial performance
+
+## Business Reports
+
+### Comprehensive Reporting System
+
+The platform provides detailed business intelligence through comprehensive reporting capabilities accessible via the Reports API.
+
+#### Available Report Types
+
+##### Sales Summary Reports
+- **Revenue Analysis**: Track sales performance over time
+- **Period Grouping**: Daily, weekly, or monthly data aggregation
+- **Sales Metrics**: Total sales, transaction count, average deal size
+- **Trend Analysis**: Historical performance tracking
+
+##### Project Performance Reports
+- **Profitability Analysis**: Revenue vs. cost analysis per project
+- **System Capacity**: Total installed capacity tracking
+- **Project Status**: Active, completed, and planned projects
+- **Company Performance**: Performance by installation company
+
+##### Customer Analytics Reports
+- **Customer Segmentation**: Individual vs. company customers
+- **Customer Value**: Total and average project values per customer
+- **Repeat Business**: Analysis of returning customers
+- **Customer Lifecycle**: Customer acquisition and retention metrics
+
+##### Financial Overview Reports
+- **Key Performance Indicators**: Revenue, projects, capacity metrics
+- **Conversion Rates**: Quote-to-project conversion analysis
+- **Project Sizing**: Average system size and project value
+- **Time-based Analysis**: Performance over specified periods
+
+##### Company Performance Reports (Admin Only)
+- **Multi-company Analysis**: Performance comparison across companies
+- **Market Share**: Revenue and project distribution
+- **Capacity Analysis**: Total installed capacity by company
+- **Efficiency Metrics**: Average project values and sizes
+
+#### Report Features
+
+##### Data Filtering
+- **Date Range Selection**: Custom start and end dates
+- **Period Grouping**: Flexible time period aggregation
+- **Status Filtering**: Filter by project or quote status
+- **Company Filtering**: Admin-level company-specific reports
+
+##### Export Capabilities
+- **Multiple Formats**: PDF, Excel, CSV export options
+- **Scheduled Reports**: Automated report generation
+- **Custom Dashboards**: Personalized report views
+- **Real-time Data**: Live data integration
+
+##### Access Control
+- **Role-based Access**: Different report access levels
+- **Permission System**: Fine-grained report permissions
+- **Admin Reports**: Company performance and system-wide analytics
+- **User Reports**: Individual company and project reports
+
+### Using the Reports Dashboard
+
+#### Accessing Reports
+1. Navigate to the Reports section from the main dashboard
+2. Select your desired date range (7 days, 30 days, 90 days, or 1 year)
+3. Choose from available report types using the tab interface
+4. Export reports in Excel or PDF format using the export buttons
+
+#### Report Types Available
+
+##### Sales Summary Tab
+- **Real-time Sales Data**: Based on approved quotes from the database
+- **Sales Trends**: Visual area chart showing sales performance over time
+- **Key Metrics**: Total sales amount, project count, and average project value
+- **Period Grouping**: Automatic grouping by day, week, or month based on selected range
+
+##### Project Performance Tab
+- **Project Analytics**: Comprehensive analysis of all projects in the system
+- **Profitability Analysis**: Revenue vs. cost analysis with profit calculations
+- **Capacity Tracking**: Total system capacity and average project size
+- **Status Distribution**: Pie chart showing project status breakdown
+- **Performance Ranking**: Bar chart of top-performing projects by profitability per kW
+
+##### Customer Analytics Tab
+- **Customer Segmentation**: Individual vs. company customer breakdown
+- **Value Analysis**: Customer lifetime value and average project value
+- **Repeat Business**: Identification of customers with multiple projects
+- **Customer Ranking**: Top customers by total project value
+
+##### Financial Overview Tab
+- **KPI Dashboard**: Key performance indicators with real-time data
+- **Revenue Tracking**: Monthly revenue with trend indicators
+- **Project Pipeline**: Active vs. completed project counts
+- **Conversion Metrics**: Quote-to-project conversion rates
+- **Goal Tracking**: Progress towards revenue targets
+
+##### Company Performance Tab (Admin Only)
+- **Multi-company Analysis**: Performance comparison across all companies
+- **Revenue Rankings**: Companies ranked by total revenue
+- **Market Share**: Distribution of projects and revenue by company
+- **Capacity Analysis**: Total installed capacity by company
+
+#### Interactive Features
+
+##### Data Visualization
+- **Responsive Charts**: All charts adapt to screen size and device
+- **Interactive Tooltips**: Hover over data points for detailed information
+- **Real-time Updates**: Data refreshes automatically from the database
+- **Color-coded Metrics**: Visual indicators for performance trends
+
+##### Export and Sharing
+- **Excel Export**: Detailed spreadsheet with raw data and calculations
+- **PDF Reports**: Professional formatted reports for presentations
+- **Scheduled Reports**: Set up automatic report generation (coming soon)
+- **Custom Date Ranges**: Flexible date selection for specific analysis periods
+
+#### Data Sources and Accuracy
+
+##### Real-time Data Integration
+- **Quote System**: Revenue calculations based on approved quotes
+- **Project Database**: Project status, costs, and capacity from live database
+- **Customer Records**: Customer information and project history
+- **Financial Tracking**: Actual costs and revenue recognition
+
+##### Data Validation
+- **Automatic Calculations**: All metrics calculated automatically from source data
+- **Data Consistency**: Cross-validation between different data sources
+- **Error Handling**: Graceful handling of missing or incomplete data
+- **Audit Trail**: All data changes tracked for accuracy verification
+
+### Quick Financial Actions
+
+#### Available Actions
+- **Create Invoice**: Generate new invoices from quotes
+- **Record Payment**: Mark invoices as paid
+- **Add Expense**: Record new business expenses
+- **Generate Report**: Create financial reports for analysis
+- **Export Data**: Export financial data for external analysis
+
+#### Automated Features
+- **Real-Time Updates**: Financial data updates automatically
+- **Currency Formatting**: Turkish Lira (₺) formatting throughout
+- **Date Localization**: Turkish date formats and month names
+- **Permission-Based Access**: Role-based financial data access
+
+### Financial Data Sources
+
+#### Revenue Sources
+- **Approved Quotes**: Revenue calculated from approved project quotes
+- **Project Completion**: Revenue recognition upon project completion
+- **Payment Tracking**: Integration with payment processing systems
+
+#### Expense Sources
+- **Project Costs**: Actual and estimated project costs
+- **Operational Expenses**: Business operational costs
+- **Equipment Purchases**: Solar component and equipment costs
+- **Labor Costs**: Installation and maintenance expenses
+
+### Financial Security
+
+#### Access Control
+- **Permission-Based Access**: Finance data requires `finance:read` permission
+- **Role-Based Security**: Different access levels for different user roles
+- **Audit Trail**: Track all financial data access and modifications
+- **Data Encryption**: Secure storage of sensitive financial information
+
+#### Data Privacy
+- **Customer Data Protection**: Secure handling of customer financial information
+- **KVKK Compliance**: Turkish data protection law compliance
+- **Secure Transmission**: Encrypted data transmission for all financial operations
+
+### Integration Features
+
+#### External System Integration
+- **Accounting Software**: Export data to popular accounting systems
+- **Payment Processors**: Integration with Turkish payment systems (Iyzico)
+- **Banking Systems**: Connect with Turkish banking APIs
+- **Tax Systems**: Integration with Turkish tax reporting systems
+
+#### Real-Time Data
+- **Live Updates**: Financial metrics update in real-time
+- **Automatic Calculations**: Automated profit and loss calculations
+- **Currency Exchange**: Real-time Turkish Lira exchange rates
+- **Performance Monitoring**: Continuous financial performance tracking
+
 ## Customer Management
 
 ### Customer Database
@@ -312,26 +562,26 @@ Provide customers with self-service access:
 - CRM synchronization
 - Weather data sources
 
-### Notification Preferences
+### User Preferences
 
-#### Email Notifications
-- System alerts
-- Project updates
-- Performance reports
-- Maintenance reminders
-- Business notifications
+**Important Change**: User settings are now managed client-side using browser localStorage instead of database storage. This improves performance and reduces server load while maintaining user preferences across sessions.
 
-#### SMS Notifications
-- Critical alerts
-- Emergency notifications
-- Appointment reminders
-- Status updates
+#### Notification Preferences
+- **Email Notifications**: System alerts, project updates, performance reports, maintenance reminders, business notifications
+- **SMS Notifications**: Critical alerts, emergency notifications, appointment reminders, status updates
+- **Push Notifications**: Mobile app alerts, browser notifications, real-time updates, priority messages
 
-#### Push Notifications
-- Mobile app alerts
-- Browser notifications
-- Real-time updates
-- Priority messages
+#### System Preferences
+- **Theme Settings**: Dark/light mode toggle with automatic system detection
+- **Language Selection**: Turkish (default) and English language options
+- **Timezone Configuration**: Automatic detection with manual override options
+- **Dashboard Layout**: Customizable widget arrangement and display preferences
+
+#### Security Settings
+- **Password Management**: Change password, password strength requirements
+- **Two-Factor Authentication**: Enhanced security options (planned feature)
+- **Session Management**: Active session monitoring and remote logout
+- **Access Logs**: View login history and security events
 
 ### Data Management
 
@@ -346,6 +596,15 @@ Provide customers with self-service access:
 - Customer data protection
 - Third-party access
 - Compliance settings
+
+### Settings Storage Architecture
+
+The platform now uses a hybrid approach for settings management:
+
+- **Client-Side Storage**: User preferences (theme, language, layout) stored in browser localStorage
+- **Server-Side Storage**: Security settings, notification preferences, and company settings stored in database
+- **Synchronization**: Settings sync across devices when user logs in
+- **Fallback**: Default settings applied when localStorage is unavailable
 
 ## Mobile App
 

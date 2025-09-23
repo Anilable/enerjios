@@ -42,7 +42,8 @@ import {
   UserCog,
   ClockIcon,
   Briefcase,
-  FileX
+  FileX,
+  MessageCircle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getRoleName } from '@/lib/role-utils'
@@ -136,6 +137,12 @@ export const getNavItemsByRole = (role: string): NavItem[] => {
           icon: PiggyBank,
         },
         {
+          title: 'Chatbot İletişimleri',
+          href: '/dashboard/chatbot-contacts',
+          icon: MessageCircle,
+          badge: 'Yeni',
+        },
+        {
           title: 'Destek',
           href: '/dashboard/support',
           icon: HelpCircle,
@@ -217,6 +224,12 @@ export const getNavItemsByRole = (role: string): NavItem[] => {
             { title: 'Ödemeler', href: '/dashboard/finance/payments', icon: CreditCard },
             { title: 'Raporlar', href: '/dashboard/finance/reports', icon: BarChart3 },
           ]
+        },
+        {
+          title: 'Chatbot İletişimleri',
+          href: '/dashboard/chatbot-contacts',
+          icon: MessageCircle,
+          badge: 'Yeni',
         },
         {
           title: 'Ayarlar',

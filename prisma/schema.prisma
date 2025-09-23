@@ -1510,3 +1510,14 @@ enum ApplicationStatus {
   CANCELLED
   EXPIRED
 }
+
+model ChatbotContact {
+  id        String   @id @default(cuid())
+  name      String
+  surname   String
+  email     String
+  phone     String
+  city      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

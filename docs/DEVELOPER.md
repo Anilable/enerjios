@@ -297,7 +297,11 @@ model User {
   id            String    @id @default(cuid())
   email         String    @unique
   name          String?
-  role          UserRole  @default(USER)
+  role          UserRole  @default(CUSTOMER)
+  status        UserStatus @default(PENDING)
+  phone         String?
+  password      String?
+  image         String?
   companyId     String?
   company       Company?  @relation(fields: [companyId], references: [id])
   projects      Project[]
@@ -307,6 +311,11 @@ model User {
   @@map("users")
 }
 ```
+
+**Recent Changes:**
+- **Removed `settings` field**: User settings are now managed client-side using localStorage for better performance
+- **Added `status` field**: Track user account status (PENDING, ACTIVE, SUSPENDED)
+- **Added `phone` field**: Direct phone number storage without JSON parsing
 
 #### Company Model
 ```prisma
@@ -349,6 +358,51 @@ model Project {
 }
 ```
 
+### Settings Architecture
+
+#### Client-Side Settings Management
+
+The platform has migrated from database-stored user settings to a hybrid approach:
+
+**Client-Side Storage (localStorage):**
+- Theme preferences (dark/light mode)
+- Language selection
+- Dashboard layout preferences
+- UI state and customizations
+
+**Server-Side Storage (Database):**
+- Security settings
+- Notification preferences
+- Company-level settings
+- Compliance-related preferences
+
+#### Implementation Details
+
+```typescript
+// Client-side settings management
+interface ClientSettings {
+  theme: 'light' | 'dark' | 'system'
+  language: 'tr' | 'en'
+  timezone: string
+  dashboardLayout: DashboardLayout
+}
+
+// Server-side settings (stored in separate tables)
+interface ServerSettings {
+  notifications: NotificationPreferences
+  security: SecuritySettings
+  privacy: PrivacySettings
+}
+```
+
+#### Migration Impact
+
+The removal of the `settings` JSON field from the User model affects:
+- `/api/user/settings` - Now returns structured data instead of parsing JSON
+- `/api/user/preferences` - Needs to be updated to use new storage method
+- `/api/user/notifications` - Needs to be updated to use new storage method
+- Settings components - Should use localStorage for client-side preferences
+
 ### Database Migrations
 
 #### Creating Migrations
@@ -360,11 +414,18 @@ npx prisma migrate dev --name migration_name
 npx prisma migrate deploy
 ```
 
+#### Recent Migration: Remove User Settings Field
+```sql
+-- Migration: remove_user_settings_field
+ALTER TABLE "User" DROP COLUMN "settings";
+```
+
 #### Migration Best Practices
 - Always review migration SQL before applying
 - Test migrations on development data first
 - Create rollback strategies for complex changes
 - Document breaking changes
+- Update API endpoints that depend on removed fields
 
 ### Seeding Data
 
@@ -405,6 +466,106 @@ main()
 
 ### API Route Structure
 
+#### Reports API Implementation
+
+The Reports API provides comprehensive business intelligence with multiple report types and advanced data aggregation:
+
+```typescript
+// src/app/api/reports/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { requireAuth } from '@/lib/auth-utils'
+import { checkApiPermissions } from '@/lib/permissions'
+import { prisma } from '@/lib/prisma'
+
+export async function GET(request: NextRequest) {
+  try {
+    const user = await requireAuth()
+    
+    // Check permissions
+    const hasAccess = checkApiPermissions(
+      user.role as any,
+      user.id,
+      ['reports:read'],
+      undefined
+    )
+
+    if (!hasAccess) {
+      return NextResponse.json(
+        { error: 'Bu işlem için yetkiniz bulunmamaktadır' },
+        { status: 403 }
+      )
+    }
+
+    const searchParams = request.nextUrl.searchParams
+    const type = searchParams.get('type') || 'sales-summary'
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    const groupBy = searchParams.get('groupBy') || 'month'
+
+    const dateFilter = startDate && endDate ? {
+      gte: new Date(startDate),
+      lte: new Date(endDate)
+    } : undefined
+
+    // Route to different report handlers
+    switch (type) {
+      case 'sales-summary':
+        return await getSalesSummary(dateFilter, groupBy)
+      case 'project-performance':
+        return await getProjectPerformance(dateFilter)
+      case 'customer-analytics':
+        return await getCustomerAnalytics(dateFilter)
+      case 'financial-overview':
+        return await getFinancialOverview(dateFilter)
+      case 'company-performance':
+        if (user.role !== 'ADMIN') {
+          return NextResponse.json({ error: 'Yetkisiz erişim' }, { status: 403 })
+        }
+        return await getCompanyPerformance(dateFilter)
+      default:
+        return NextResponse.json({ error: 'Geçersiz rapor tipi' }, { status: 400 })
+    }
+  } catch (error) {
+    console.error('Reports API error:', error)
+    return NextResponse.json(
+      { error: 'Rapor verileri alınırken hata oluştu' },
+      { status: 500 }
+    )
+  }
+}
+
+// Example report handler with data aggregation
+async function getSalesSummary(dateFilter: any, groupBy: string) {
+  const quotes = await prisma.quote.findMany({
+    where: {
+      status: 'APPROVED',
+      ...(dateFilter && { approvedAt: dateFilter })
+    },
+    select: {
+      total: true,
+      approvedAt: true,
+      createdAt: true
+    },
+    orderBy: {
+      approvedAt: 'asc'
+    }
+  })
+
+  // Group data by period using utility function
+  const groupedData = groupDataByPeriod(quotes, groupBy, 'approvedAt')
+  
+  return NextResponse.json({
+    data: groupedData,
+    summary: {
+      totalSales: quotes.reduce((sum, quote) => sum + quote.total, 0),
+      totalCount: quotes.length,
+      averageValue: quotes.length > 0 ? quotes.reduce((sum, quote) => sum + quote.total, 0) / quotes.length : 0
+    }
+  })
+}
+```
+
+#### Basic API Route Example
 ```typescript
 // src/app/api/projects/route.ts
 import { NextRequest, NextResponse } from 'next/server'
@@ -488,6 +649,155 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+```
+
+#### Data Aggregation Utilities
+
+The Reports API includes utility functions for data grouping and formatting:
+
+```typescript
+// Utility function for grouping data by time periods
+function groupDataByPeriod(data: any[], groupBy: string, dateField: string) {
+  const grouped: { [key: string]: any } = {}
+  
+  data.forEach(item => {
+    const date = new Date(item[dateField])
+    let key: string
+    
+    switch (groupBy) {
+      case 'day':
+        key = date.toISOString().split('T')[0]
+        break
+      case 'week':
+        const weekStart = new Date(date)
+        weekStart.setDate(date.getDate() - date.getDay())
+        key = weekStart.toISOString().split('T')[0]
+        break
+      case 'month':
+        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        break
+      default:
+        key = date.toISOString().split('T')[0]
+    }
+    
+    if (!grouped[key]) {
+      grouped[key] = {
+        period: formatPeriodLabel(key, groupBy),
+        totalAmount: 0,
+        count: 0
+      }
+    }
+    
+    grouped[key].totalAmount += item.total || 0
+    grouped[key].count += 1
+  })
+  
+  return Object.values(grouped).sort((a: any, b: any) => a.period.localeCompare(b.period))
+}
+
+// Turkish locale formatting for periods
+function formatPeriodLabel(key: string, groupBy: string): string {
+  const date = new Date(key)
+  
+  switch (groupBy) {
+    case 'day':
+      return date.toLocaleDateString('tr-TR')
+    case 'week':
+      const weekEnd = new Date(date)
+      weekEnd.setDate(date.getDate() + 6)
+      return `${date.toLocaleDateString('tr-TR')} - ${weekEnd.toLocaleDateString('tr-TR')}`
+    case 'month':
+      return date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' })
+    default:
+      return key
+  }
+}
+```
+
+#### Advanced API Route with Multiple Endpoints
+```typescript
+// src/app/api/finance/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { requireAuth } from '@/lib/auth-utils'
+import { checkApiPermissions } from '@/lib/permissions'
+import { prisma } from '@/lib/prisma'
+
+export async function GET(request: NextRequest) {
+  try {
+    const user = await requireAuth()
+    
+    // Check permissions
+    const hasAccess = checkApiPermissions(
+      user.role as any,
+      user.id,
+      ['finance:read'],
+      undefined
+    )
+
+    if (!hasAccess) {
+      return NextResponse.json(
+        { error: 'Bu işlem için yetkiniz bulunmamaktadır' },
+        { status: 403 }
+      )
+    }
+
+    const searchParams = request.nextUrl.searchParams
+    const type = searchParams.get('type') || 'overview'
+
+    // Route to different handlers based on query parameter
+    switch (type) {
+      case 'overview':
+        return await getFinancialOverview()
+      case 'invoices':
+        return await getInvoices()
+      case 'expenses':
+        return await getExpenses()
+      case 'revenue':
+        return await getRevenueData()
+      default:
+        return NextResponse.json({ error: 'Geçersiz tip' }, { status: 400 })
+    }
+  } catch (error) {
+    console.error('Finance API error:', error)
+    return NextResponse.json(
+      { error: 'Finansal veriler alınırken hata oluştu' },
+      { status: 500 }
+    )
+  }
+}
+
+// Separate handler functions for different data types
+async function getFinancialOverview() {
+  const currentDate = new Date()
+  const currentMonth = currentDate.getMonth()
+  const currentYear = currentDate.getFullYear()
+  
+  // Complex aggregation queries
+  const quotes = await prisma.quote.findMany({
+    where: {
+      status: 'APPROVED',
+      approvedAt: {
+        gte: new Date(currentYear, currentMonth, 1),
+        lt: new Date(currentYear, currentMonth + 1, 1)
+      }
+    },
+    select: {
+      total: true,
+      approvedAt: true
+    }
+  })
+
+  const monthlyRevenue = quotes.reduce((sum, quote) => sum + quote.total, 0)
+  
+  // Return structured financial data
+  return NextResponse.json({
+    monthlyRevenue,
+    monthlyExpenses: 0, // Calculate from projects
+    netProfit: monthlyRevenue,
+    pendingAmount: 0,
+    pendingCount: 0
+  })
 }
 ```
 

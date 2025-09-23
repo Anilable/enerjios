@@ -21,74 +21,95 @@ import {
   Settings, Users, FileText, Filter, Calendar
 } from 'lucide-react'
 
-// Mock data - in real app, this would come from APIs
-const mockDatabaseStatus = {
-  postgresql: {
-    status: 'connected',
-    uptime: '15 gün 8 saat',
-    connections: 24,
-    maxConnections: 100,
-    responseTime: '12ms',
-    version: '15.2'
-  },
-  redis: {
-    status: 'connected',
-    uptime: '15 gün 8 saat',
-    memory: '124MB',
-    maxMemory: '2GB',
-    responseTime: '2ms',
-    version: '7.0.8'
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
+
+// Real data interfaces
+interface DatabaseStats {
+  overview: {
+    totalRecords: number
+    totalTables: number
+    totalCapacity: number
+    estimatedSize: string
+  }
+  tables: Array<{
+    name: string
+    displayName?: string
+    records: number
+    size: string
+    lastUpdated: string
+    description?: string
+  }>
+  activity: {
+    todayUsers: number
+    todayProjects: number
+    todayQuotes: number
+    todayProjectRequests: number
+    totalToday: number
+  }
+  performance: {
+    averageResponseTime: string
+    slowQueries: number
+    cacheHitRate: number
+    connectionCount: number
   }
 }
 
-const mockDatabaseStats = {
-  totalSize: '2.4GB',
-  tablesCount: 24,
-  recordsCount: '1.2M',
-  indexesCount: 85,
-  todayQueries: 15420,
-  averageResponseTime: '8ms',
-  slowQueries: 12,
-  backupStatus: 'completed',
-  lastBackup: '2025-01-06 03:00:00'
+interface PerformanceData {
+  realTime: {
+    responseTime: string
+    queriesPerSecond: number
+    activeConnections: number
+    cpuUsage: number
+    memoryUsage: number
+  }
+  activity: {
+    lastHour: number
+    last24Hours: number
+    totalOperations: number
+  }
+  slowQueries: Array<{
+    query: string
+    duration: string
+    executions: number
+    avgDuration: string
+    table: string
+    suggestion?: string
+  }>
+  recommendations: Array<{
+    type: string
+    table: string
+    column?: string
+    impact: string
+    description: string
+  }>
+  metrics: {
+    cacheHitRate: number
+    indexUsage: number
+    connectionEfficiency: number
+  }
 }
 
-const mockTables = [
-  { name: 'users', records: 15420, size: '245MB', lastUpdated: '2025-01-06 14:30' },
-  { name: 'projects', records: 8965, size: '189MB', lastUpdated: '2025-01-06 14:25' },
-  { name: 'solar_panels', records: 25680, size: '421MB', lastUpdated: '2025-01-06 14:20' },
-  { name: 'energy_data', records: 450000, size: '850MB', lastUpdated: '2025-01-06 14:35' },
-  { name: 'quotes', records: 5240, size: '89MB', lastUpdated: '2025-01-06 14:15' }
-]
-
-const mockSlowQueries = [
-  {
-    query: 'SELECT * FROM energy_data WHERE created_at > ...',
-    duration: '2.5s',
-    executions: 15,
-    avgDuration: '2.1s',
-    table: 'energy_data'
-  },
-  {
-    query: 'SELECT COUNT(*) FROM users JOIN projects ...',
-    duration: '1.8s',
-    executions: 8,
-    avgDuration: '1.6s',
-    table: 'users'
-  },
-  {
-    query: 'UPDATE solar_panels SET status = ? WHERE ...',
-    duration: '1.2s',
-    executions: 23,
-    avgDuration: '1.0s',
-    table: 'solar_panels'
+interface TablesData {
+  tables: Array<{
+    name: string
+    displayName: string
+    records: number
+    size: string
+    lastUpdated: string
+    description: string
+  }>
+  summary: {
+    totalTables: number
+    totalRecords: number
+    largestTable: string
+    smallestTable: string
   }
-]
-
+}
+// Mock backup history (this would typically come from a backup service)
 const mockBackupHistory = [
   {
     id: 1,
-    date: '2025-01-06 03:00:00',
+    date: new Date().toISOString(),
     size: '2.4GB',
     duration: '12 dk',
     status: 'success',
@@ -96,7 +117,7 @@ const mockBackupHistory = [
   },
   {
     id: 2,
-    date: '2025-01-05 03:00:00',
+    date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
     size: '2.3GB',
     duration: '11 dk',
     status: 'success',
@@ -104,7 +125,7 @@ const mockBackupHistory = [
   },
   {
     id: 3,
-    date: '2025-01-04 15:30:00',
+    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     size: '2.3GB',
     duration: '10 dk',
     status: 'success',
@@ -119,32 +140,70 @@ export default function DatabaseManagementPage() {
   const [sqlQuery, setSqlQuery] = useState('')
   const [isExecuting, setIsExecuting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [loading, setLoading] = useState(true)
   
-  const [realTimeStats, setRealTimeStats] = useState({
-    activeConnections: 24,
-    queriesPerSecond: 45,
-    cpuUsage: 35,
-    memoryUsage: 62
-  })
+  // Real data states
+  const [databaseStats, setDatabaseStats] = useState<DatabaseStats | null>(null)
+  const [performanceData, setPerformanceData] = useState<PerformanceData | null>(null)
+  const [tablesData, setTablesData] = useState<TablesData | null>(null)
 
-  // Simulate real-time updates
+  // Load real database data
+  const loadDatabaseData = async () => {
+    try {
+      setLoading(true)
+      
+      const [statsResponse, performanceResponse, tablesResponse] = await Promise.all([
+        fetch('/api/database/stats'),
+        fetch('/api/database/performance'),
+        fetch('/api/database/tables')
+      ])
+
+      if (statsResponse.ok) {
+        const stats = await statsResponse.json()
+        setDatabaseStats(stats)
+      }
+
+      if (performanceResponse.ok) {
+        const performance = await performanceResponse.json()
+        setPerformanceData(performance)
+      }
+
+      if (tablesResponse.ok) {
+        const tables = await tablesResponse.json()
+        setTablesData(tables)
+      }
+
+    } catch (error) {
+      console.error('Failed to load database data:', error)
+      toast({
+        title: "Hata",
+        description: "Veritabanı bilgileri yüklenemedi",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load data on component mount
+  useEffect(() => {
+    loadDatabaseData()
+  }, [])
+
+  // Real-time updates every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      setRealTimeStats(prev => ({
-        activeConnections: prev.activeConnections + Math.floor(Math.random() * 6) - 3,
-        queriesPerSecond: Math.max(0, prev.queriesPerSecond + Math.floor(Math.random() * 20) - 10),
-        cpuUsage: Math.max(0, Math.min(100, prev.cpuUsage + Math.floor(Math.random() * 10) - 5)),
-        memoryUsage: Math.max(0, Math.min(100, prev.memoryUsage + Math.floor(Math.random() * 6) - 3))
-      }))
-    }, 3000)
+      if (!loading) {
+        loadDatabaseData()
+      }
+    }, 30000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [loading])
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await loadDatabaseData()
     setRefreshing(false)
     toast({
       title: "Veriler güncellendi",
@@ -180,9 +239,10 @@ export default function DatabaseManagementPage() {
     })
   }
 
-  const filteredTables = mockTables.filter(table =>
-    table.name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredTables = tablesData?.tables.filter(table =>
+    table.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    table.displayName.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || []
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -202,8 +262,41 @@ export default function DatabaseManagementPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <DashboardLayout 
+        title="Veritabanı Yönetimi"
+        breadcrumbs={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Sistem', href: '/dashboard/system' },
+          { label: 'Veritabanı Yönetimi' }
+        ]}
+      >
+        <div className="space-y-6">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-32 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+            <div className="h-96 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   return (
-    <div className="space-y-6 p-6">
+    <DashboardLayout 
+      title="Veritabanı Yönetimi"
+      breadcrumbs={[
+        { label: 'Dashboard', href: '/dashboard' },
+        { label: 'Sistem', href: '/dashboard/system' },
+        { label: 'Veritabanı Yönetimi' }
+      ]}
+    >
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -230,18 +323,20 @@ export default function DatabaseManagementPage() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">PostgreSQL</CardTitle>
             <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${getStatusColor(mockDatabaseStatus.postgresql.status)}`} />
-              {getStatusBadge(mockDatabaseStatus.postgresql.status)}
+              <div className={`w-2 h-2 rounded-full ${getStatusColor('connected')}`} />
+              {getStatusBadge('connected')}
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{realTimeStats.activeConnections}/100</div>
+            <div className="text-2xl font-bold">
+              {performanceData?.realTime.activeConnections || 0}/100
+            </div>
             <p className="text-xs text-muted-foreground">
-              Aktif bağlantılar • {mockDatabaseStatus.postgresql.responseTime} yanıt
+              Aktif bağlantılar • {performanceData?.realTime.responseTime || '0ms'} yanıt
             </p>
             <div className="mt-2">
               <div className="text-xs text-muted-foreground mb-1">Bağlantı kullanımı</div>
-              <Progress value={(realTimeStats.activeConnections / 100) * 100} className="h-2" />
+              <Progress value={((performanceData?.realTime.activeConnections || 0) / 100) * 100} className="h-2" />
             </div>
           </CardContent>
         </Card>
@@ -250,18 +345,20 @@ export default function DatabaseManagementPage() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Redis Cache</CardTitle>
             <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${getStatusColor(mockDatabaseStatus.redis.status)}`} />
-              {getStatusBadge(mockDatabaseStatus.redis.status)}
+              <div className={`w-2 h-2 rounded-full ${getStatusColor('connected')}`} />
+              {getStatusBadge('connected')}
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">124MB/2GB</div>
+            <div className="text-2xl font-bold">
+              {databaseStats?.overview.estimatedSize || '0MB'}/2GB
+            </div>
             <p className="text-xs text-muted-foreground">
-              Bellek kullanımı • {mockDatabaseStatus.redis.responseTime} yanıt
+              Veritabanı boyutu • Cache aktif
             </p>
             <div className="mt-2">
               <div className="text-xs text-muted-foreground mb-1">Bellek kullanımı</div>
-              <Progress value={(124 / 2048) * 100} className="h-2" />
+              <Progress value={performanceData?.realTime.memoryUsage || 0} className="h-2" />
             </div>
           </CardContent>
         </Card>
@@ -272,13 +369,15 @@ export default function DatabaseManagementPage() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{realTimeStats.queriesPerSecond}/s</div>
+            <div className="text-2xl font-bold">
+              {performanceData?.realTime.queriesPerSecond || 0}/s
+            </div>
             <p className="text-xs text-muted-foreground">
-              Ortalama: 8ms • Yavaş: {mockDatabaseStats.slowQueries}
+              Ortalama: {performanceData?.realTime.responseTime || '0ms'} • Yavaş: {performanceData?.slowQueries.length || 0}
             </p>
             <div className="mt-2">
               <div className="text-xs text-muted-foreground mb-1">CPU kullanımı</div>
-              <Progress value={realTimeStats.cpuUsage} className="h-2" />
+              <Progress value={performanceData?.realTime.cpuUsage || 0} className="h-2" />
             </div>
           </CardContent>
         </Card>
@@ -289,13 +388,15 @@ export default function DatabaseManagementPage() {
             <HardDrive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockDatabaseStats.totalSize}</div>
+            <div className="text-2xl font-bold">
+              {databaseStats?.overview.estimatedSize || '0MB'}
+            </div>
             <p className="text-xs text-muted-foreground">
-              {mockDatabaseStats.tablesCount} tablo • {mockDatabaseStats.recordsCount} kayıt
+              {databaseStats?.overview.totalTables || 0} tablo • {databaseStats?.overview.totalRecords.toLocaleString() || '0'} kayıt
             </p>
             <div className="mt-2">
               <div className="text-xs text-muted-foreground mb-1">Bellek kullanımı</div>
-              <Progress value={realTimeStats.memoryUsage} className="h-2" />
+              <Progress value={performanceData?.realTime.memoryUsage || 0} className="h-2" />
             </div>
           </CardContent>
         </Card>
@@ -326,19 +427,19 @@ export default function DatabaseManagementPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="text-sm text-muted-foreground">Toplam Boyut</div>
-                    <div className="text-2xl font-bold">{mockDatabaseStats.totalSize}</div>
+                    <div className="text-2xl font-bold">{databaseStats?.overview.estimatedSize || '0MB'}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Tablo Sayısı</div>
-                    <div className="text-2xl font-bold">{mockDatabaseStats.tablesCount}</div>
+                    <div className="text-2xl font-bold">{databaseStats?.overview.totalTables || 0}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Toplam Kayıt</div>
-                    <div className="text-2xl font-bold">{mockDatabaseStats.recordsCount}</div>
+                    <div className="text-2xl font-bold">{databaseStats?.overview.totalRecords.toLocaleString() || '0'}</div>
                   </div>
                   <div>
-                    <div className="text-sm text-muted-foreground">İndeks Sayısı</div>
-                    <div className="text-2xl font-bold">{mockDatabaseStats.indexesCount}</div>
+                    <div className="text-sm text-muted-foreground">Toplam Kapasite</div>
+                    <div className="text-2xl font-bold">{databaseStats?.overview.totalCapacity.toLocaleString() || '0'} kW</div>
                   </div>
                 </div>
               </CardContent>
@@ -354,20 +455,20 @@ export default function DatabaseManagementPage() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="text-sm text-muted-foreground">Bugünkü Sorgular</div>
-                    <div className="text-2xl font-bold">{mockDatabaseStats.todayQueries.toLocaleString()}</div>
+                    <div className="text-sm text-muted-foreground">Bugünkü Aktivite</div>
+                    <div className="text-2xl font-bold">{databaseStats?.activity.totalToday.toLocaleString() || '0'}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Ortalama Yanıt</div>
-                    <div className="text-2xl font-bold">{mockDatabaseStats.averageResponseTime}</div>
+                    <div className="text-2xl font-bold">{performanceData?.realTime.responseTime || '0ms'}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Yavaş Sorgular</div>
-                    <div className="text-2xl font-bold text-orange-600">{mockDatabaseStats.slowQueries}</div>
+                    <div className="text-2xl font-bold text-orange-600">{performanceData?.slowQueries.length || 0}</div>
                   </div>
                   <div>
-                    <div className="text-sm text-muted-foreground">Çalışma Süresi</div>
-                    <div className="text-2xl font-bold">{mockDatabaseStatus.postgresql.uptime}</div>
+                    <div className="text-sm text-muted-foreground">Saniyede Sorgu</div>
+                    <div className="text-2xl font-bold">{performanceData?.realTime.queriesPerSecond || 0}</div>
                   </div>
                 </div>
               </CardContent>
@@ -384,21 +485,34 @@ export default function DatabaseManagementPage() {
                   <CheckCircle className="w-8 h-8 text-green-500" />
                   <div>
                     <div className="font-medium">Veritabanı Bağlantısı</div>
-                    <div className="text-sm text-muted-foreground">Normal çalışıyor</div>
+                    <div className="text-sm text-muted-foreground">
+                      {performanceData?.realTime.activeConnections || 0} aktif bağlantı
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
                   <CheckCircle className="w-8 h-8 text-green-500" />
                   <div>
                     <div className="font-medium">Yedekleme Durumu</div>
-                    <div className="text-sm text-muted-foreground">Son yedekleme: {mockDatabaseStats.lastBackup}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Son yedekleme: {new Date(mockBackupHistory[0].date).toLocaleString('tr-TR')}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <AlertTriangle className="w-8 h-8 text-orange-500" />
+                  {(performanceData?.slowQueries.length || 0) > 0 ? (
+                    <AlertTriangle className="w-8 h-8 text-orange-500" />
+                  ) : (
+                    <CheckCircle className="w-8 h-8 text-green-500" />
+                  )}
                   <div>
-                    <div className="font-medium">Performans Uyarısı</div>
-                    <div className="text-sm text-muted-foreground">{mockDatabaseStats.slowQueries} yavaş sorgu tespit edildi</div>
+                    <div className="font-medium">Performans Durumu</div>
+                    <div className="text-sm text-muted-foreground">
+                      {(performanceData?.slowQueries.length || 0) > 0 
+                        ? `${performanceData?.slowQueries.length} yavaş sorgu tespit edildi`
+                        : 'Performans normal'
+                      }
+                    </div>
                   </div>
                 </div>
               </div>
@@ -439,13 +553,18 @@ export default function DatabaseManagementPage() {
                 <TableBody>
                   {filteredTables.map((table) => (
                     <TableRow key={table.name}>
-                      <TableCell className="font-medium">{table.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div>
+                          <div className="font-medium">{table.displayName}</div>
+                          <div className="text-sm text-muted-foreground">{table.name}</div>
+                        </div>
+                      </TableCell>
                       <TableCell>{table.records.toLocaleString()}</TableCell>
                       <TableCell>{table.size}</TableCell>
-                      <TableCell>{table.lastUpdated}</TableCell>
+                      <TableCell>{new Date(table.lastUpdated).toLocaleString('tr-TR')}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" title={table.description}>
                             <FileText className="w-4 h-4" />
                           </Button>
                           <Button variant="ghost" size="sm">
@@ -485,9 +604,9 @@ export default function DatabaseManagementPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockSlowQueries.map((query, index) => (
+                  {performanceData?.slowQueries.length ? performanceData.slowQueries.map((query, index) => (
                     <TableRow key={index}>
-                      <TableCell className="font-mono text-sm max-w-md truncate">
+                      <TableCell className="font-mono text-sm max-w-md truncate" title={query.query}>
                         {query.query}
                       </TableCell>
                       <TableCell>
@@ -497,7 +616,13 @@ export default function DatabaseManagementPage() {
                       <TableCell>{query.avgDuration}</TableCell>
                       <TableCell>{query.table}</TableCell>
                     </TableRow>
-                  ))}
+                  )) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        Yavaş sorgu bulunamadı
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -509,27 +634,31 @@ export default function DatabaseManagementPage() {
                 <CardTitle>Optimizasyon Önerileri</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <AlertTriangle className="w-5 h-5 text-orange-500" />
-                  <div>
-                    <div className="font-medium">energy_data tablosuna indeks ekleyin</div>
-                    <div className="text-sm text-muted-foreground">created_at sütunu için</div>
+                {performanceData?.recommendations.length ? performanceData.recommendations.map((rec, index) => (
+                  <div key={index} className="flex items-center space-x-3">
+                    {rec.impact === 'high' ? (
+                      <AlertTriangle className="w-5 h-5 text-red-500" />
+                    ) : rec.impact === 'medium' ? (
+                      <AlertTriangle className="w-5 h-5 text-orange-500" />
+                    ) : (
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                    )}
+                    <div>
+                      <div className="font-medium">{rec.description}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {rec.table} tablosu • {rec.impact} öncelik
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <AlertTriangle className="w-5 h-5 text-orange-500" />
-                  <div>
-                    <div className="font-medium">users tablosu için vakumlama</div>
-                    <div className="text-sm text-muted-foreground">Performans artışı sağlayabilir</div>
+                )) : (
+                  <div className="flex items-center space-x-3">
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                    <div>
+                      <div className="font-medium">Sistem optimum çalışıyor</div>
+                      <div className="text-sm text-muted-foreground">Herhangi bir optimizasyon gerekmiyor</div>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <CheckCircle className="w-5 h-5 text-green-500" />
-                  <div>
-                    <div className="font-medium">Bağlantı havuzu optimum</div>
-                    <div className="text-sm text-muted-foreground">Herhangi bir işlem gerekmiyor</div>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
@@ -541,23 +670,23 @@ export default function DatabaseManagementPage() {
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span>Cache Hit Oranı</span>
-                    <span>94%</span>
+                    <span>{performanceData?.metrics.cacheHitRate || 0}%</span>
                   </div>
-                  <Progress value={94} className="h-2" />
+                  <Progress value={performanceData?.metrics.cacheHitRate || 0} className="h-2" />
                 </div>
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span>İndeks Kullanımı</span>
-                    <span>87%</span>
+                    <span>{performanceData?.metrics.indexUsage || 0}%</span>
                   </div>
-                  <Progress value={87} className="h-2" />
+                  <Progress value={performanceData?.metrics.indexUsage || 0} className="h-2" />
                 </div>
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span>Bağlantı Kullanımı</span>
-                    <span>{((realTimeStats.activeConnections / 100) * 100).toFixed(0)}%</span>
+                    <span>{((performanceData?.realTime.activeConnections || 0) / 100 * 100).toFixed(0)}%</span>
                   </div>
-                  <Progress value={(realTimeStats.activeConnections / 100) * 100} className="h-2" />
+                  <Progress value={(performanceData?.realTime.activeConnections || 0) / 100 * 100} className="h-2" />
                 </div>
               </CardContent>
             </Card>
@@ -581,10 +710,10 @@ export default function DatabaseManagementPage() {
                     <Badge className="bg-green-100 text-green-800">Başarılı</Badge>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {mockDatabaseStats.lastBackup}
+                    {new Date(mockBackupHistory[0].date).toLocaleString('tr-TR')}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    Boyut: {mockDatabaseStats.totalSize}
+                    Boyut: {databaseStats?.overview.estimatedSize || '0MB'}
                   </div>
                 </div>
               </CardContent>
@@ -881,6 +1010,7 @@ export default function DatabaseManagementPage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </DashboardLayout>
   )
 }

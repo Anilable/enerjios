@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -224,16 +225,29 @@ export default function KVKKAdminPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <DashboardLayout 
+        title="KVKK Yönetimi"
+        breadcrumbs={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'KVKK Yönetimi' }
+        ]}
+      >
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
         </div>
-      </div>
+      </DashboardLayout>
     )
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
+    <DashboardLayout 
+      title="KVKK Yönetimi"
+      breadcrumbs={[
+        { label: 'Dashboard', href: '/dashboard' },
+        { label: 'KVKK Yönetimi' }
+      ]}
+    >
+      <div className="space-y-8">
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-purple-800 text-white rounded-lg p-8">
         <div className="flex items-center justify-between">
@@ -622,6 +636,7 @@ export default function KVKKAdminPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </DashboardLayout>
   )
 }
