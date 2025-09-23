@@ -16,7 +16,7 @@ export function middleware(request: NextRequest) {
     style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com;
     frame-src 'self' https://accounts.google.com;
-    connect-src 'self' https://accounts.google.com https://www.googleapis.com https://*.googleapis.com;
+    connect-src 'self' https://accounts.google.com https://www.googleapis.com https://*.googleapis.com https://api.exchangerate-api.com;
     img-src 'self' data: https: blob: https://*.googleusercontent.com https://www.gstatic.com;
     frame-ancestors 'none';
   `.replace(/\s{2,}/g, ' ').trim();
