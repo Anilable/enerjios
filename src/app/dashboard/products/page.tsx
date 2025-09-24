@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import * as XLSX from 'xlsx'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
@@ -170,7 +170,7 @@ export default function ProductsPage() {
   const [selectedProducts, setSelectedProducts] = useState<{productId: string, quantity: number, unitPrice: number}[]>([])
   const [loadingPackages, setLoadingPackages] = useState(false)
 
-  const { rates, loading: exchangeLoading, error: exchangeError, convertToTRY } = useExchangeRates()
+  const { rates, loading: exchangeLoading, error: exchangeError, convertToTRY, convertFromTRY } = useExchangeRates()
   const usdRateSource = (rates?.sources?.USD as RateSource | undefined) ?? undefined
   const usdRateLabelMap: Record<RateSource | 'unknown', string> = {
     manual: 'Manuel',
@@ -267,6 +267,44 @@ export default function ProductsPage() {
       }
     })
   }, [rates?.USD, formData.purchasePriceUsd])
+
+  const totalSalesValueTRY = useMemo(() => (
+    products.reduce((sum, p) => sum + (p.price * p.stock), 0)
+  ), [products])
+
+  const totalUnits = useMemo(() => (
+    products.reduce((sum, p) => sum + p.stock, 0)
+  ), [products])
+
+  const totalPurchaseValueTRY = useMemo(() => (
+    products.reduce((sum, p) => {
+      const purchasePrice = p.purchasePrice || 0
+      return sum + (purchasePrice * p.stock)
+    }, 0)
+  ), [products])
+
+  const totalProfitTRY = useMemo(() => (
+    products.reduce((sum, p) => {
+      const purchasePrice = p.purchasePrice || 0
+      if (!purchasePrice) return sum
+      const profit = (p.price - purchasePrice) * p.stock
+      return profit > 0 ? sum + profit : sum
+    }, 0)
+  ), [products])
+
+  const usdRate = typeof rates?.USD === 'number' && rates.USD > 0 ? rates.USD : null
+
+  const totalSalesValueUSD = useMemo(() => (
+    usdRate ? convertFromTRY(totalSalesValueTRY, 'USD') : null
+  ), [usdRate, totalSalesValueTRY, convertFromTRY])
+
+  const totalPurchaseValueUSD = useMemo(() => (
+    usdRate ? convertFromTRY(totalPurchaseValueTRY, 'USD') : null
+  ), [usdRate, totalPurchaseValueTRY, convertFromTRY])
+
+  const totalProfitUSD = useMemo(() => (
+    usdRate ? convertFromTRY(totalProfitTRY, 'USD') : null
+  ), [usdRate, totalProfitTRY, convertFromTRY])
 
   // Fetch products from database
   const fetchProducts = async () => {
@@ -1852,7 +1890,7 @@ export default function ProductsPage() {
               </Button>
             </DialogTrigger>
             <DialogContent
-              className="max-w-5xl w-full max-h-[80vh] overflow-y-auto"
+              className="max-w-[90vw] w-[85vw] min-w-[1400px] max-h-[85vh] overflow-y-auto"
               onInteractOutside={(event) => event.preventDefault()}
               onPointerDownOutside={(event) => event.preventDefault()}
             >
@@ -1863,156 +1901,193 @@ export default function ProductsPage() {
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-6 py-4">
-                <div className="grid gap-6 lg:grid-cols-2">
-                  <div className="space-y-4 rounded-lg border border-border/60 bg-white p-4 shadow-sm">
-                    <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Temel Bilgiler</p>
-                    <div className="grid gap-3">
+                <div className="grid gap-8 lg:grid-cols-5">
+                  {/* Temel Bilgiler - 3 columns wide */}
+                  <div className="lg:col-span-3 space-y-4 rounded-lg border border-border/60 bg-gray-50/50 p-8">
+                    <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">TEMEL BİLGİLER</p>
+                    <div className="grid gap-4">
+                      {/* First row - Full width name */}
                       <div className="grid gap-2">
-                        <Label htmlFor="name">Ürün Adı *</Label>
+                        <Label htmlFor="name" className="text-sm font-medium">Ürün Adı *</Label>
                         <Input
                           id="name"
                           value={formData.name || ''}
                           onChange={(e) => setFormData({...formData, name: e.target.value})}
                           placeholder="Ürün adı girin"
+                          className="bg-white"
                         />
                       </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="code">Ürün Kodu *</Label>
-                        <Input
-                          id="code"
-                          value={formData.code || ''}
-                          onChange={(e) => setFormData({...formData, code: e.target.value})}
-                          placeholder="Örn. PNL-540"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="category">Kategori *</Label>
-                        <Select value={formData.category || ''} onValueChange={(value) => setFormData({...formData, category: value})}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Kategori seçin" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {categories.map((category) => (
-                              <SelectItem key={category.id} value={category.name}>
-                                {category.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-2">
+
+                      {/* Second row - Code and Category */}
+                      <div className="grid gap-4 sm:grid-cols-2">
                         <div className="grid gap-2">
-                          <Label htmlFor="brand">Marka *</Label>
+                          <Label htmlFor="code" className="text-sm font-medium">Ürün Kodu *</Label>
+                          <Input
+                            id="code"
+                            value={formData.code || ''}
+                            onChange={(e) => setFormData({...formData, code: e.target.value})}
+                            placeholder="Örn. PNL-540"
+                            className="bg-white"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="category" className="text-sm font-medium">Kategori *</Label>
+                          <Select value={formData.category || ''} onValueChange={(value) => setFormData({...formData, category: value})}>
+                            <SelectTrigger className="bg-white">
+                              <SelectValue placeholder="Kategori seçin" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {categories.map((category) => (
+                                <SelectItem key={category.id} value={category.name}>
+                                  {category.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {/* Third row - Brand and Model */}
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="grid gap-2">
+                          <Label htmlFor="brand" className="text-sm font-medium">Marka *</Label>
                           <Input
                             id="brand"
                             value={formData.brand || ''}
                             onChange={(e) => setFormData({...formData, brand: e.target.value})}
                             placeholder="Marka"
+                            className="bg-white"
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor="model">Model</Label>
+                          <Label htmlFor="model" className="text-sm font-medium">Model</Label>
                           <Input
                             id="model"
                             value={formData.model || ''}
                             onChange={(e) => setFormData({...formData, model: e.target.value})}
                             placeholder="Model"
+                            className="bg-white"
                           />
                         </div>
                       </div>
-                      <div className="grid gap-3 sm:grid-cols-2">
+
+                      {/* Fourth row - Power and Warranty */}
+                      <div className="grid gap-4 sm:grid-cols-2">
                         <div className="grid gap-2">
-                          <Label htmlFor="power">Güç (W)</Label>
+                          <Label htmlFor="power" className="text-sm font-medium">Güç (W)</Label>
                           <Input
                             id="power"
                             type="number"
                             value={formData.power || ''}
                             onChange={(e) => setFormData({...formData, power: e.target.value})}
                             placeholder="540"
+                            className="bg-white"
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor="warranty">Garanti (yıl)</Label>
+                          <Label htmlFor="warranty" className="text-sm font-medium">Garanti (yıl)</Label>
                           <Input
                             id="warranty"
                             type="number"
                             value={formData.warranty || ''}
                             onChange={(e) => setFormData({...formData, warranty: e.target.value})}
                             placeholder="25"
+                            className="bg-white"
                           />
                         </div>
                       </div>
+
+                      {/* Description - Full width */}
                       <div className="grid gap-2">
-                        <Label htmlFor="description">Açıklama</Label>
+                        <Label htmlFor="description" className="text-sm font-medium">Açıklama</Label>
                         <Textarea
                           id="description"
                           value={formData.description || ''}
                           onChange={(e) => setFormData({...formData, description: e.target.value})}
                           placeholder="Ürün açıklaması"
-                          className="min-h-[88px]"
+                          className="min-h-[100px] bg-white"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-4 rounded-lg border border-border/60 bg-white p-4 shadow-sm">
-                    <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Fiyat ve Stok</p>
-                    <div className="grid gap-3">
+                  {/* Fiyat ve Stok - 2 columns */}
+                  <div className="lg:col-span-2 space-y-4 rounded-lg border border-border/60 bg-gray-50/50 p-8">
+                    <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">FİYAT VE STOK</p>
+                    <div className="grid gap-5">
                       <RoleGuard allowedRoles={['ADMIN']}>
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-5">
                           <div className="grid gap-2">
-                            <Label htmlFor="purchasePrice">Alış Fiyatı (₺)</Label>
-                            <Input
-                              id="purchasePrice"
-                              type="number"
-                              value={formData.purchasePrice ?? ''}
-                              onChange={(e) => setFormData({...formData, purchasePrice: Number(e.target.value)})}
-                              placeholder="0"
-                            />
+                            <Label htmlFor="purchasePrice" className="text-sm font-medium">Alış Fiyatı (₺)</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                id="purchasePrice"
+                                type="number"
+                                value={formData.purchasePrice ?? ''}
+                                onChange={(e) => setFormData({...formData, purchasePrice: Number(e.target.value)})}
+                                placeholder="0"
+                                className="bg-white flex-1"
+                              />
+                              <span className="flex items-center px-2 text-xs text-gray-500 bg-gray-100 rounded-r border-l">₺</span>
+                            </div>
                           </div>
                           <div className="grid gap-2">
-                            <Label htmlFor="purchasePriceUsd">Alış Fiyatı (USD)</Label>
-                            <Input
-                              id="purchasePriceUsd"
-                              type="number"
-                              value={formData.purchasePriceUsd ?? ''}
-                              onChange={(e) => handleUsdPurchasePriceChange(e.target.value)}
-                              placeholder="0"
-                            />
-                            {renderUsdRateInfo()}
+                            <Label htmlFor="purchasePriceUsd" className="text-sm font-medium">Alış Fiyatı (USD)</Label>
+                            <div className="space-y-2">
+                              <div className="flex gap-2">
+                                <Input
+                                  id="purchasePriceUsd"
+                                  type="number"
+                                  value={formData.purchasePriceUsd ?? ''}
+                                  onChange={(e) => handleUsdPurchasePriceChange(e.target.value)}
+                                  placeholder="0"
+                                  className="bg-white flex-1"
+                                />
+                                <span className="flex items-center px-2 text-xs text-gray-500 bg-gray-100 rounded-r border-l">USD</span>
+                              </div>
+                              {renderUsdRateInfo()}
+                            </div>
                           </div>
+                          <div className="my-3 border-t border-gray-200"></div>
                         </div>
                       </RoleGuard>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="grid gap-2">
-                          <Label htmlFor="price">Satış Fiyatı (₺) *</Label>
+                      <div className="grid gap-2">
+                        <Label htmlFor="price" className="text-sm font-medium">Satış Fiyatı (₺) *</Label>
+                        <div className="flex gap-2">
                           <Input
                             id="price"
                             type="number"
                             value={formData.price ?? ''}
                             onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
                             placeholder="0"
+                            className="bg-white flex-1"
                           />
+                          <span className="flex items-center px-2 text-xs text-gray-500 bg-gray-100 rounded-r border-l">₺</span>
                         </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="stock">Stok</Label>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="stock" className="text-sm font-medium">Stok</Label>
+                        <div className="flex gap-2">
                           <Input
                             id="stock"
                             type="number"
                             value={formData.stock || ''}
                             onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})}
                             placeholder="0"
+                            className="bg-white flex-1"
                           />
+                          <span className="flex items-center px-2 text-xs text-gray-500 bg-gray-100 rounded-r border-l">adet</span>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-4 rounded-lg border border-border/60 bg-white p-4 shadow-sm">
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Dosyalar</p>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div className="grid gap-2">
+                {/* Dosyalar */}
+                <div className="rounded-lg border border-border/60 bg-gray-50/50 p-6">
+                  <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">DOSYALAR</p>
+                  <div className="mt-4 grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
                       <Label htmlFor="images">Ürün Görselleri</Label>
                       <Input
                         id="images"
@@ -2023,11 +2098,11 @@ export default function ProductsPage() {
                           setSelectedFiles({...selectedFiles, images: e.target.files})
                           console.log('Selected images:', e.target.files)
                         }}
-                        className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        className="file:w-full file:justify-center file:rounded-full file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-center file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
                       />
                       <p className="text-xs text-muted-foreground">PNG, JPG, JPEG dosyaları desteklenir (Maks. 5 dosya)</p>
                     </div>
-                    <div className="grid gap-2">
+                    <div className="space-y-2">
                       <Label htmlFor="datasheet">Teknik Döküman (PDF)</Label>
                       <Input
                         id="datasheet"
@@ -2037,11 +2112,11 @@ export default function ProductsPage() {
                           setSelectedFiles({...selectedFiles, datasheet: e.target.files?.[0] || null})
                           console.log('Selected datasheet:', e.target.files?.[0])
                         }}
-                        className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                        className="file:w-full file:justify-center file:rounded-full file:border-0 file:bg-red-50 file:px-4 file:py-2 file:text-center file:text-sm file:font-semibold file:text-red-700 hover:file:bg-red-100"
                       />
                       <p className="text-xs text-muted-foreground">Sadece PDF dosyaları desteklenir</p>
                     </div>
-                    <div className="grid gap-2">
+                    <div className="space-y-2">
                       <Label htmlFor="manual">Kullanım Kılavuzu (PDF)</Label>
                       <Input
                         id="manual"
@@ -2051,7 +2126,7 @@ export default function ProductsPage() {
                           setSelectedFiles({...selectedFiles, manual: e.target.files?.[0] || null})
                           console.log('Selected manual:', e.target.files?.[0])
                         }}
-                        className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                        className="file:w-full file:justify-center file:rounded-full file:border-0 file:bg-green-50 file:px-4 file:py-2 file:text-center file:text-sm file:font-semibold file:text-green-700 hover:file:bg-green-100"
                       />
                       <p className="text-xs text-muted-foreground">Sadece PDF dosyaları desteklenir</p>
                     </div>
@@ -2434,12 +2509,15 @@ export default function ProductsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">Toplam Satış Değeri</p>
                   <p className="text-2xl font-bold">
-                    {formatCurrency(
-                      products.reduce((sum, p) => sum + (p.price * p.stock), 0)
+                    {formatCurrency(totalSalesValueTRY)}
+                    {totalSalesValueUSD !== null && (
+                      <span className="ml-2 text-base font-medium text-muted-foreground">
+                        ({formatCurrency(totalSalesValueUSD, 'USD')})
+                      </span>
                     )}
                   </p>
                   <p className="text-sm text-green-600">
-                    {products.reduce((sum, p) => sum + p.stock, 0)} toplam adet
+                    {totalUnits} toplam adet
                   </p>
                 </div>
 
@@ -2449,11 +2527,11 @@ export default function ProductsPage() {
                   <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                     <p className="text-sm text-blue-800 font-medium mb-2">Toplam Alış Değeri (Admin)</p>
                     <p className="text-xl font-bold text-blue-900">
-                      {formatCurrency(
-                        products.reduce((sum, p) => {
-                          const purchasePrice = p.purchasePrice || 0
-                          return sum + (purchasePrice * p.stock)
-                        }, 0)
+                      {formatCurrency(totalPurchaseValueTRY)}
+                      {totalPurchaseValueUSD !== null && (
+                        <span className="ml-2 text-sm font-medium text-blue-700">
+                          ({formatCurrency(totalPurchaseValueUSD, 'USD')})
+                        </span>
                       )}
                     </p>
                     <p className="text-sm text-blue-700">
@@ -2465,13 +2543,11 @@ export default function ProductsPage() {
                   <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                     <p className="text-sm text-green-800 font-medium mb-2">Potansiyel Kar (Admin)</p>
                     <p className="text-xl font-bold text-green-900">
-                      {formatCurrency(
-                        products.reduce((sum, p) => {
-                          const purchasePrice = p.purchasePrice || 0
-                          if (purchasePrice === 0) return sum
-                          const profit = (p.price - purchasePrice) * p.stock
-                          return sum + (profit > 0 ? profit : 0)
-                        }, 0)
+                      {formatCurrency(totalProfitTRY)}
+                      {totalProfitUSD !== null && (
+                        <span className="ml-2 text-sm font-medium text-green-700">
+                          ({formatCurrency(totalProfitUSD, 'USD')})
+                        </span>
                       )}
                     </p>
                     <p className="text-sm text-green-700">
@@ -2892,7 +2968,7 @@ export default function ProductsPage() {
         {/* Edit Product Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
           <DialogContent
-            className="max-w-5xl w-full max-h-[80vh] overflow-y-auto"
+            className="max-w-[90vw] w-[85vw] min-w-[1400px] max-h-[85vh] overflow-y-auto"
             onInteractOutside={(event) => event.preventDefault()}
             onPointerDownOutside={(event) => event.preventDefault()}
           >
@@ -2903,146 +2979,190 @@ export default function ProductsPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-6 py-4">
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div className="space-y-4 rounded-lg border border-border/60 bg-white p-4 shadow-sm">
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Temel Bilgiler</p>
-                  <div className="grid gap-3">
+              <div className="grid gap-8 lg:grid-cols-5">
+                {/* Temel Bilgiler - 3 columns wide */}
+                <div className="lg:col-span-3 space-y-4 rounded-lg border border-border/60 bg-gray-50/50 p-8">
+                  <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">TEMEL BİLGİLER</p>
+                  <div className="grid gap-4">
+                    {/* First row - Full width name */}
                     <div className="grid gap-2">
-                      <Label htmlFor="edit-name">Ürün Adı *</Label>
+                      <Label htmlFor="edit-name" className="text-sm font-medium">Ürün Adı *</Label>
                       <Input
                         id="edit-name"
                         value={formData.name || ''}
                         onChange={(e) => setFormData({...formData, name: e.target.value})}
+                        className="bg-white"
+                        placeholder="100KW TRİFAZE ON-GRİD İNVERTÖR"
                       />
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-code">Ürün Kodu *</Label>
-                      <Input
-                        id="edit-code"
-                        value={formData.code || ''}
-                        onChange={(e) => setFormData({...formData, code: e.target.value})}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-category">Kategori *</Label>
-                      <Select value={formData.category || ''} onValueChange={(value) => setFormData({...formData, category: value})}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category.id} value={category.name}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
+
+                    {/* Second row - Code and Category */}
+                    <div className="grid gap-4 sm:grid-cols-2">
                       <div className="grid gap-2">
-                        <Label htmlFor="edit-brand">Marka</Label>
+                        <Label htmlFor="edit-code" className="text-sm font-medium">Ürün Kodu *</Label>
+                        <Input
+                          id="edit-code"
+                          value={formData.code || ''}
+                          onChange={(e) => setFormData({...formData, code: e.target.value})}
+                          className="bg-white"
+                          placeholder="CHİSAGE"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-category" className="text-sm font-medium">Kategori *</Label>
+                        <Select value={formData.category || ''} onValueChange={(value) => setFormData({...formData, category: value})}>
+                          <SelectTrigger className="bg-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map((category) => (
+                              <SelectItem key={category.id} value={category.name}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Third row - Brand and Model */}
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-brand" className="text-sm font-medium">Marka</Label>
                         <Input
                           id="edit-brand"
                           value={formData.brand || ''}
                           onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                          className="bg-white"
+                          placeholder="CHİSAGE"
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="edit-model">Model</Label>
+                        <Label htmlFor="edit-model" className="text-sm font-medium">Model</Label>
                         <Input
                           id="edit-model"
                           value={formData.model || ''}
                           onChange={(e) => setFormData({...formData, model: e.target.value})}
+                          className="bg-white"
+                          placeholder="CE-3P10"
                         />
                       </div>
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
+
+                    {/* Fourth row - Power and Warranty */}
+                    <div className="grid gap-4 sm:grid-cols-2">
                       <div className="grid gap-2">
-                        <Label htmlFor="edit-power">Güç (W)</Label>
+                        <Label htmlFor="edit-power" className="text-sm font-medium">Güç (W)</Label>
                         <Input
                           id="edit-power"
                           type="number"
                           value={formData.power || ''}
                           onChange={(e) => setFormData({...formData, power: e.target.value})}
+                          className="bg-white"
+                          placeholder="10000"
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="edit-warranty">Garanti (yıl)</Label>
+                        <Label htmlFor="edit-warranty" className="text-sm font-medium">Garanti (yıl)</Label>
                         <Input
                           id="edit-warranty"
                           type="number"
                           value={formData.warranty || ''}
                           onChange={(e) => setFormData({...formData, warranty: e.target.value})}
+                          className="bg-white"
+                          placeholder="5"
                         />
                       </div>
                     </div>
+
+                    {/* Description - Full width */}
                     <div className="grid gap-2">
-                      <Label htmlFor="edit-description">Açıklama</Label>
+                      <Label htmlFor="edit-description" className="text-sm font-medium">Açıklama</Label>
                       <Textarea
                         id="edit-description"
                         value={formData.description || ''}
                         onChange={(e) => setFormData({...formData, description: e.target.value})}
-                        placeholder="Ürün açıklaması"
-                        className="min-h-[88px]"
+                        placeholder="100KW TRİFAZE ON GRID INVERTER"
+                        className="min-h-[100px] bg-white"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-4 rounded-lg border border-border/60 bg-white p-4 shadow-sm">
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Fiyat ve Stok</p>
-                  <div className="grid gap-3">
+                {/* Fiyat ve Stok - 2 columns */}
+                <div className="lg:col-span-2 space-y-4 rounded-lg border border-border/60 bg-gray-50/50 p-8">
+                  <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">FİYAT VE STOK</p>
+                  <div className="grid gap-5">
                     <RoleGuard allowedRoles={['ADMIN']}>
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-5">
                         <div className="grid gap-2">
-                          <Label htmlFor="edit-purchasePrice">Alış Fiyatı (₺)</Label>
-                          <Input
-                            id="edit-purchasePrice"
-                            type="number"
-                            value={formData.purchasePrice ?? ''}
-                            onChange={(e) => setFormData({...formData, purchasePrice: Number(e.target.value)})}
-                            placeholder="0"
-                          />
+                          <Label htmlFor="edit-purchasePrice" className="text-sm font-medium">Alış Fiyatı (₺)</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="edit-purchasePrice"
+                              type="number"
+                              value={formData.purchasePrice ?? ''}
+                              onChange={(e) => setFormData({...formData, purchasePrice: Number(e.target.value)})}
+                              placeholder="0"
+                              className="bg-white flex-1"
+                            />
+                            <span className="flex items-center px-2 text-xs text-gray-500 bg-gray-100 rounded-r border-l">₺</span>
+                          </div>
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor="edit-purchasePriceUsd">Alış Fiyatı (USD)</Label>
-                          <Input
-                            id="edit-purchasePriceUsd"
-                            type="number"
-                            value={formData.purchasePriceUsd ?? ''}
-                            onChange={(e) => handleUsdPurchasePriceChange(e.target.value)}
-                            placeholder="0"
-                          />
-                          {renderUsdRateInfo()}
+                          <Label htmlFor="edit-purchasePriceUsd" className="text-sm font-medium">Alış Fiyatı (USD)</Label>
+                          <div className="space-y-2">
+                            <div className="flex gap-2">
+                              <Input
+                                id="edit-purchasePriceUsd"
+                                type="number"
+                                value={formData.purchasePriceUsd ?? ''}
+                                onChange={(e) => handleUsdPurchasePriceChange(e.target.value)}
+                                placeholder="1"
+                                className="bg-white flex-1"
+                              />
+                              <span className="flex items-center px-3 text-sm text-gray-500">$</span>
+                            </div>
+                            {renderUsdRateInfo()}
+                          </div>
                         </div>
+                        <div className="my-3 border-t border-gray-200"></div>
                       </div>
                     </RoleGuard>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="grid gap-2">
-                        <Label htmlFor="edit-price">Satış Fiyatı (₺) *</Label>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-price" className="text-sm font-medium">Satış Fiyatı (₺) *</Label>
+                      <div className="flex gap-2">
                         <Input
                           id="edit-price"
                           type="number"
                           value={formData.price ?? ''}
                           onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
+                          className="bg-white flex-1"
+                          placeholder="0"
                         />
+                        <span className="flex items-center px-3 text-sm text-gray-500">₺</span>
                       </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="edit-stock">Stok</Label>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-stock" className="text-sm font-medium">Stok</Label>
+                      <div className="flex gap-2">
                         <Input
                           id="edit-stock"
                           type="number"
                           value={formData.stock || ''}
                           onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})}
+                          className="bg-white flex-1"
+                          placeholder="100"
                         />
+                        <span className="flex items-center px-3 text-sm text-gray-500">adet</span>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-4 rounded-lg border border-border/60 bg-white p-4 shadow-sm">
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Dosyalar</p>
+              <div className="rounded-lg border border-border/60 bg-gray-50/50 p-6">
+                <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">DOSYALAR</p>
                 <div className="grid gap-6 lg:grid-cols-3">
                   <div className="space-y-2">
                     <Label htmlFor="edit-images">Ürün Görselleri</Label>
