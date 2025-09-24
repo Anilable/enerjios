@@ -682,13 +682,22 @@ export default function ProductsPage() {
           } else if (lowerHeader.includes('marka') || lowerHeader.includes('brand')) {
             autoMapping[index.toString()] = 'brand'
             console.log(`✅ Auto-mapped column ${index} (${header}) to 'brand'`)
+          } else if (lowerHeader.includes('usd') || lowerHeader.includes('dolar')) {
+            autoMapping[index.toString()] = 'purchasePriceUsd'
+            console.log(`✅ Auto-mapped column ${index} (${header}) to 'purchasePriceUsd'`)
+          } else if (lowerHeader.includes('alış') || lowerHeader.includes('alis') || lowerHeader.includes('maliyet') || lowerHeader.includes('cost')) {
+            autoMapping[index.toString()] = 'purchasePrice'
+            console.log(`✅ Auto-mapped column ${index} (${header}) to 'purchasePrice'`)
           } else if (lowerHeader.includes('fiyat') || lowerHeader.includes('price') || lowerHeader.includes('birim fiyat') || lowerHeader.includes('net fiyat')) {
             autoMapping[index.toString()] = 'price'
             console.log(`✅ Auto-mapped column ${index} (${header}) to 'price'`)
           } else if (lowerHeader.includes('stok') || lowerHeader.includes('stock') || lowerHeader.includes('durum')) {
             autoMapping[index.toString()] = 'stock'
             console.log(`✅ Auto-mapped column ${index} (${header}) to 'stock'`)
-          } else if (lowerHeader.includes('model') || lowerHeader.includes('kod')) {
+          } else if (lowerHeader.includes('kod') || lowerHeader.includes('code') || lowerHeader.includes('sku')) {
+            autoMapping[index.toString()] = 'code'
+            console.log(`✅ Auto-mapped column ${index} (${header}) to 'code'`)
+          } else if (lowerHeader.includes('model')) {
             autoMapping[index.toString()] = 'model'
             console.log(`✅ Auto-mapped column ${index} (${header}) to 'model'`)
           } else if (lowerHeader.includes('güç') || lowerHeader.includes('power') || lowerHeader.includes('watt')) {
@@ -764,16 +773,70 @@ export default function ProductsPage() {
     const nameColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'name')!
     const categoryColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'category')!
     const brandColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'brand')
+    const codeColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'code')
+    const modelColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'model')
     const priceColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'price')!
+    const purchasePriceColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'purchasePrice')
+    const purchasePriceUsdColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'purchasePriceUsd')
     const stockColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'stock')
+    const powerColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'power')
+    const warrantyColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'warranty')
+    const descriptionColumn = Object.keys(columnMapping).find(key => columnMapping[key] === 'description')
 
-    const products = excelData.map(row => ({
-      name: row[parseInt(nameColumn)],
-      category: row[parseInt(categoryColumn)],
-      brand: row[parseInt(brandColumn || '0')] || '',
-      price: parseFloat(row[parseInt(priceColumn)]) || 0,
-      stock: parseInt(row[parseInt(stockColumn || '0')]) || 0,
-    }))
+    const toStringValue = (value: any) => value !== undefined && value !== null ? String(value).trim() : ''
+    const toNumberValue = (value: any) => {
+      const parsed = parseFloat(String(value).toString().replace(',', '.'))
+      return Number.isNaN(parsed) ? undefined : parsed
+    }
+
+    const products = excelData.map(row => {
+      const product: any = {
+        name: toStringValue(row[parseInt(nameColumn)]),
+        category: toStringValue(row[parseInt(categoryColumn)]),
+        brand: brandColumn !== undefined ? toStringValue(row[parseInt(brandColumn)]) : '',
+        price: toNumberValue(row[parseInt(priceColumn)]) || 0,
+        stock: stockColumn !== undefined
+          ? parseInt(toStringValue(row[parseInt(stockColumn)])) || 0
+          : 0,
+      }
+
+      const codeValue = codeColumn ? toStringValue(row[parseInt(codeColumn)]) : ''
+      if (codeValue) {
+        product.code = codeValue
+      }
+
+      const modelValue = modelColumn ? toStringValue(row[parseInt(modelColumn)]) : ''
+      if (modelValue) {
+        product.model = modelValue
+      }
+
+      const purchasePriceValue = purchasePriceColumn ? toNumberValue(row[parseInt(purchasePriceColumn)]) : undefined
+      if (purchasePriceValue !== undefined) {
+        product.purchasePrice = purchasePriceValue
+      }
+
+      const purchasePriceUsdValue = purchasePriceUsdColumn ? toNumberValue(row[parseInt(purchasePriceUsdColumn)]) : undefined
+      if (purchasePriceUsdValue !== undefined) {
+        product.purchasePriceUsd = purchasePriceUsdValue
+      }
+
+      const powerValue = powerColumn ? toStringValue(row[parseInt(powerColumn)]) : ''
+      if (powerValue) {
+        product.power = powerValue
+      }
+
+      const warrantyValue = warrantyColumn ? parseInt(toStringValue(row[parseInt(warrantyColumn)])) : undefined
+      if (warrantyValue && !Number.isNaN(warrantyValue)) {
+        product.warranty = warrantyValue
+      }
+
+      const descriptionValue = descriptionColumn ? toStringValue(row[parseInt(descriptionColumn)]) : ''
+      if (descriptionValue) {
+        product.description = descriptionValue
+      }
+
+      return product
+    })
 
     // Process in batches
     const batchSize = 10
@@ -2576,12 +2639,33 @@ export default function ProductsPage() {
                                     <span className="text-xs text-gray-500 ml-1">(kullanılıyor)</span>
                                   )}
                                 </SelectItem>
+                                <SelectItem value="code">
+                                  Ürün Kodu
+                                  {Object.values(columnMapping).includes('code') &&
+                                    columnMapping[index.toString()] !== 'code' && (
+                                      <span className="text-xs text-gray-500 ml-1">(kullanılıyor)</span>
+                                  )}
+                                </SelectItem>
                                 <SelectItem value="model">Model</SelectItem>
                                 <SelectItem value="price">
                                   Fiyat *
                                   {Object.values(columnMapping).includes('price') &&
                                     columnMapping[index.toString()] !== 'price' && (
                                     <span className="text-xs text-gray-500 ml-1">(kullanılıyor)</span>
+                                  )}
+                                </SelectItem>
+                                <SelectItem value="purchasePrice">
+                                  Alış Fiyatı (₺)
+                                  {Object.values(columnMapping).includes('purchasePrice') &&
+                                    columnMapping[index.toString()] !== 'purchasePrice' && (
+                                      <span className="text-xs text-gray-500 ml-1">(kullanılıyor)</span>
+                                  )}
+                                </SelectItem>
+                                <SelectItem value="purchasePriceUsd">
+                                  Alış Fiyatı (USD)
+                                  {Object.values(columnMapping).includes('purchasePriceUsd') &&
+                                    columnMapping[index.toString()] !== 'purchasePriceUsd' && (
+                                      <span className="text-xs text-gray-500 ml-1">(kullanılıyor)</span>
                                   )}
                                 </SelectItem>
                                 <SelectItem value="stock">Stok</SelectItem>
