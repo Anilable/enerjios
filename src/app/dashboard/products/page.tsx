@@ -1406,6 +1406,118 @@ export default function ProductsPage() {
     setShowCategoryManagementDialog(true)
   }
 
+  // Export products to Excel
+  const handleExportProducts = () => {
+    try {
+      const exportData = products.map(product => ({
+        'Ürün Adı': product.name,
+        'Kategori': product.category,
+        'Marka': product.brand,
+        'Model': product.model,
+        'Kod': product.code || '',
+        'Açıklama': product.description || '',
+        'Fiyat (₺)': product.price,
+        'Alış Fiyatı (₺)': product.purchasePrice || '',
+        'Alış Fiyatı (USD)': product.purchasePriceUsd || '',
+        'Stok': product.stock,
+        'Min. Stok': product.minStock || 0,
+        'Garanti (Yıl)': product.warranty || '',
+        'Güç (W)': product.power || '',
+        'Voltaj (V)': product.specifications?.voltage || '',
+        'Akım (A)': product.specifications?.current || '',
+        'Verimlilik (%)': product.specifications?.efficiency || '',
+        'Oluşturulma Tarihi': product.createdAt ? new Date(product.createdAt).toLocaleDateString('tr-TR') : '',
+        'Güncellenme Tarihi': product.updatedAt ? new Date(product.updatedAt).toLocaleDateString('tr-TR') : ''
+      }))
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Ürünler')
+
+      // Auto-size columns
+      const range = XLSX.utils.decode_range(worksheet['!ref']!)
+      const cols = []
+      for (let C = range.s.c; C <= range.e.c; C++) {
+        let max_width = 10
+        for (let R = range.s.r; R <= range.e.r; R++) {
+          const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })]
+          if (cell && cell.v) {
+            const len = cell.v.toString().length
+            if (len > max_width) max_width = len
+          }
+        }
+        cols.push({ width: Math.min(max_width + 2, 50) })
+      }
+      worksheet['!cols'] = cols
+
+      const fileName = `urunler_${new Date().toLocaleDateString('tr-TR').replace(/\./g, '_')}.xlsx`
+      XLSX.writeFile(workbook, fileName)
+
+      toast({
+        title: "Başarılı",
+        description: `${products.length} ürün başarıyla dışa aktarıldı.`,
+      })
+    } catch (error) {
+      console.error('Export error:', error)
+      toast({
+        title: "Hata",
+        description: "Dışa aktarma sırasında bir hata oluştu.",
+        variant: "destructive"
+      })
+    }
+  }
+
+  // Export packages to Excel
+  const handleExportPackages = () => {
+    try {
+      const exportData = packages.map(pkg => ({
+        'Paket Adı': pkg.name,
+        'Tip': PACKAGE_TYPE_LABELS[pkg.type as keyof typeof PACKAGE_TYPE_LABELS] || pkg.type,
+        'Açıklama': pkg.description || '',
+        'Ana Paket': pkg.parentId ? packages.find(p => p.id === pkg.parentId)?.name || 'Bilinmiyor' : '',
+        'Ürün Sayısı': pkg.items?.length || 0,
+        'Toplam Fiyat (₺)': pkg.items?.reduce((total: number, item: any) => total + (item.quantity * item.unitPrice), 0) || 0,
+        'Oluşturulma Tarihi': pkg.createdAt ? new Date(pkg.createdAt).toLocaleDateString('tr-TR') : '',
+        'Güncellenme Tarihi': pkg.updatedAt ? new Date(pkg.updatedAt).toLocaleDateString('tr-TR') : ''
+      }))
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Paketler')
+
+      // Auto-size columns
+      const range = XLSX.utils.decode_range(worksheet['!ref']!)
+      const cols = []
+      for (let C = range.s.c; C <= range.e.c; C++) {
+        let max_width = 10
+        for (let R = range.s.r; R <= range.e.r; R++) {
+          const cell = worksheet[XLSX.utils.encode_cell({ r: R, c: C })]
+          if (cell && cell.v) {
+            const len = cell.v.toString().length
+            if (len > max_width) max_width = len
+          }
+        }
+        cols.push({ width: Math.min(max_width + 2, 50) })
+      }
+      worksheet['!cols'] = cols
+
+      const fileName = `paketler_${new Date().toLocaleDateString('tr-TR').replace(/\./g, '_')}.xlsx`
+      XLSX.writeFile(workbook, fileName)
+
+      toast({
+        title: "Başarılı",
+        description: `${packages.length} paket başarıyla dışa aktarıldı.`,
+      })
+    } catch (error) {
+      console.error('Export error:', error)
+      toast({
+        title: "Hata",
+        description: "Dışa aktarma sırasında bir hata oluştu.",
+        variant: "destructive"
+      })
+    }
+  }
+
   // Add new category
   const handleAddNewCategory = async () => {
     if (!newCategoryFormData.name) {
@@ -2723,7 +2835,7 @@ export default function ProductsPage() {
                     Excel Yükle
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="max-w-[90vw] w-[85vw] min-w-[1400px] max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Excel Dosyası ile Toplu Ürün Ekleme</DialogTitle>
                     <DialogDescription>
@@ -3089,6 +3201,14 @@ export default function ProductsPage() {
                 </DialogContent>
               </Dialog>
 
+              <Button
+                variant="outline"
+                className="flex flex-col items-center gap-2 h-20"
+                onClick={handleExportProducts}
+              >
+                <FileSpreadsheet className="w-5 h-5" />
+                Ürünleri Dışa Aktar
+              </Button>
               <Button
                 variant="outline"
                 className="flex flex-col items-center gap-2 h-20"
@@ -3595,7 +3715,7 @@ export default function ProductsPage() {
 
         {/* Category Management Dialog */}
         <Dialog open={showCategoryManagementDialog} onOpenChange={setShowCategoryManagementDialog}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-[90vw] w-[85vw] min-w-[1400px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Kategori Yönetimi</DialogTitle>
               <DialogDescription>
@@ -3749,7 +3869,7 @@ export default function ProductsPage() {
 
         {/* File Viewing Modal */}
         <Dialog open={showFileModal} onOpenChange={setShowFileModal}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-[90vw] w-[85vw] min-w-[1400px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{currentFile?.name}</DialogTitle>
             </DialogHeader>
@@ -3843,6 +3963,14 @@ export default function ProductsPage() {
                   <RefreshCw className={`w-4 h-4 mr-2 ${loadingPackages ? 'animate-spin' : ''}`} />
                   Yenile
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportPackages}
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Paketleri Dışa Aktar
+                </Button>
               </div>
 
               <Dialog open={showAddPackageDialog} onOpenChange={setShowAddPackageDialog}>
@@ -3861,7 +3989,7 @@ export default function ProductsPage() {
                     Yeni Paket Oluştur
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="max-w-7xl w-[90vw] max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>
                       {packageFormData.parentId ? 'Alt Paket Oluştur' : 'Yeni Paket Oluştur'}
@@ -4313,7 +4441,7 @@ export default function ProductsPage() {
 
             {/* Edit Package Dialog */}
             <Dialog open={showEditPackageDialog} onOpenChange={setShowEditPackageDialog}>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-7xl w-[90vw] max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Paket Düzenle</DialogTitle>
                   <DialogDescription>
