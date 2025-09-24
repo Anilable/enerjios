@@ -643,7 +643,9 @@
         return ''
       }
 
-      const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3002'
+      const baseUrl = process.env.NODE_ENV === 'production'
+        ? (process.env.NEXTAUTH_URL || 'https://enerjios.com')
+        : (process.env.NEXTAUTH_URL || 'http://localhost:3000')
 
       const productsWithFiles = data.products.filter(product =>
         product.files && product.files.length > 0

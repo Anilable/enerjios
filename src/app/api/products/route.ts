@@ -276,6 +276,15 @@ function getTypeFromCategory(category: string): ProductType | null {
     'İnverterler': ProductType.INVERTER,
     'Bataryalar': ProductType.BATTERY,
     'Montaj Malzemeleri': ProductType.MOUNTING_SYSTEM,
+    // Excel'deki kategori isimleri için eşleştirme
+    'AKÜ': ProductType.BATTERY,
+    'Şarj Kontrol': ProductType.ACCESSORY,
+    'DC Pompa': ProductType.ACCESSORY,
+    // Alternatif isimler
+    'Aksesuar': ProductType.ACCESSORY,
+    'Kablo': ProductType.CABLE,
+    'Monitoring': ProductType.MONITORING,
+    'Montaj': ProductType.MOUNTING_SYSTEM,
     // Also handle enum values directly
     'SOLAR_PANEL': ProductType.SOLAR_PANEL,
     'INVERTER': ProductType.INVERTER,

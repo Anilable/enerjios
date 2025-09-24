@@ -136,43 +136,44 @@ export function DashboardLayout({
         <main className="flex-1 min-h-[calc(100vh-3.5rem)] sm:min-h-[calc(100vh-4rem)]">
           {/* Content Area */}
           <div className="p-3 sm:p-4 md:p-6 lg:p-8">
-            {/* Breadcrumbs */}
-            {currentBreadcrumbs.length > 1 && (
+            {/* Breadcrumbs and Title Combined */}
+            {(currentBreadcrumbs.length > 1 || title) && (
               <nav className="mb-4 sm:mb-6">
-                <div className="flex items-center space-x-1 text-xs sm:text-sm text-muted-foreground overflow-x-auto pb-1">
-                  {currentBreadcrumbs.map((crumb, index) => (
-                    <div key={index} className="flex items-center flex-shrink-0">
-                      {index === 0 && <Home className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />}
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  {/* Breadcrumbs */}
+                  <div className="flex items-center space-x-1 text-xs sm:text-sm text-muted-foreground overflow-x-auto">
+                    {currentBreadcrumbs.map((crumb, index) => (
+                      <div key={index} className="flex items-center flex-shrink-0">
+                        {index === 0 && <Home className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />}
 
-                      {crumb.href ? (
-                        <Link
-                          href={crumb.href}
-                          className="hover:text-foreground transition-colors whitespace-nowrap touch-manipulation"
-                        >
-                          {crumb.label}
-                        </Link>
-                      ) : (
-                        <span className="text-foreground font-medium whitespace-nowrap">
-                          {crumb.label}
-                        </span>
-                      )}
+                        {crumb.href ? (
+                          <Link
+                            href={crumb.href}
+                            className="hover:text-foreground transition-colors whitespace-nowrap touch-manipulation"
+                          >
+                            {crumb.label}
+                          </Link>
+                        ) : (
+                          <span className="text-foreground font-medium whitespace-nowrap">
+                            {crumb.label}
+                          </span>
+                        )}
 
-                      {index < currentBreadcrumbs.length - 1 && (
-                        <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 mx-1 flex-shrink-0" />
-                      )}
-                    </div>
-                  ))}
+                        {index < currentBreadcrumbs.length - 1 && (
+                          <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 mx-1 flex-shrink-0" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Page Title */}
+                  {title && (
+                    <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground leading-tight">
+                      {title}
+                    </h1>
+                  )}
                 </div>
               </nav>
-            )}
-
-            {/* Page Title */}
-            {title && (
-              <div className="mb-6 sm:mb-8">
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground leading-tight">
-                  {title}
-                </h1>
-              </div>
             )}
 
             {/* Page Content */}

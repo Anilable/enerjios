@@ -32,7 +32,7 @@ import {
   Search, Filter, Eye, Edit, MoreHorizontal, TrendingUp,
   Calendar, MapPin, User, Zap, Clock, AlertCircle,
   CheckCircle, XCircle, Pause, Play, DollarSign,
-  FileText, Phone, Mail, Trash2
+  FileText, Phone, Mail, Trash2, Building
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -436,10 +436,22 @@ export default function ProjectOverviewPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredProjects.map((project) => {
-                    const statusConfig = PROJECT_STATUS_CONFIG[project.status]
-                    const priorityConfig = PRIORITY_CONFIG[project.priority]
-                    const typeConfig = PROJECT_TYPE_CONFIG[project.type]
+                    const statusConfig = PROJECT_STATUS_CONFIG[project.status] || {
+                      label: project.status || 'Bilinmeyen',
+                      color: 'bg-gray-500',
+                      variant: 'outline' as const
+                    }
+                    const priorityConfig = PRIORITY_CONFIG[project.priority] || {
+                      label: 'Normal',
+                      color: 'text-gray-500',
+                      icon: Clock
+                    }
+                    const typeConfig = PROJECT_TYPE_CONFIG[project.type] || {
+                      label: project.type || 'Bilinmeyen',
+                      icon: Building
+                    }
                     const PriorityIcon = priorityConfig.icon
+                    const TypeIcon = typeof typeConfig.icon === 'function' ? typeConfig.icon : Building
 
                     return (
                       <TableRow key={project.id}>
@@ -447,7 +459,11 @@ export default function ProjectOverviewPage() {
                           <div>
                             <div className="font-semibold">{project.title}</div>
                             <div className="text-sm text-muted-foreground flex items-center gap-1">
-                              {typeConfig.icon} {typeConfig.label}
+                              {typeof typeConfig.icon === 'string' ? (
+                                <span className="text-sm">{typeConfig.icon}</span>
+                              ) : (
+                                <TypeIcon className="w-4 h-4" />
+                              )} {typeConfig.label}
                             </div>
                           </div>
                         </TableCell>

@@ -113,7 +113,14 @@ export function PhotoUploadForm({
 
         if (!response.ok) {
           const errorData = await response.json()
-          throw new Error(errorData.error || 'Upload failed')
+          console.error('❌ Upload failed:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorData,
+            token,
+            fileName: file.file.name
+          })
+          throw new Error(errorData.error || `Upload failed: ${response.status} ${response.statusText}`)
         }
 
         const result = await response.json()

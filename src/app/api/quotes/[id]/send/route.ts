@@ -114,7 +114,7 @@ export async function POST(
           projectTitle: quote.project?.name || `${companyName} Güneş Enerji Sistemi`,
           totalAmount: quote.total,
           validUntil: quote.validUntil,
-          quoteViewUrl: `${process.env.NEXT_PUBLIC_APP_URL}/quotes/public/${deliveryToken}`,
+          quoteViewUrl: `${process.env.NODE_ENV === 'production' ? 'https://enerjios.com' : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')}/quotes/public/${deliveryToken}`,
           companyName,
           engineerName: quote.createdBy?.name || 'Proje Uzmanı',
           engineerTitle: 'Güneş Enerji Uzmanı',
@@ -213,7 +213,7 @@ export async function POST(
     if (channels.includes('WHATSAPP') && finalCustomerPhone) {
       try {
         const whatsappService = new WhatsAppService();
-        const viewUrl = `${process.env.NEXT_PUBLIC_APP_URL}/quotes/public/${deliveryToken}`;
+        const viewUrl = `${process.env.NODE_ENV === 'production' ? 'https://enerjios.com' : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')}/quotes/public/${deliveryToken}`;
         
         const whatsappSent = await whatsappService.sendQuoteMessage(
           finalCustomerPhone,

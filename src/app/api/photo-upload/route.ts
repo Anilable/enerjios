@@ -8,14 +8,31 @@ import sharp from 'sharp'
 
 export async function POST(req: NextRequest) {
   try {
+    console.log('📸 Photo upload request received')
+
     const formData = await req.formData()
     const file = formData.get('file') as File
     const token = formData.get('token') as string
     const originalName = formData.get('originalName') as string
 
+    console.log('📸 Photo upload data:', {
+      hasFile: !!file,
+      fileName: file?.name,
+      fileSize: file?.size,
+      fileType: file?.type,
+      hasToken: !!token,
+      tokenLength: token?.length,
+      originalName
+    })
+
     if (!file || !token || !originalName) {
-      return NextResponse.json({ 
-        error: 'Missing required fields' 
+      console.error('❌ Missing required fields:', {
+        hasFile: !!file,
+        hasToken: !!token,
+        hasOriginalName: !!originalName
+      })
+      return NextResponse.json({
+        error: 'Missing required fields'
       }, { status: 400 })
     }
 
@@ -33,21 +50,38 @@ export async function POST(req: NextRequest) {
     }
 
     // Find photo request
-    const photoRequest = await prisma.photoRequest.findUnique({
-      where: { 
-        token,
-        status: 'PENDING' // Only allow uploads for pending requests
-      },
-      select: {
-        id: true,
-        status: true,
-        expiresAt: true
-      }
+    console.log('🔍 Looking for photo request with token:', token.substring(0, 12) + '...')
+
+    let photoRequest
+    try {
+      photoRequest = await prisma.photoRequest.findUnique({
+        where: {
+          token,
+          status: 'PENDING' // Only allow uploads for pending requests
+        },
+        select: {
+          id: true,
+          status: true,
+          expiresAt: true
+        }
+      })
+    } catch (dbError) {
+      console.error('❌ Database error while finding photo request:', dbError)
+      return NextResponse.json({
+        error: 'Database connection error'
+      }, { status: 500 })
+    }
+
+    console.log('🔍 Photo request found:', {
+      found: !!photoRequest,
+      id: photoRequest?.id,
+      status: photoRequest?.status,
+      expiresAt: photoRequest?.expiresAt
     })
 
     if (!photoRequest) {
-      return NextResponse.json({ 
-        error: 'Invalid or expired photo request' 
+      return NextResponse.json({
+        error: 'Invalid or expired photo request'
       }, { status: 404 })
     }
 
@@ -109,27 +143,36 @@ export async function POST(req: NextRequest) {
     }
 
     // Save to database
-    const photoUpload = await prisma.photoUpload.create({
-      data: {
-        photoRequestId: photoRequest.id,
-        filename,
-        originalName,
-        mimeType: file.type,
-        fileSize: file.size,
-        storageUrl: `/uploads/photos/${filename}`,
-        thumbnailUrl: `/uploads/thumbnails/${thumbnailFilename}`,
-        metadata: imageMetadata
-      }
-    })
+    console.log('💾 Saving to database...')
+    let photoUpload
+    try {
+      photoUpload = await prisma.photoUpload.create({
+        data: {
+          photoRequestId: photoRequest.id,
+          filename,
+          originalName,
+          mimeType: file.type,
+          fileSize: file.size,
+          storageUrl: `/uploads/photos/${filename}`,
+          thumbnailUrl: `/uploads/thumbnails/${thumbnailFilename}`,
+          metadata: imageMetadata
+        }
+      })
 
-    // Update photo request status to UPLOADED
-    await prisma.photoRequest.update({
-      where: { id: photoRequest.id },
-      data: {
-        status: 'UPLOADED',
-        uploadedAt: new Date()
-      }
-    })
+      // Update photo request status to UPLOADED
+      await prisma.photoRequest.update({
+        where: { id: photoRequest.id },
+        data: {
+          status: 'UPLOADED',
+          uploadedAt: new Date()
+        }
+      })
+    } catch (dbError) {
+      console.error('❌ Database error while saving photo upload:', dbError)
+      return NextResponse.json({
+        error: 'Database error while saving photo'
+      }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,

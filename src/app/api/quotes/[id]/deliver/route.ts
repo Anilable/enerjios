@@ -73,7 +73,9 @@ export async function POST(
     const deliveryToken = nanoid(32)
     
     // Create public quote viewing URL
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3002'
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? (process.env.NEXTAUTH_URL || 'https://enerjios.com')
+      : (process.env.NEXTAUTH_URL || 'http://localhost:3000')
     const quoteViewUrl = `${baseUrl}/quote/${deliveryToken}`
 
     if (deliveryChannel === 'EMAIL') {

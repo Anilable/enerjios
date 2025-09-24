@@ -59,6 +59,7 @@ type Product = {
   name: string
   code?: string
   category: string
+  categoryId?: string
   type?: string
   brand: string
   model: string
@@ -68,6 +69,7 @@ type Product = {
   purchasePrice?: number
   purchasePriceUsd?: number
   stock: number
+  minStock?: number
   status: string
   warranty: string
   description?: string
@@ -167,6 +169,7 @@ export default function ProductsPage() {
     items: []
   })
   const [packageSearchTerm, setPackageSearchTerm] = useState('')
+  const [productSearchTerm, setProductSearchTerm] = useState('')
   const [selectedProducts, setSelectedProducts] = useState<{productId: string, quantity: number, unitPrice: number}[]>([])
   const [loadingPackages, setLoadingPackages] = useState(false)
 
@@ -315,7 +318,20 @@ export default function ProductsPage() {
         throw new Error('Failed to fetch products')
       }
       const data = await response.json()
+      console.log('📦 Products loaded:', data.length, 'products')
+      console.log('📦 Sample product categories:', data.slice(0, 10).map((p: any) => ({
+        name: p.name,
+        category: p.category,
+        categoryId: p.categoryId
+      })))
+
+      // Also log all unique categories
+      const uniqueCategories = [...new Set(data.map((p: any) => p.category).filter(Boolean))]
+      console.log('📂 All unique categories in products:', uniqueCategories)
       setProducts(data)
+
+      // After products are loaded, fetch categories with the new product data
+      await fetchCategories(data)
     } catch (error) {
       console.error('Error fetching products:', error)
       toast({
@@ -329,7 +345,7 @@ export default function ProductsPage() {
   }
 
   // Fetch categories from database
-  const fetchCategories = async () => {
+  const fetchCategories = async (currentProducts?: Product[]) => {
     try {
       console.log('🔄 Fetching categories from API...')
       const response = await fetch('/api/products/categories')
@@ -341,14 +357,51 @@ export default function ProductsPage() {
       const data = await response.json()
       console.log('📊 Categories data received:', data)
 
-      // Map icons from string to component
-      const mappedCategories = data.map((cat: any) => ({
-        ...cat,
-        icon: iconMap[cat.icon] || Package
-      }))
+      // Use passed products or current state
+      const productsToUse = currentProducts || products;
+
+      // Map icons from string to component and ensure count is calculated correctly
+      const mappedCategories = data.map((cat: any) => {
+        console.log(`🔍 Category "${cat.name}": API count = ${cat.count}`);
+
+        // Always calculate count from products array
+        let actualCount = 0;
+        if (productsToUse.length > 0) {
+          // Category mappings for matching
+          const categoryMappings: Record<string, string[]> = {
+            'Solar Paneller': ['Panel', 'panel', 'Solar Panel', 'Güneş Paneli'],
+            'İnverterler': ['İnverter', 'inverter', 'Inverter'],
+            'Bataryalar': ['Batarya', 'batarya', 'Battery'],
+            'Montaj Malzemeleri': ['Montaj', 'montaj', 'Mounting'],
+            'Kablolar': ['Kablo', 'kablo', 'Cable', 'Kablolar'],
+            'İzleme Sistemleri': ['İzleme', 'izleme', 'Monitoring'],
+            'Aksesuarlar': ['Aksesuar', 'aksesuar', 'Accessory', 'Aksesuarlar'],
+            'AKÜ': ['AKÜ', 'Aku', 'aku', 'Akü', 'Battery', 'Batarya'],
+            'DC Pompa': ['DC Pompa', 'dc pompa', 'DC POMPA'],
+            'Şarj Kontrol': ['Şarj Kontrol', 'şarj kontrol', 'ŞARJ KONTROL', 'Charge Controller']
+          };
+
+          const matchingProducts = productsToUse.filter(product => {
+            const matchByName = product.category === cat.name;
+            const matchById = product.categoryId === cat.id;
+            const matchByMapping = categoryMappings[cat.name]?.includes(product.category || '') || false;
+
+            return matchByName || matchById || matchByMapping;
+          });
+
+          actualCount = matchingProducts.length;
+          console.log(`  📊 Final count for "${cat.name}": ${actualCount}`);
+        }
+
+        return {
+          ...cat,
+          icon: iconMap[cat.icon] || Package,
+          count: actualCount
+        };
+      })
 
       setCategories(mappedCategories)
-      console.log('✅ Categories updated successfully')
+      console.log('✅ Categories updated successfully with counts:', mappedCategories.map((c: any) => `${c.name}: ${c.count}`))
     } catch (error) {
       console.error('❌ Error fetching categories:', error)
       toast({
@@ -420,11 +473,11 @@ export default function ProductsPage() {
 
   // Initial data load
   useEffect(() => {
-    fetchProducts()
-    fetchCategories()
+    fetchProducts() // Now also fetches categories after products are loaded
     fetchUser()
     fetchPackages()
   }, [])
+
 
   const searchValue = searchTerm.toLowerCase()
   const filteredProducts = products.filter(product =>
@@ -989,6 +1042,7 @@ export default function ProductsPage() {
           ? Number(formData.purchasePriceUsd)
           : null,
         stock: Number(formData.stock) || 0,
+        minStock: Number(formData.minStock) || 0,
         warranty: formData.warranty,
         description: formData.description,
         images: JSON.stringify(uploadedFiles.images),
@@ -1014,6 +1068,7 @@ export default function ProductsPage() {
             ? Number(formData.purchasePriceUsd)
             : null,
           stock: Number(formData.stock) || 0,
+        minStock: Number(formData.minStock) || 0,
           warranty: formData.warranty,
           description: formData.description,
           images: JSON.stringify(uploadedFiles.images),
@@ -1143,6 +1198,7 @@ export default function ProductsPage() {
           ? Number(formData.purchasePriceUsd)
           : null,
         stock: Number(formData.stock),
+        minStock: Number(formData.minStock) || 0,
         warranty: formData.warranty,
         description: formData.description,
         images: JSON.stringify(allImages),
@@ -1531,14 +1587,58 @@ export default function ProductsPage() {
     console.log('📝 Opening edit dialog for product:', {
       id: product.id,
       name: product.name,
+      category: product.category,
+      categoryId: product.categoryId,
       images: product.images,
       datasheet: (product as any).datasheet,
       manual: (product as any).manual
     })
 
     setSelectedProduct(product)
+
+    // Find the correct category name for the dropdown
+    let categoryName = product.category || '';
+    console.log(`🔍 Product category info:`, {
+      productCategory: product.category,
+      productCategoryId: product.categoryId,
+      availableCategories: categories.map(c => ({ id: c.id, name: c.name }))
+    });
+
+    // Priority: use categoryId if available, fallback to category string
+    if (product.categoryId && categories.length > 0) {
+      const categoryObj = categories.find(cat => cat.id === product.categoryId);
+      console.log(`🔍 Found category by ID:`, categoryObj);
+      if (categoryObj) {
+        categoryName = categoryObj.name;
+        console.log(`✅ Using category from ID: "${categoryName}"`);
+      } else {
+        console.log(`❌ CategoryId "${product.categoryId}" not found in categories array`);
+      }
+    } else if (product.category) {
+      // Fallback to string category with mapping
+      const categoryMappings: Record<string, string> = {
+        'İnverter': 'İnverterler',
+        'Panel': 'Solar Paneller',
+        'Batarya': 'Bataryalar',
+        'Montaj': 'Montaj Malzemeleri',
+        'Kablo': 'Kablolar',
+        'İzleme': 'İzleme Sistemleri',
+        'Aksesuar': 'Aksesuarlar',
+        // Excel kategorileri için ek eşleştirmeler
+        'AKÜ': 'AKÜ',
+        'Şarj Kontrol': 'Şarj Kontrol',
+        'DC Pompa': 'DC Pompa'
+      };
+
+      categoryName = categoryMappings[product.category] || product.category;
+      console.log(`🔄 Using mapped category: "${product.category}" -> "${categoryName}"`);
+    }
+
+    console.log(`🎯 Final category name for dropdown: "${categoryName}"`)
+
     setFormData({
       ...product,
+      category: categoryName,
       power: typeof product.power === 'string' ? product.power.replace(/[^0-9.]/g, '') : String(product.power || ''),
       warranty: typeof product.warranty === 'string' ? product.warranty.replace(/[^0-9]/g, '') : String(product.warranty || '')
     })
@@ -1565,7 +1665,7 @@ export default function ProductsPage() {
   }
 
   const handleAutoOrder = () => {
-    const lowStockProducts = products.filter(p => p.stock < 20)
+    const lowStockProducts = products.filter(p => p.stock <= (p.minStock || 20))
     toast({
       title: "Sipariş Oluşturuldu",
       description: `${lowStockProducts.length} ürün için otomatik sipariş oluşturuldu.`
@@ -1842,6 +1942,27 @@ export default function ProductsPage() {
     })
   }
 
+  const updateProductPrice = (productId: string, unitPrice: number) => {
+    if (unitPrice < 0) {
+      return // Negatif fiyata izin verme
+    }
+
+    const newSelectedProducts = selectedProducts.map(item =>
+      item.productId === productId ? { ...item, unitPrice } : item
+    )
+    setSelectedProducts(newSelectedProducts)
+
+    setPackageFormData({
+      ...packageFormData,
+      items: newSelectedProducts.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        description: undefined
+      }))
+    })
+  }
+
   return (
     <>
       <Toaster />
@@ -2066,7 +2187,7 @@ export default function ProductsPage() {
                         </div>
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="stock" className="text-sm font-medium">Stok</Label>
+                        <Label htmlFor="stock" className="text-sm font-medium">Mevcut Stok</Label>
                         <div className="flex gap-2">
                           <Input
                             id="stock"
@@ -2078,6 +2199,21 @@ export default function ProductsPage() {
                           />
                           <span className="flex items-center px-2 text-xs text-gray-500 bg-gray-100 rounded-r border-l">adet</span>
                         </div>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="minStock" className="text-sm font-medium">Azami Stok (Uyarı Limiti)</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="minStock"
+                            type="number"
+                            value={formData.minStock || ''}
+                            onChange={(e) => setFormData({...formData, minStock: Number(e.target.value)})}
+                            placeholder="0"
+                            className="bg-white flex-1"
+                          />
+                          <span className="flex items-center px-2 text-xs text-gray-500 bg-gray-100 rounded-r border-l">adet</span>
+                        </div>
+                        <p className="text-xs text-gray-500">Stok bu değerin altına düştüğünde uyarı gösterilir</p>
                       </div>
                     </div>
                   </div>
@@ -2394,12 +2530,12 @@ export default function ProductsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {products.filter(p => p.stock < 20).length === 0 ? (
+                {products.filter(p => p.stock <= (p.minStock || 20)).length === 0 ? (
                   <p className="text-sm text-gray-500 text-center py-4">
                     Stok uyarısı bulunmuyor
                   </p>
                 ) : (
-                  products.filter(p => p.stock < 20).map(product => (
+                  products.filter(p => p.stock <= (p.minStock || 20)).map(product => (
                     <div key={product.id} className={`flex items-center justify-between p-3 border rounded-lg ${
                       product.stock === 0 ? 'border-red-200 bg-red-50' : 'border-orange-200 bg-orange-50'
                     }`}>
@@ -2408,7 +2544,7 @@ export default function ProductsPage() {
                           {product.name}
                         </p>
                         <p className={`text-sm ${product.stock === 0 ? 'text-red-600' : 'text-orange-600'}`}>
-                          {product.stock === 0 ? 'Stok tükendi' : 'Kritik seviyede'}
+                          {product.stock === 0 ? 'Stok tükendi' : `Azami stok: ${product.minStock || 20} - Kritik seviyede`}
                         </p>
                       </div>
                       <Badge className={product.stock === 0 ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'}>
@@ -3012,7 +3148,7 @@ export default function ProductsPage() {
                         <Label htmlFor="edit-category" className="text-sm font-medium">Kategori *</Label>
                         <Select value={formData.category || ''} onValueChange={(value) => setFormData({...formData, category: value})}>
                           <SelectTrigger className="bg-white">
-                            <SelectValue />
+                            <SelectValue placeholder="Kategori seçin" />
                           </SelectTrigger>
                           <SelectContent>
                             {categories.map((category) => (
@@ -3144,7 +3280,7 @@ export default function ProductsPage() {
                       </div>
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="edit-stock" className="text-sm font-medium">Stok</Label>
+                      <Label htmlFor="edit-stock" className="text-sm font-medium">Mevcut Stok</Label>
                       <div className="flex gap-2">
                         <Input
                           id="edit-stock"
@@ -3156,6 +3292,21 @@ export default function ProductsPage() {
                         />
                         <span className="flex items-center px-3 text-sm text-gray-500">adet</span>
                       </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-minStock" className="text-sm font-medium">Azami Stok (Uyarı Limiti)</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="edit-minStock"
+                          type="number"
+                          value={formData.minStock || ''}
+                          onChange={(e) => setFormData({...formData, minStock: Number(e.target.value)})}
+                          className="bg-white flex-1"
+                          placeholder="20"
+                        />
+                        <span className="flex items-center px-3 text-sm text-gray-500">adet</span>
+                      </div>
+                      <p className="text-xs text-gray-500">Stok bu değerin altına düştüğünde uyarı gösterilir</p>
                     </div>
                   </div>
                 </div>
@@ -3782,23 +3933,53 @@ export default function ProductsPage() {
                               const product = products.find(p => p.id === item.productId)
                               if (!product) return null
                               return (
-                                <div key={item.productId} className="flex items-center justify-between p-2 border rounded">
+                                <div key={item.productId} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
                                   <div className="flex-1">
                                     <p className="font-medium text-sm">{product.name}</p>
-                                    <p className="text-xs text-muted-foreground">{product.brand} - {formatCurrency(item.unitPrice)}</p>
+                                    <p className="text-xs text-muted-foreground">{product.brand}</p>
+                                    <p className="text-xs text-green-600">Stok: {product.stock}</p>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <Input
-                                      type="number"
-                                      value={item.quantity}
-                                      onChange={(e) => updateProductQuantity(item.productId, parseInt(e.target.value) || 0)}
-                                      className="w-20 h-8"
-                                      min="1"
-                                    />
+                                    <div className="flex flex-col gap-1">
+                                      <Label className="text-xs">Miktar</Label>
+                                      <Input
+                                        type="number"
+                                        value={item.quantity}
+                                        onChange={(e) => updateProductQuantity(item.productId, parseInt(e.target.value) || 0)}
+                                        className="w-20 h-8 text-center"
+                                        min="1"
+                                      />
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                      <Label className="text-xs">Fiyat (₺)</Label>
+                                      <div className="relative">
+                                        <Input
+                                          type="number"
+                                          value={item.unitPrice}
+                                          onChange={(e) => updateProductPrice(item.productId, parseFloat(e.target.value) || 0)}
+                                          className="w-24 h-8 text-right pr-6"
+                                          min="0"
+                                          step="0.01"
+                                          title={`Orijinal fiyat: ${formatCurrency(product.price)}`}
+                                        />
+                                        {item.unitPrice !== product.price && (
+                                          <span className="absolute right-1 top-1/2 transform -translate-y-1/2 text-xs text-orange-500">
+                                            ✱
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                      <Label className="text-xs">Toplam</Label>
+                                      <div className="w-20 h-8 bg-white border rounded text-xs text-right px-2 flex items-center justify-end font-medium">
+                                        {formatCurrency(item.quantity * item.unitPrice)}
+                                      </div>
+                                    </div>
                                     <Button
                                       variant="outline"
                                       size="sm"
                                       onClick={() => removeProductFromPackage(item.productId)}
+                                      className="h-8"
                                     >
                                       <Trash className="w-4 h-4" />
                                     </Button>
@@ -3820,10 +4001,24 @@ export default function ProductsPage() {
                       <Card>
                         <CardHeader>
                           <CardTitle className="text-sm">Mevcut Ürünler</CardTitle>
+                          <div className="relative">
+                            <Input
+                              placeholder="Ürün ara..."
+                              value={productSearchTerm}
+                              onChange={(e) => setProductSearchTerm(e.target.value)}
+                              className="mt-2"
+                            />
+                          </div>
                         </CardHeader>
                         <CardContent>
                           <div className="grid gap-2 max-h-60 overflow-y-auto">
-                            {products.map((product) => {
+                            {products
+                              .filter((product) =>
+                                product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                                product.brand.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                                product.category?.toLowerCase().includes(productSearchTerm.toLowerCase())
+                              )
+                              .map((product) => {
                               const isSelected = selectedProducts.some(item => item.productId === product.id)
                               return (
                                 <div key={product.id} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
@@ -4175,37 +4370,65 @@ export default function ProductsPage() {
                               <div className="flex-1">
                                 <p className="font-medium">{product?.name || 'Ürün bulunamadı'}</p>
                                 <p className="text-sm text-muted-foreground">{product?.brand}</p>
+                                <p className="text-xs text-green-600">Stok: {product?.stock || 0}</p>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Input
-                                  type="number"
-                                  value={item.quantity}
-                                  onChange={(e) => {
-                                    const newItems = [...packageFormData.items]
-                                    newItems[index].quantity = parseFloat(e.target.value) || 0
-                                    newItems[index].unitPrice = product?.price || 0
+                                <div className="flex flex-col gap-1">
+                                  <Label className="text-xs">Miktar</Label>
+                                  <Input
+                                    type="number"
+                                    value={item.quantity}
+                                    onChange={(e) => {
+                                      const newItems = [...packageFormData.items]
+                                      newItems[index].quantity = parseFloat(e.target.value) || 0
+                                      setPackageFormData({...packageFormData, items: newItems})
+                                    }}
+                                    className="w-20 h-8 text-center"
+                                    min="0"
+                                    step="0.1"
+                                  />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <Label className="text-xs">Fiyat (₺)</Label>
+                                  <div className="relative">
+                                    <Input
+                                      type="number"
+                                      value={item.unitPrice || product?.price || 0}
+                                      onChange={(e) => {
+                                        const newItems = [...packageFormData.items]
+                                        newItems[index].unitPrice = parseFloat(e.target.value) || 0
+                                        setPackageFormData({...packageFormData, items: newItems})
+                                      }}
+                                      className="w-24 h-8 text-right pr-6"
+                                      min="0"
+                                      step="0.01"
+                                      title={`Orijinal fiyat: ${formatCurrency(product?.price || 0)}`}
+                                    />
+                                    {(item.unitPrice || product?.price || 0) !== (product?.price || 0) && (
+                                      <span className="absolute right-1 top-1/2 transform -translate-y-1/2 text-xs text-orange-500">
+                                        ✱
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <Label className="text-xs">Toplam</Label>
+                                  <div className="w-20 h-8 bg-white border rounded text-xs text-right px-2 flex items-center justify-end font-medium">
+                                    {formatCurrency(item.quantity * (item.unitPrice || product?.price || 0))}
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    const newItems = packageFormData.items.filter((_: any, i: number) => i !== index)
                                     setPackageFormData({...packageFormData, items: newItems})
                                   }}
-                                  className="w-20"
-                                  min="0"
-                                  step="0.1"
-                                />
-                                <span className="text-sm text-muted-foreground">adet</span>
+                                  className="h-8"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
                               </div>
-                              <div className="text-right">
-                                <p className="font-medium">{formatCurrency((item.quantity * (product?.price || 0)))}</p>
-                                <p className="text-sm text-muted-foreground">{formatCurrency(product?.price || 0)}/adet</p>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  const newItems = packageFormData.items.filter((_: any, i: number) => i !== index)
-                                  setPackageFormData({...packageFormData, items: newItems})
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
                             </div>
                           )
                         })
@@ -4213,49 +4436,76 @@ export default function ProductsPage() {
 
                       {/* Add Product Section */}
                       <div className="border-t pt-3 mt-3">
-                        <div className="flex gap-2">
-                          <Select
-                            value=""
-                            onValueChange={(productId) => {
-                              const product = products.find(p => p.id === productId)
-                              if (product) {
-                                const existingIndex = packageFormData.items.findIndex((item: any) => item.productId === productId)
-                                if (existingIndex >= 0) {
-                                  // Ürün zaten var, miktarını artır
-                                  const newItems = [...packageFormData.items]
-                                  newItems[existingIndex].quantity += 1
-                                  setPackageFormData({...packageFormData, items: newItems})
-                                } else {
-                                  // Yeni ürün ekle
-                                  const newItem = {
-                                    productId: product.id,
-                                    quantity: 1,
-                                    unitPrice: product.price
-                                  }
-                                  setPackageFormData({
-                                    ...packageFormData,
-                                    items: [...packageFormData.items, newItem]
-                                  })
-                                }
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="flex-1">
-                              <SelectValue placeholder="Stoktan ürün seç..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {products.map((product) => (
-                                <SelectItem key={product.id} value={product.id}>
-                                  <div className="flex items-center justify-between w-full">
-                                    <span>{product.name}</span>
-                                    <span className="text-sm text-muted-foreground ml-2">
-                                      {product.brand} - {formatCurrency(product.price)}
-                                    </span>
+                        <div className="space-y-2">
+                          <Input
+                            placeholder="Ürün ara..."
+                            value={productSearchTerm}
+                            onChange={(e) => setProductSearchTerm(e.target.value)}
+                            className="mb-2"
+                          />
+                          <div className="max-h-40 overflow-y-auto border rounded-md">
+                            {products
+                              .filter((product) =>
+                                product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                                product.brand.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                                product.category?.toLowerCase().includes(productSearchTerm.toLowerCase())
+                              )
+                              .map((product) => {
+                                const existingIndex = packageFormData.items.findIndex((item: any) => item.productId === product.id)
+                                const isInPackage = existingIndex >= 0
+                                return (
+                                  <div key={product.id} className="flex items-center justify-between p-2 hover:bg-gray-50 border-b last:border-b-0">
+                                    <div className="flex-1">
+                                      <div className="font-medium text-sm">{product.name}</div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {product.brand} - {formatCurrency(product.price)}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {isInPackage && (
+                                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                          {packageFormData.items[existingIndex].quantity} adet
+                                        </span>
+                                      )}
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          if (isInPackage) {
+                                            // Ürün zaten var, miktarını artır
+                                            const newItems = [...packageFormData.items]
+                                            newItems[existingIndex].quantity += 1
+                                            setPackageFormData({...packageFormData, items: newItems})
+                                          } else {
+                                            // Yeni ürün ekle
+                                            const newItem = {
+                                              productId: product.id,
+                                              quantity: 1,
+                                              unitPrice: product.price
+                                            }
+                                            setPackageFormData({
+                                              ...packageFormData,
+                                              items: [...packageFormData.items, newItem]
+                                            })
+                                          }
+                                        }}
+                                      >
+                                        {isInPackage ? "+" : "Ekle"}
+                                      </Button>
+                                    </div>
                                   </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                                )
+                              })}
+                            {products.filter((product) =>
+                              product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                              product.brand.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                              product.category?.toLowerCase().includes(productSearchTerm.toLowerCase())
+                            ).length === 0 && (
+                              <div className="p-4 text-center text-muted-foreground text-sm">
+                                Arama kriterinize uygun ürün bulunamadı
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -4268,7 +4518,8 @@ export default function ProductsPage() {
                               {formatCurrency(
                                 packageFormData.items.reduce((total: number, item: any) => {
                                   const product = products.find(p => p.id === item.productId)
-                                  return total + (item.quantity * (product?.price || 0))
+                                  const unitPrice = item.unitPrice || product?.price || 0
+                                  return total + (item.quantity * unitPrice)
                                 }, 0)
                               )}
                             </span>

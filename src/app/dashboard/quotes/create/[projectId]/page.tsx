@@ -37,10 +37,16 @@ import { ProductType } from '@prisma/client'
 
 // Quote item categories
 const QUOTE_CATEGORIES = {
-  PANEL: 'Panel',
-  INVERTER: 'İnverter',
-  BATTERY: 'Batarya',
-  MOUNTING: 'Konstrüksiyon',
+  SOLAR_PANELS: 'Solar Paneller',
+  INVERTERS: 'İnverterler',
+  BATTERIES: 'Bataryalar',
+  MOUNTING_MATERIALS: 'Montaj Malzemeleri',
+  CABLES: 'Kablolar',
+  MONITORING_SYSTEMS: 'İzleme Sistemleri',
+  ACCESSORIES: 'Aksesuarlar',
+  AKU: 'AKÜ',
+  DC_PUMP: 'DC Pompa',
+  CHARGE_CONTROL: 'Şarj Kontrol',
   PROJECT_COST: 'Proje Maliyeti',
   LABOR: 'İşçilik',
   TRANSPORT: 'Nakliye',
@@ -63,16 +69,76 @@ const getProjectTypeInTurkish = (type: string | undefined) => {
   return typeMap[type] || 'Güneş Enerji Projesi'
 }
 
-// Helper function to map ProductType to category
+// Helper function to map product category string to quote category
+function getCategoryFromProductCategory(productCategory: string): string {
+  // Normalize the category string and map to quote categories
+  const normalizedCategory = productCategory?.toLowerCase().trim()
+
+  const categoryMap: Record<string, string> = {
+    // Solar Panels
+    'solar paneller': 'Solar Paneller',
+    'panel': 'Solar Paneller',
+    'güneş paneli': 'Solar Paneller',
+    'solar panel': 'Solar Paneller',
+
+    // Inverters - API'den gelen "İnverter" (tekil) -> "İnverterler" (çoğul)
+    'inverterler': 'İnverterler',
+    'inverter': 'İnverterler',
+    'invertör': 'İnverterler',
+    'İnverter': 'İnverterler', // Database'de büyük harfle başlayan
+
+    // Batteries - API'den gelen "Batarya" -> hem "Bataryalar" hem "AKÜ"ye map et
+    'bataryalar': 'Bataryalar',
+    'batarya': 'Bataryalar', // Database'deki kategori ismi
+    'Batarya': 'Bataryalar', // Database'de büyük harfle başlayan
+    'battery': 'Bataryalar',
+    'akü': 'AKÜ',
+    'aku': 'AKÜ',
+    'Akü': 'AKÜ',
+    'AKÜ': 'AKÜ',
+
+    // Mounting Materials
+    'montaj malzemeleri': 'Montaj Malzemeleri',
+    'konstrüksiyon': 'Montaj Malzemeleri',
+    'mounting': 'Montaj Malzemeleri',
+
+    // Cables
+    'kablolar': 'Kablolar',
+    'cable': 'Kablolar',
+    'kablo': 'Kablolar',
+    'Kablo': 'Kablolar',
+
+    // Monitoring Systems
+    'izleme sistemleri': 'İzleme Sistemleri',
+    'monitoring': 'İzleme Sistemleri',
+
+    // Accessories
+    'aksesuarlar': 'Aksesuarlar',
+    'accessory': 'Aksesuarlar',
+    'Aksesuarlar': 'Aksesuarlar', // Database'de büyük harfle başlayan
+
+    // DC Pump
+    'dc pompa': 'DC Pompa',
+    'dc pump': 'DC Pompa',
+
+    // Charge Control
+    'şarj kontrol': 'Şarj Kontrol',
+    'charge controller': 'Şarj Kontrol'
+  }
+
+  return categoryMap[normalizedCategory] || 'Diğer'
+}
+
+// Legacy function for ProductType (keep for backwards compatibility)
 function getCategoryFromType(type: ProductType): string {
   const categoryMap: Record<ProductType, string> = {
-    SOLAR_PANEL: 'Panel',              // ✅ Match QUOTE_CATEGORIES.PANEL
-    INVERTER: 'İnverter',             // ✅ Match QUOTE_CATEGORIES.INVERTER
-    BATTERY: 'Batarya',               // ✅ Match QUOTE_CATEGORIES.BATTERY
-    MOUNTING_SYSTEM: 'Konstrüksiyon', // ✅ Match QUOTE_CATEGORIES.MOUNTING
-    CABLE: 'Kablolar',
-    MONITORING: 'İzleme Sistemleri',
-    ACCESSORY: 'Aksesuarlar'
+    SOLAR_PANEL: 'Panel',
+    INVERTER: 'İnverter',
+    BATTERY: 'AKÜ',
+    MOUNTING_SYSTEM: 'Konstrüksiyon',
+    CABLE: 'Diğer',
+    MONITORING: 'Diğer',
+    ACCESSORY: 'Diğer'
   }
   return categoryMap[type] || 'Diğer'
 }
@@ -252,6 +318,7 @@ export default function CreateQuotePage() {
   const [loadingPackages, setLoadingPackages] = useState(true)
   const [packageSearchTerm, setPackageSearchTerm] = useState('')
   const [packageTypeFilter, setPackageTypeFilter] = useState<string>('all')
+  const [productSearchTerm, setProductSearchTerm] = useState('')
 
   // Apply filters when search term or type filter changes
   useEffect(() => {
@@ -826,7 +893,7 @@ export default function CreateQuotePage() {
           // Add to total power (W to kW conversion)
           totalPower += (power * item.quantity) / 1000
         }
-      } else if (item.category === 'PANEL') {
+      } else if (item.category === 'SOLAR_PANELS') {
         // Estimate power for panels without product ID
         const estimatedPanelPower = 550 // 550W per panel
         totalPower += (estimatedPanelPower * item.quantity) / 1000
@@ -871,7 +938,7 @@ export default function CreateQuotePage() {
       customerPhone: quoteData.customerPhone,
       projectType: quoteData.projectType,
       systemSize: systemPowerKw,
-      panelCount: quoteData.items.filter(item => item.category === 'PANEL').reduce((sum, item) => sum + item.quantity, 0),
+      panelCount: quoteData.items.filter(item => item.category === 'SOLAR_PANELS').reduce((sum, item) => sum + item.quantity, 0),
       capacity: systemPowerKw,
       items: quoteData.items.map(item => ({
         id: item.id,
@@ -882,7 +949,7 @@ export default function CreateQuotePage() {
         unitPrice: item.unitPrice,
         totalPrice: item.total,
         specifications: item.specifications || {
-          power: item.category === 'PANEL' ? 550 : undefined,
+          power: item.category === 'SOLAR_PANELS' ? 550 : undefined,
           efficiency: 20
         }
       })),
@@ -997,10 +1064,16 @@ export default function CreateQuotePage() {
 
   const getCategoryIcon = (category: keyof typeof QUOTE_CATEGORIES) => {
     switch (category) {
-      case 'PANEL': return <Zap className="w-4 h-4" />
-      case 'INVERTER': return <Calculator className="w-4 h-4" />
-      case 'BATTERY': return <Battery className="w-4 h-4" />
-      case 'MOUNTING': return <Wrench className="w-4 h-4" />
+      case 'SOLAR_PANELS': return <Zap className="w-4 h-4" />
+      case 'INVERTERS': return <Calculator className="w-4 h-4" />
+      case 'BATTERIES': return <Battery className="w-4 h-4" />
+      case 'MOUNTING_MATERIALS': return <Wrench className="w-4 h-4" />
+      case 'CABLES': return <Package className="w-4 h-4" />
+      case 'MONITORING_SYSTEMS': return <Calculator className="w-4 h-4" />
+      case 'ACCESSORIES': return <Package className="w-4 h-4" />
+      case 'AKU': return <Battery className="w-4 h-4" />
+      case 'DC_PUMP': return <Package className="w-4 h-4" />
+      case 'CHARGE_CONTROL': return <Calculator className="w-4 h-4" />
       case 'TRANSPORT': return <Truck className="w-4 h-4" />
       case 'PROJECT_COST': return <FileText className="w-4 h-4" />
       case 'LABOR': return <Package className="w-4 h-4" />
@@ -1434,36 +1507,88 @@ export default function CreateQuotePage() {
                                 <SelectValue placeholder="Malzeme seçin" />
                               </SelectTrigger>
                               <SelectContent>
-                                {(() => {
+                                <div className="p-2 border-b">
+                                  <Input
+                                    placeholder="Ürün ara..."
+                                    value={productSearchTerm}
+                                    onChange={(e) => setProductSearchTerm(e.target.value)}
+                                    className="mb-2"
+                                  />
+                                </div>
+{(() => {
                                   console.log('🔍 PRODUCTS: Filtering by category:', item.category);
-                                  return products;
-                                })()
-                                  .filter(product => {
-                                    // If category is OTHER, show all products
-                                    if (item.category === 'OTHER') return true
-                                    // Otherwise filter by category match
-                                    const productCategory = getCategoryFromType(product.type as any)
-                                    // Convert enum key to display value for comparison
-                                    const categoryDisplayValue = QUOTE_CATEGORIES[item.category as keyof typeof QUOTE_CATEGORIES]
-                                    console.log(`🧪 FILTER DEBUG: Product "${product.name}" type="${product.type}" → category="${productCategory}" vs looking for "${categoryDisplayValue}" → ${productCategory === categoryDisplayValue ? '✅ MATCH' : '❌ NO MATCH'}`)
-                                    return productCategory === categoryDisplayValue
-                                  })
-                                  .map((product) => (
-                                  <SelectItem
-                                    key={product.id}
-                                    value={product.id}
-                                    disabled={product.stock <= 0}
-                                  >
-                                    <div className="flex justify-between items-center w-full">
-                                      <span className={product.stock <= 0 ? 'text-gray-400' : ''}>
-                                        {product.name} - {product.brand}
-                                      </span>
-                                      <span className={`ml-2 text-xs ${product.stock <= 0 ? 'text-red-500' : product.stock < 10 ? 'text-orange-500' : 'text-green-600'}`}>
-                                        Stok: {product.stock}
-                                      </span>
-                                    </div>
-                                  </SelectItem>
-                                ))}
+                                  const filteredProducts = products.filter(product => {
+                                    // Category filter
+                                    let categoryMatch = true
+                                    if (item.category !== 'OTHER') {
+                                      const categoryDisplayValue = QUOTE_CATEGORIES[item.category as keyof typeof QUOTE_CATEGORIES]
+                                      const productCategoryLower = (product.category || '').toLocaleLowerCase('tr-TR').trim()
+
+                                      // Special handling for battery categories
+                                      if (categoryDisplayValue === 'AKÜ') {
+                                        // AKÜ kategorisi seçildiğinde hem AKÜ hem Batarya kategorisindeki ürünleri getir
+                                        categoryMatch = productCategoryLower === 'akü' ||
+                                                       productCategoryLower === 'aku' ||
+                                                       productCategoryLower === 'batarya'
+                                      } else if (categoryDisplayValue === 'Bataryalar') {
+                                        // Bataryalar kategorisi seçildiğinde hem Batarya hem AKÜ kategorisindeki ürünleri getir
+                                        categoryMatch = productCategoryLower === 'batarya' ||
+                                                       productCategoryLower === 'akü' ||
+                                                       productCategoryLower === 'aku'
+                                      } else if (categoryDisplayValue === 'İnverterler') {
+                                        // İnverterler kategorisi için tekil "İnverter" de dahil et (Türkçe İ ile)
+                                        categoryMatch = productCategoryLower === 'inverter' ||
+                                                       productCategoryLower === 'inverterler' ||
+                                                       productCategoryLower === 'invertör' ||
+                                                       productCategoryLower === 'İnverter'.toLocaleLowerCase('tr-TR') ||
+                                                       productCategoryLower === 'İnverterler'.toLocaleLowerCase('tr-TR')
+                                      } else {
+                                        // Diğer kategoriler için normal eşleştirme
+                                        const productCategory = getCategoryFromProductCategory(product.category || '')
+                                        categoryMatch = productCategory === categoryDisplayValue
+                                      }
+                                    }
+
+                                    // Search filter
+                                    let searchMatch = true
+                                    if (productSearchTerm) {
+                                      const searchTerm = productSearchTerm.toLowerCase()
+                                      searchMatch = product.name.toLowerCase().includes(searchTerm) ||
+                                                   product.brand.toLowerCase().includes(searchTerm) ||
+                                                   (product.category && product.category.toLowerCase().includes(searchTerm))
+                                    }
+
+                                    return categoryMatch && searchMatch
+                                  });
+
+                                  if (filteredProducts.length === 0) {
+                                    return (
+                                      <div className="p-4 text-center text-gray-500 text-sm">
+                                        {productSearchTerm
+                                          ? `"${productSearchTerm}" için ürün bulunamadı`
+                                          : 'Bu kategoride ürün bulunamadı'
+                                        }
+                                      </div>
+                                    )
+                                  }
+
+                                  return filteredProducts.map((product) => (
+                                    <SelectItem
+                                      key={product.id}
+                                      value={product.id}
+                                      disabled={product.stock <= 0}
+                                    >
+                                      <div className="flex justify-between items-center w-full">
+                                        <span className={product.stock <= 0 ? 'text-gray-400' : ''}>
+                                          {product.name} - {product.brand}
+                                        </span>
+                                        <span className={`ml-2 text-xs ${product.stock <= 0 ? 'text-red-500' : product.stock < 10 ? 'text-orange-500' : 'text-green-600'}`}>
+                                          Stok: {product.stock}
+                                        </span>
+                                      </div>
+                                    </SelectItem>
+                                  ))
+                                })()}
                               </SelectContent>
                             </Select>
                           </td>

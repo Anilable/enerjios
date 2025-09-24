@@ -192,16 +192,6 @@ export default function DashboardPage() {
         { label: 'Dashboard' }
       ]}
     >
-      <div className="mb-6">
-        <p className="text-gray-600 dark:text-gray-300">
-          EnerjiOS dashboard'unuza hoş geldiniz.
-          {user.role === 'COMPANY' && ' Firma projelerinizi ve tekliflerinizi buradan yönetebilirsiniz.'}
-          {user.role === 'FARMER' && ' Çiftlik projelerinizi ve tarımsal GES sistemlerinizi buradan takip edebilirsiniz.'}
-          {user.role === 'CUSTOMER' && ' GES projelerinizi ve tasarruf analizlerinizi buradan görüntüleyebilirsiniz.'}
-          {user.role === 'ADMIN' && ' Sistem yönetimi ve tüm kullanıcı verilerini buradan yönetebilirsiniz.'}
-          {user.role === 'INSTALLATION_TEAM' && ' Kurulum projelerinizi ve teknik dökümantasyonu buradan yönetebilirsiniz.'}
-        </p>
-      </div>
 
       {/* Quick Actions Section */}
       <Card className="mb-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-700">
@@ -317,106 +307,119 @@ export default function DashboardPage() {
       </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Toplam Projeler</CardTitle>
-              <Building className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {metricsLoading ? (
-                <>
-                  <Skeleton className="h-8 w-16 mb-2" />
-                  <Skeleton className="h-3 w-24" />
-                </>
-              ) : (
-                <>
-                  <div className="text-2xl font-bold">{metrics?.projects.total || 0}</div>
-                  <p className="text-xs text-muted-foreground">{metrics?.projects.changeText || 'Değişim yok'}</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
+          {/* Toplam Projeler Kartı */}
+          <Link href="/dashboard/projects/overview">
+            <Card className="cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200 border-2 hover:border-blue-200 dark:hover:border-blue-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Toplam Projeler</CardTitle>
+                <Building className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {metricsLoading ? (
+                  <>
+                    <Skeleton className="h-8 w-16 mb-2" />
+                    <Skeleton className="h-3 w-24" />
+                  </>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">{metrics?.projects.total || 0}</div>
+                    <p className="text-xs text-muted-foreground">{metrics?.projects.changeText || 'Değişim yok'}</p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Aktif Müşteriler</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {metricsLoading ? (
-                <>
-                  <Skeleton className="h-8 w-16 mb-2" />
-                  <Skeleton className="h-3 w-24" />
-                </>
-              ) : (
-                <>
-                  <div className="text-2xl font-bold">{metrics?.customers.total || 0}</div>
-                  <p className="text-xs text-muted-foreground">{metrics?.customers.changeText || 'Değişim yok'}</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
+          {/* Aktif Müşteriler Kartı */}
+          <Link href="/dashboard/customers">
+            <Card className="cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200 border-2 hover:border-green-200 dark:hover:border-green-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Aktif Müşteriler</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {metricsLoading ? (
+                  <>
+                    <Skeleton className="h-8 w-16 mb-2" />
+                    <Skeleton className="h-3 w-24" />
+                  </>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">{metrics?.customers.total || 0}</div>
+                    <p className="text-xs text-muted-foreground">{metrics?.customers.changeText || 'Değişim yok'}</p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Toplam Kapasite</CardTitle>
-              <Sun className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {metricsLoading ? (
-                <>
-                  <Skeleton className="h-8 w-20 mb-2" />
-                  <Skeleton className="h-3 w-24" />
-                </>
-              ) : (
-                <>
-                  <div className="text-2xl font-bold">{metrics?.capacity.total || '0 kW'}</div>
-                  <p className="text-xs text-muted-foreground">{metrics?.capacity.changeText || 'Değişim yok'}</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
+          {/* Toplam Kapasite Kartı */}
+          <Link href="/dashboard/projects/overview">
+            <Card className="cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200 border-2 hover:border-yellow-200 dark:hover:border-yellow-700">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Toplam Kapasite</CardTitle>
+                <Sun className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {metricsLoading ? (
+                  <>
+                    <Skeleton className="h-8 w-20 mb-2" />
+                    <Skeleton className="h-3 w-24" />
+                  </>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">{metrics?.capacity.total || '0 kW'}</div>
+                    <p className="text-xs text-muted-foreground">{metrics?.capacity.changeText || 'Değişim yok'}</p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
 
           {user.role !== 'INSTALLATION_TEAM' ? (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Aylık Gelir</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                {metricsLoading ? (
-                  <>
-                    <Skeleton className="h-8 w-20 mb-2" />
-                    <Skeleton className="h-3 w-28" />
-                  </>
-                ) : (
-                  <>
-                    <div className="text-2xl font-bold">{metrics?.revenue.total || '₺0'}</div>
-                    <p className="text-xs text-muted-foreground">{metrics?.revenue.changeText || 'Değişim yok'}</p>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+            <Link href="/dashboard/reports">
+              <Card className="cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200 border-2 hover:border-purple-200 dark:hover:border-purple-700">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Aylık Gelir</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  {metricsLoading ? (
+                    <>
+                      <Skeleton className="h-8 w-20 mb-2" />
+                      <Skeleton className="h-3 w-28" />
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-2xl font-bold">{metrics?.revenue.total || '₺0'}</div>
+                      <p className="text-xs text-muted-foreground">{metrics?.revenue.changeText || 'Değişim yok'}</p>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </Link>
           ) : (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Kurulum Oranı</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                {metricsLoading ? (
-                  <>
-                    <Skeleton className="h-8 w-20 mb-2" />
-                    <Skeleton className="h-3 w-28" />
-                  </>
-                ) : (
-                  <>
-                    <div className="text-2xl font-bold">92%</div>
-                    <p className="text-xs text-muted-foreground">Başarılı tamamlanan kurulumlar</p>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+            <Link href="/dashboard/project-requests">
+              <Card className="cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200 border-2 hover:border-purple-200 dark:hover:border-purple-700">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Kurulum Oranı</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  {metricsLoading ? (
+                    <>
+                      <Skeleton className="h-8 w-20 mb-2" />
+                      <Skeleton className="h-3 w-28" />
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-2xl font-bold">92%</div>
+                      <p className="text-xs text-muted-foreground">Başarılı tamamlanan kurulumlar</p>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </Link>
           )}
         </div>
 

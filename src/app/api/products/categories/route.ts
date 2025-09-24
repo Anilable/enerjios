@@ -217,7 +217,11 @@ async function ensureDefaultCategories() {
     { name: 'Montaj Malzemeleri', slug: 'montaj-malzemeleri', icon: 'Settings', color: 'gray', order: 4, type: ProductType.MOUNTING_SYSTEM },
     { name: 'Kablolar', slug: 'kablolar', icon: 'Cable', color: 'orange', order: 5, type: ProductType.CABLE },
     { name: 'İzleme Sistemleri', slug: 'izleme-sistemleri', icon: 'Monitor', color: 'purple', order: 6, type: ProductType.MONITORING },
-    { name: 'Aksesuarlar', slug: 'aksesuarlar', icon: 'Package', color: 'pink', order: 7, type: ProductType.ACCESSORY }
+    { name: 'Aksesuarlar', slug: 'aksesuarlar', icon: 'Package', color: 'pink', order: 7, type: ProductType.ACCESSORY },
+    // Excel ile uyumlu ek kategoriler
+    { name: 'AKÜ', slug: 'aku', icon: 'Battery', color: 'green', order: 8, type: ProductType.BATTERY },
+    { name: 'Şarj Kontrol', slug: 'sarj-kontrol', icon: 'Settings', color: 'indigo', order: 9, type: ProductType.ACCESSORY },
+    { name: 'DC Pompa', slug: 'dc-pompa', icon: 'Droplet', color: 'cyan', order: 10, type: ProductType.ACCESSORY }
   ]
 
   for (const cat of defaultCategories) {

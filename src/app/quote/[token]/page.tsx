@@ -215,30 +215,56 @@ export default function PublicQuotePage() {
 
   const downloadPDF = async () => {
     if (!quote) return
-    
+
     try {
       const response = await fetch(`/api/quotes/public/${token}/pdf`)
-      
+
       if (!response.ok) {
         throw new Error('PDF oluşturulamadı')
       }
-      
+
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
-      
+
       const a = document.createElement('a')
       a.style.display = 'none'
       a.href = url
       a.download = `teklif-${quote.quoteNumber}.pdf`
-      
+
       document.body.appendChild(a)
       a.click()
-      
+
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (error) {
       console.error('PDF download error:', error)
       alert('PDF indirme işlemi başarısız oldu. Lütfen tekrar deneyin.')
+    }
+  }
+
+  const viewPDF = async () => {
+    if (!quote) return
+
+    try {
+      const response = await fetch(`/api/quotes/public/${token}/pdf`)
+
+      if (!response.ok) {
+        throw new Error('PDF oluşturulamadı')
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+
+      // Open PDF in new tab
+      window.open(url, '_blank')
+
+      // Clean up after a delay
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url)
+      }, 100)
+    } catch (error) {
+      console.error('PDF view error:', error)
+      alert('PDF görüntüleme işlemi başarısız oldu. Lütfen tekrar deneyin.')
     }
   }
 
@@ -474,12 +500,15 @@ export default function PublicQuotePage() {
                 <CardTitle className="text-lg">İşlemler</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {quote.pdfUrl && (
-                  <Button onClick={downloadPDF} className="w-full" variant="outline">
-                    <Download className="w-4 h-4 mr-2" />
-                    PDF İndir
-                  </Button>
-                )}
+                <Button onClick={viewPDF} className="w-full">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Teklifi PDF'te Görüntüle
+                </Button>
+
+                <Button onClick={downloadPDF} className="w-full" variant="outline">
+                  <Download className="w-4 h-4 mr-2" />
+                  PDF İndir
+                </Button>
 
                 {canRespond && !showApprovalForm && (
                   <Button 

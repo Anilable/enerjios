@@ -421,7 +421,7 @@ export default function ProjectDetailPage() {
               <DollarSign className="h-8 w-8 text-purple-500 mr-3" />
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Bütçe</p>
-                <p className="text-lg font-bold">₺{(project.financial.approvedBudget! / 1000).toFixed(0)}K</p>
+                <p className="text-lg font-bold">&#8378;{(project.financial.approvedBudget! / 1000).toFixed(0)}K</p>
               </div>
             </CardContent>
           </Card>

@@ -389,10 +389,23 @@ export function CustomerForm({ customer, onSave, onCancel }: CustomerFormProps) 
                               <CommandItem
                                 key={city}
                                 value={city}
+                                className="cursor-pointer hover:bg-gray-50 text-gray-900 data-[selected]:bg-gray-100 data-[selected]:text-gray-900"
                                 onSelect={(currentValue) => {
+                                  // Command component normalizes values to lowercase, so we need to find the original city name
+                                  const selectedCity = cities.find(c => c.toLowerCase() === currentValue.toLowerCase()) || currentValue
                                   setFormData(prev => ({
                                     ...prev,
-                                    city: currentValue === formData.city ? "" : currentValue
+                                    city: selectedCity
+                                  }))
+                                  setCityOpen(false)
+                                }}
+                                onMouseDown={(e) => {
+                                  // Prevent default and stop propagation to ensure click works
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    city: city
                                   }))
                                   setCityOpen(false)
                                 }}
