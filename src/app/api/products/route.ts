@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
     const transformedProducts = products.map(product => ({
       id: product.id,
       name: product.name,
+      code: product.code,
       category: getCategoryFromType(product.type),
       type: product.type,
       brand: product.brand,
@@ -77,6 +78,7 @@ export async function GET(request: NextRequest) {
       power: product.power ? `${product.power}W` : '-',
       price: product.price,
       purchasePrice: product.purchasePrice,
+      purchasePriceUsd: product.purchasePriceUsd,
       purchaseDate: product.purchaseDate,
       stock: product.stock,
       status: getStockStatus(product.stock),
@@ -119,6 +121,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    const trimmedCode = body.code?.trim()
     console.log('CREATE body:', body)
 
     // Validate required fields
@@ -128,7 +131,8 @@ export async function POST(request: NextRequest) {
         hasType: !!body.type,
         hasCategory: !!body.category,
         hasBrand: !!body.brand,
-        hasPrice: body.price !== undefined
+        hasPrice: body.price !== undefined,
+        hasCode: !!trimmedCode
       })
       return NextResponse.json(
         { error: 'Missing required fields: name, category/type, brand, and price are required' },
@@ -152,12 +156,18 @@ export async function POST(request: NextRequest) {
     const product = await prisma.product.create({
       data: {
         name: body.name,
+        code: trimmedCode ?? null,
         type: productType,
         brand: body.brand,
         model: body.model || '',
         description: body.description,
         price: parseFloat(body.price.toString()),
-        purchasePrice: body.purchasePrice ? parseFloat(body.purchasePrice.toString()) : null,
+        purchasePrice: body.purchasePrice !== undefined && body.purchasePrice !== null
+          ? parseFloat(body.purchasePrice.toString())
+          : null,
+        purchasePriceUsd: body.purchasePriceUsd !== undefined && body.purchasePriceUsd !== null
+          ? parseFloat(body.purchasePriceUsd.toString())
+          : null,
         purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : null,
         stock: stock,
         power: body.power ? parseFloat(body.power.toString()) : null,
@@ -200,6 +210,7 @@ export async function POST(request: NextRequest) {
     const transformedProduct = {
       id: product.id,
       name: product.name,
+      code: product.code,
       category: getCategoryFromType(product.type),
       type: product.type,
       brand: product.brand,
@@ -207,6 +218,7 @@ export async function POST(request: NextRequest) {
       power: product.power ? `${product.power}W` : '-',
       price: product.price,
       purchasePrice: product.purchasePrice,
+      purchasePriceUsd: product.purchasePriceUsd,
       purchaseDate: product.purchaseDate,
       stock: product.stock,
       status: getStockStatus(product.stock),

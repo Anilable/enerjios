@@ -344,6 +344,7 @@ model Product {
   type            ProductType
   brand           String
   model           String
+  code            String?
   name            String
   description     String?
   specifications  Json
@@ -364,6 +365,7 @@ model Product {
   categoryId      String?
   purchaseDate    DateTime?
   purchasePrice   Float?
+  purchasePriceUsd Float?
   editDate        DateTime?
   manual          String?
   packageItems    PackageItem[]

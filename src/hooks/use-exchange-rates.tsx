@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react'
 
+export type RateSource = 'manual' | 'internal' | 'external' | 'fallback'
+
 export interface ExchangeRates {
   USD: number
   EUR: number
   GBP: number
   updatedAt: string
+  sources?: Record<'USD' | 'EUR' | 'GBP', RateSource>
 }
 
 interface UseExchangeRatesReturn {
@@ -41,57 +44,125 @@ export function useExchangeRates(): UseExchangeRatesReturn {
       let response: Response | null = null
       let data: any = null
 
-      // 1. Try our internal API first
-      try {
-        response = await fetch('/api/exchange-rates')
-        if (response.ok) {
-          data = await response.json()
-          if (data.majorCurrencies) {
-            const rates: ExchangeRates = {
-              USD: data.majorCurrencies.USD?.selling || data.majorCurrencies.USD?.forexSelling || data.majorCurrencies.USD?.buying || data.majorCurrencies.USD?.forexBuying || 33.5,
-              EUR: data.majorCurrencies.EUR?.selling || data.majorCurrencies.EUR?.forexSelling || data.majorCurrencies.EUR?.buying || data.majorCurrencies.EUR?.forexBuying || 36.2,
-              GBP: data.majorCurrencies.GBP?.selling || data.majorCurrencies.GBP?.forexSelling || data.majorCurrencies.GBP?.buying || data.majorCurrencies.GBP?.forexBuying || 42.1,
-              updatedAt: data.lastUpdated || new Date().toISOString()
+      const collectedRates: Partial<Record<'USD' | 'EUR' | 'GBP', number>> = {}
+      const sources: Record<'USD' | 'EUR' | 'GBP', RateSource> = {
+        USD: 'fallback',
+        EUR: 'fallback',
+        GBP: 'fallback'
+      }
+      let latestUpdatedAt: string | null = null
+
+      const recordRate = (currency: 'USD' | 'EUR' | 'GBP', rate: number, source: RateSource, updatedAt?: string) => {
+        if (typeof rate === 'number' && !Number.isNaN(rate)) {
+          collectedRates[currency] = rate
+          sources[currency] = source
+          if (updatedAt) {
+            const current = latestUpdatedAt ? new Date(latestUpdatedAt) : null
+            const candidate = new Date(updatedAt)
+            if (!latestUpdatedAt || (current && candidate > current)) {
+              latestUpdatedAt = candidate.toISOString()
             }
-            setRates(rates)
-            ratesCache = { rates, timestamp: Date.now() }
-            return
           }
         }
-      } catch (err) {
-        console.warn('Internal API failed, trying external source')
       }
 
-      // 2. Fallback to external API (exchangerate-api.com)
+      const hasCurrency = (currency: 'USD' | 'EUR' | 'GBP') => typeof collectedRates[currency] === 'number'
+
+      // 1. Manual exchange rates from admin panel (highest priority)
       try {
-        response = await fetch('https://api.exchangerate-api.com/v4/latest/TRY')
-        if (response.ok) {
+        response = await fetch('/api/admin/exchange-rates?active=true')
+        if (response?.ok) {
           data = await response.json()
-          const rates: ExchangeRates = {
-            USD: 1 / (data.rates?.USD || 0.027), // Invert since API returns TRY to other currencies
-            EUR: 1 / (data.rates?.EUR || 0.025),
-            GBP: 1 / (data.rates?.GBP || 0.021),
-            updatedAt: new Date().toISOString()
-          }
-          setRates(rates)
-          ratesCache = { rates, timestamp: Date.now() }
-          return
+          const manualRates = Array.isArray(data?.data) ? data.data : []
+          manualRates.forEach((rate: any) => {
+            const currency = (rate?.currency || '').toUpperCase()
+            if ((['USD', 'EUR', 'GBP'] as const).includes(currency) && typeof rate?.rate === 'number') {
+              recordRate(currency, rate.rate, 'manual', rate.updatedAt || rate.createdAt)
+            }
+          })
+        } else if (response?.status === 401) {
+          console.warn('Manual exchange rates endpoint unauthorized, continuing with other sources')
         }
       } catch (err) {
-        console.warn('External API failed, using fallback rates')
+        console.warn('Manual exchange rates fetch failed, continuing with other sources')
       }
 
-      // 3. Final fallback - approximate rates (should be updated regularly)
-      const fallbackRates: ExchangeRates = {
+      // 2. Internal exchange rates API for remaining currencies
+      if (!hasCurrency('USD') || !hasCurrency('EUR') || !hasCurrency('GBP')) {
+        try {
+          response = await fetch('/api/exchange-rates')
+          if (response.ok) {
+            data = await response.json()
+            if (data.majorCurrencies) {
+              (['USD', 'EUR', 'GBP'] as const).forEach((currency) => {
+                if (!hasCurrency(currency)) {
+                  const currencyData = data.majorCurrencies[currency]
+                  const rate = currencyData?.selling || currencyData?.forexSelling || currencyData?.buying || currencyData?.forexBuying
+                  if (typeof rate === 'number') {
+                    recordRate(currency, rate, 'internal', data.lastUpdated)
+                  }
+                }
+              })
+            }
+          }
+        } catch (err) {
+          console.warn('Internal exchange rates API failed, falling back to external source')
+        }
+      }
+
+      // 3. External API for any currencies still missing
+      if (!hasCurrency('USD') || !hasCurrency('EUR') || !hasCurrency('GBP')) {
+        try {
+          response = await fetch('https://api.exchangerate-api.com/v4/latest/TRY')
+          if (response.ok) {
+            data = await response.json();
+            (['USD', 'EUR', 'GBP'] as const).forEach((currency) => {
+              if (!hasCurrency(currency)) {
+                const apiRate = data.rates?.[currency]
+                if (typeof apiRate === 'number' && apiRate > 0) {
+                  // API returns TRY -> currency, invert to get currency -> TRY
+                  recordRate(currency, 1 / apiRate, 'external')
+                }
+              }
+            })
+            if (!latestUpdatedAt && data.time_last_updated) {
+              latestUpdatedAt = new Date(data.time_last_updated * 1000).toISOString()
+            }
+          }
+        } catch (err) {
+          console.warn('External exchange rates API failed, using fallback values')
+        }
+      }
+
+      // 4. Final fallback values (hardcoded)
+      const fallbackDefaults: Record<'USD' | 'EUR' | 'GBP', number> = {
         USD: 33.5,
         EUR: 36.2,
-        GBP: 42.1,
-        updatedAt: new Date().toISOString()
+        GBP: 42.1
+      };
+
+      (['USD', 'EUR', 'GBP'] as const).forEach((currency) => {
+        if (!hasCurrency(currency)) {
+          recordRate(currency, fallbackDefaults[currency], 'fallback')
+        }
+      })
+
+      const finalRates: ExchangeRates = {
+        USD: collectedRates.USD as number,
+        EUR: collectedRates.EUR as number,
+        GBP: collectedRates.GBP as number,
+        updatedAt: latestUpdatedAt || new Date().toISOString(),
+        sources
       }
 
-      setRates(fallbackRates)
-      ratesCache = { rates: fallbackRates, timestamp: Date.now() }
-      setError('Güncel kurlar alınamadı, yaklaşık değerler kullanılıyor')
+      if (Object.values(sources).every((source) => source === 'fallback')) {
+        setError('Güncel kurlar alınamadı, yaklaşık değerler kullanılıyor')
+      } else if (sources.USD !== 'manual') {
+        setError('USD için manuel kur bulunamadı, alternatif kaynak kullanılıyor')
+      }
+
+      setRates(finalRates)
+      ratesCache = { rates: finalRates, timestamp: Date.now() }
 
     } catch (err) {
       setError('Döviz kurları yüklenirken hata oluştu')

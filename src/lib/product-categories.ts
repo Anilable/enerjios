@@ -29,6 +29,7 @@ export interface ProductSpecification {
 export interface Product {
   id: string
   name: string
+  code?: string
   model: string
   brand: string
   categoryId: string
@@ -50,6 +51,7 @@ export interface ProductPricing {
   basePrice: number
   currency: 'TRY' | 'USD' | 'EUR'
   costPrice?: number
+  purchasePriceUsd?: number
   margin?: number
   purchaseDate?: string
   discountTiers: Array<{

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import * as XLSX from 'xlsx'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,6 +15,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from '@/hooks/use-toast'
 import { Toaster } from '@/components/ui/toaster'
 import { formatCurrency } from '@/lib/utils'
+import { useExchangeRates, RateSource } from '@/hooks/use-exchange-rates'
 import { RoleGuard } from '@/components/ui/permission-guard'
 import { Package as PackageType, PACKAGE_TYPES, PACKAGE_TYPE_LABELS, PACKAGE_TYPE_COLORS, PACKAGE_TYPE_ICONS, CreatePackageData, PackageItem } from '@/types/package'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -55,6 +57,7 @@ import {
 type Product = {
   id: string
   name: string
+  code?: string
   category: string
   type?: string
   brand: string
@@ -63,6 +66,7 @@ type Product = {
   price: number
   costPrice?: number
   purchasePrice?: number
+  purchasePriceUsd?: number
   stock: number
   status: string
   warranty: string
@@ -165,6 +169,104 @@ export default function ProductsPage() {
   const [packageSearchTerm, setPackageSearchTerm] = useState('')
   const [selectedProducts, setSelectedProducts] = useState<{productId: string, quantity: number, unitPrice: number}[]>([])
   const [loadingPackages, setLoadingPackages] = useState(false)
+
+  const { rates, loading: exchangeLoading, error: exchangeError, convertToTRY } = useExchangeRates()
+  const usdRateSource = (rates?.sources?.USD as RateSource | undefined) ?? undefined
+  const usdRateLabelMap: Record<RateSource | 'unknown', string> = {
+    manual: 'Manuel',
+    internal: 'Sistem',
+    external: 'API',
+    fallback: 'Tahmini',
+    unknown: 'Bilinmiyor'
+  }
+  const formattedUsdRate = typeof rates?.USD === 'number'
+    ? new Intl.NumberFormat('tr-TR', {
+        style: 'currency',
+        currency: 'TRY',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4
+      }).format(rates.USD)
+    : null
+  const rateDisplayText = exchangeLoading
+    ? 'Kur yükleniyor...'
+    : formattedUsdRate
+      ? `1 USD = ${formattedUsdRate} - ${usdRateLabelMap[usdRateSource ?? 'unknown']}`
+      : 'Kur bilgisi bulunamadı'
+  const manualWarningActive = !exchangeLoading && usdRateSource !== 'manual'
+  const isManualErrorMessage = exchangeError?.toLowerCase().includes('usd için manuel') ?? false
+  const generalExchangeError = exchangeError && !isManualErrorMessage ? exchangeError : null
+
+  const renderUsdRateInfo = () => (
+    <div className="space-y-1 text-xs">
+      <div className="flex items-center justify-between text-muted-foreground">
+        <span>{rateDisplayText}</span>
+        <Link href="/dashboard/admin/exchange-rates" className="text-blue-600 hover:underline">
+          Kur yönetimi
+        </Link>
+      </div>
+      {manualWarningActive && (
+        <p className="text-red-600">
+          Manuel kur tanımlı değil.{' '}
+          <Link href="/dashboard/admin/exchange-rates" className="underline">
+            Manuel kur ekle
+          </Link>
+        </p>
+      )}
+      {generalExchangeError && (
+        <p className="text-orange-600">{generalExchangeError}</p>
+      )}
+    </div>
+  )
+
+  const handleUsdPurchasePriceChange = (value: string) => {
+    setFormData(prev => {
+      const next = { ...prev }
+
+      if (value === '') {
+        next.purchasePriceUsd = undefined
+        next.purchasePrice = undefined
+        return next
+      }
+
+      const parsedValue = Number(value)
+      if (Number.isNaN(parsedValue)) {
+        return next
+      }
+
+      next.purchasePriceUsd = parsedValue
+
+      if (typeof rates?.USD === 'number') {
+        const converted = Number(convertToTRY(parsedValue, 'USD').toFixed(2))
+        if (!Number.isNaN(converted)) {
+          next.purchasePrice = converted
+        }
+      }
+
+      return next
+    })
+  }
+
+  useEffect(() => {
+    if (typeof formData.purchasePriceUsd !== 'number' || Number.isNaN(formData.purchasePriceUsd)) {
+      return
+    }
+
+    if (typeof rates?.USD !== 'number') {
+      return
+    }
+
+    const converted = Number(convertToTRY(formData.purchasePriceUsd, 'USD').toFixed(2))
+
+    setFormData(prev => {
+      if (prev.purchasePrice === converted) {
+        return prev
+      }
+      return {
+        ...prev,
+        purchasePrice: converted
+      }
+    })
+  }, [rates?.USD, formData.purchasePriceUsd])
 
   // Fetch products from database
   const fetchProducts = async () => {
@@ -286,10 +388,12 @@ export default function ProductsPage() {
     fetchPackages()
   }, [])
 
+  const searchValue = searchTerm.toLowerCase()
   const filteredProducts = products.filter(product =>
-    (product.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (product.brand || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (product.category || '').toLowerCase().includes(searchTerm.toLowerCase())
+    (product.name || '').toLowerCase().includes(searchValue) ||
+    (product.brand || '').toLowerCase().includes(searchValue) ||
+    (product.category || '').toLowerCase().includes(searchValue) ||
+    (product.code || '').toLowerCase().includes(searchValue)
   )
 
   const filteredPackages = packages.filter(pkg => {
@@ -713,11 +817,11 @@ export default function ProductsPage() {
 
   const downloadExcelTemplate = () => {
     const templateData = [
-      ['Ürün Adı', 'Kategori', 'Marka', 'Model', 'Fiyat', 'Stok', 'Güç (W)', 'Garanti (Yıl)', 'Açıklama'],
-      ['540W Monokristalin Panel', 'Panel', 'Longi Solar', 'LR5-54HPH-540M', '1500', '50', '540', '25', 'Yüksek verimli monokristalin güneş paneli'],
-      ['5KW Hibrit İnverter', 'İnverter', 'Growatt', 'SPH-5000TL3-BH', '8500', '20', '5000', '5', 'Bataryalı hibrit inverter sistemi'],
-      ['100Ah Lithium Batarya', 'Batarya', 'Pylontech', 'US3000C', '12000', '15', '0', '10', 'LiFePO4 lityum depolama bataryası'],
-      ['Alüminyum Montaj Rayı', 'Konstrüksiyon', 'Schletter', 'MSP-Plus', '150', '100', '0', '25', '4m uzunluğunda alüminyum montaj rayı']
+      ['Ürün Adı', 'Ürün Kodu', 'Kategori', 'Marka', 'Model', 'Fiyat', 'USD Alış Fiyatı', 'Stok', 'Güç (W)', 'Garanti (Yıl)', 'Açıklama'],
+      ['540W Monokristalin Panel', 'PNL-540', 'Panel', 'Longi Solar', 'LR5-54HPH-540M', '1500', '320', '50', '540', '25', 'Yüksek verimli monokristalin güneş paneli'],
+      ['5KW Hibrit İnverter', 'INV-5000', 'İnverter', 'Growatt', 'SPH-5000TL3-BH', '8500', '1800', '20', '5000', '5', 'Bataryalı hibrit inverter sistemi'],
+      ['100Ah Lithium Batarya', 'BAT-100', 'Batarya', 'Pylontech', 'US3000C', '12000', '2200', '15', '0', '10', 'LiFePO4 lityum depolama bataryası'],
+      ['Alüminyum Montaj Rayı', 'MON-RAIL', 'Konstrüksiyon', 'Schletter', 'MSP-Plus', '150', '20', '100', '0', '25', '4m uzunluğunda alüminyum montaj rayı']
     ]
 
     const worksheet = XLSX.utils.aoa_to_sheet(templateData)
@@ -732,10 +836,20 @@ export default function ProductsPage() {
   }
 
   const handleAddProduct = async () => {
-    if (!formData.name || !formData.category || !formData.price || !formData.brand) {
+    const trimmedCode = formData.code?.trim()
+    if (!formData.name || !formData.category || !formData.price || !formData.brand || !trimmedCode) {
       toast({
         title: "Hata",
         description: "Lütfen tüm gerekli alanları doldurun.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (formData.purchasePriceUsd !== undefined && formData.purchasePriceUsd !== null && Number(formData.purchasePriceUsd) < 0) {
+      toast({
+        title: "Hata",
+        description: "USD alış fiyatı negatif olamaz.",
         variant: "destructive"
       })
       return
@@ -765,10 +879,14 @@ export default function ProductsPage() {
       console.log('Sending product data:', {
         name: formData.name,
         category: formData.category,
+        code: trimmedCode,
         brand: formData.brand,
         model: formData.model || '',
         power: formData.power,
         price: Number(formData.price),
+        purchasePriceUsd: formData.purchasePriceUsd !== undefined && formData.purchasePriceUsd !== null
+          ? Number(formData.purchasePriceUsd)
+          : null,
         stock: Number(formData.stock) || 0,
         warranty: formData.warranty,
         description: formData.description,
@@ -785,11 +903,15 @@ export default function ProductsPage() {
         body: JSON.stringify({
           name: formData.name,
           category: formData.category,
+          code: trimmedCode,
           brand: formData.brand,
           model: formData.model || '',
           power: formData.power,
           price: Number(formData.price),
           purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : null,
+          purchasePriceUsd: formData.purchasePriceUsd !== undefined && formData.purchasePriceUsd !== null
+            ? Number(formData.purchasePriceUsd)
+            : null,
           stock: Number(formData.stock) || 0,
           warranty: formData.warranty,
           description: formData.description,
@@ -850,14 +972,27 @@ export default function ProductsPage() {
     console.log('🔄 FormData types:', {
       price: typeof formData.price,
       purchasePrice: typeof formData.purchasePrice,
+      purchasePriceUsd: typeof formData.purchasePriceUsd,
       priceValue: formData.price,
-      purchasePriceValue: formData.purchasePrice
+      purchasePriceValue: formData.purchasePrice,
+      purchasePriceUsdValue: formData.purchasePriceUsd
     })
 
-    if (!selectedProduct || !formData.name || !formData.category || !formData.price) {
+    const trimmedCode = formData.code?.trim()
+
+    if (!selectedProduct || !formData.name || !formData.category || !formData.price || !trimmedCode) {
       toast({
         title: "Hata",
         description: "Lütfen tüm gerekli alanları doldurun.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (formData.purchasePriceUsd !== undefined && formData.purchasePriceUsd !== null && Number(formData.purchasePriceUsd) < 0) {
+      toast({
+        title: "Hata",
+        description: "USD alış fiyatı negatif olamaz.",
         variant: "destructive"
       })
       return
@@ -897,11 +1032,15 @@ export default function ProductsPage() {
       const requestBody = {
         name: formData.name,
         category: formData.category,
+        code: trimmedCode,
         brand: formData.brand,
         model: formData.model,
         power: formData.power,
         price: Number(formData.price),
         purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : null,
+        purchasePriceUsd: formData.purchasePriceUsd !== undefined && formData.purchasePriceUsd !== null
+          ? Number(formData.purchasePriceUsd)
+          : null,
         stock: Number(formData.stock),
         warranty: formData.warranty,
         description: formData.description,
@@ -1649,183 +1788,214 @@ export default function ProductsPage() {
                 Yeni Ürün Ekle
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogContent
+              className="max-w-5xl w-full max-h-[80vh] overflow-y-auto"
+              onInteractOutside={(event) => event.preventDefault()}
+              onPointerDownOutside={(event) => event.preventDefault()}
+            >
               <DialogHeader>
                 <DialogTitle>Yeni Ürün Ekle</DialogTitle>
                 <DialogDescription>
                   Yeni ürün bilgilerini girin.
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Ürün Adı *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name || ''}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    placeholder="Ürün adı girin"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="category">Kategori *</Label>
-                  <Select value={formData.category || ''} onValueChange={(value) => setFormData({...formData, category: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Kategori seçin" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.name}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="grid gap-2">
-                    <Label htmlFor="brand">Marka *</Label>
-                    <Input
-                      id="brand"
-                      value={formData.brand || ''}
-                      onChange={(e) => setFormData({...formData, brand: e.target.value})}
-                      placeholder="Marka"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="model">Model</Label>
-                    <Input
-                      id="model"
-                      value={formData.model || ''}
-                      onChange={(e) => setFormData({...formData, model: e.target.value})}
-                      placeholder="Model"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="grid gap-2">
-                    <Label htmlFor="power">Güç (W)</Label>
-                    <Input
-                      id="power"
-                      type="number"
-                      value={formData.power || ''}
-                      onChange={(e) => setFormData({...formData, power: e.target.value})}
-                      placeholder="540"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="warranty">Garanti (yıl)</Label>
-                    <Input
-                      id="warranty"
-                      type="number"
-                      value={formData.warranty || ''}
-                      onChange={(e) => setFormData({...formData, warranty: e.target.value})}
-                      placeholder="25"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <RoleGuard allowedRoles={['ADMIN']}>
-                    <div className="grid gap-2">
-                      <Label htmlFor="purchasePrice">Alış Fiyatı (₺)</Label>
-                      <Input
-                        id="purchasePrice"
-                        type="number"
-                        value={formData.purchasePrice || ''}
-                        onChange={(e) => setFormData({...formData, purchasePrice: Number(e.target.value)})}
-                        placeholder="0"
-                      />
+              <div className="grid gap-6 py-4">
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div className="space-y-4 rounded-lg border border-border/60 bg-white p-4 shadow-sm">
+                    <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Temel Bilgiler</p>
+                    <div className="grid gap-3">
+                      <div className="grid gap-2">
+                        <Label htmlFor="name">Ürün Adı *</Label>
+                        <Input
+                          id="name"
+                          value={formData.name || ''}
+                          onChange={(e) => setFormData({...formData, name: e.target.value})}
+                          placeholder="Ürün adı girin"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="code">Ürün Kodu *</Label>
+                        <Input
+                          id="code"
+                          value={formData.code || ''}
+                          onChange={(e) => setFormData({...formData, code: e.target.value})}
+                          placeholder="Örn. PNL-540"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="category">Kategori *</Label>
+                        <Select value={formData.category || ''} onValueChange={(value) => setFormData({...formData, category: value})}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Kategori seçin" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map((category) => (
+                              <SelectItem key={category.id} value={category.name}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-2">
+                          <Label htmlFor="brand">Marka *</Label>
+                          <Input
+                            id="brand"
+                            value={formData.brand || ''}
+                            onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                            placeholder="Marka"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="model">Model</Label>
+                          <Input
+                            id="model"
+                            value={formData.model || ''}
+                            onChange={(e) => setFormData({...formData, model: e.target.value})}
+                            placeholder="Model"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-2">
+                          <Label htmlFor="power">Güç (W)</Label>
+                          <Input
+                            id="power"
+                            type="number"
+                            value={formData.power || ''}
+                            onChange={(e) => setFormData({...formData, power: e.target.value})}
+                            placeholder="540"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="warranty">Garanti (yıl)</Label>
+                          <Input
+                            id="warranty"
+                            type="number"
+                            value={formData.warranty || ''}
+                            onChange={(e) => setFormData({...formData, warranty: e.target.value})}
+                            placeholder="25"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="description">Açıklama</Label>
+                        <Textarea
+                          id="description"
+                          value={formData.description || ''}
+                          onChange={(e) => setFormData({...formData, description: e.target.value})}
+                          placeholder="Ürün açıklaması"
+                          className="min-h-[88px]"
+                        />
+                      </div>
                     </div>
-                  </RoleGuard>
-                  <div className="grid gap-2">
-                    <Label htmlFor="price">Satış Fiyatı (₺) *</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      value={formData.price || ''}
-                      onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                {/* <div className="grid grid-cols-2 gap-2">
-                  <div className="grid gap-2">
-                    <Label htmlFor="purchaseDate">Alış Tarihi</Label>
-                    <Input
-                      id="purchaseDate"
-                      type="date"
-                      value={formData.purchaseDate ? new Date(formData.purchaseDate).toISOString().split('T')[0] : ''}
-                      onChange={(e) => setFormData({...formData, purchaseDate: e.target.value ? new Date(e.target.value) : undefined})}
-                    />
-                  </div> */}
-                <div className="grid gap-2">
-                  <Label htmlFor="stock">Stok</Label>
-                  <Input
-                    id="stock"
-                    type="number"
-                    value={formData.stock || ''}
-                    onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="description">Açıklama</Label>
-                  <Input
-                    id="description"
-                    value={formData.description || ''}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    placeholder="Ürün açıklaması"
-                  />
-                </div>
-
-                {/* File Upload Section */}
-                <div className="space-y-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="images">Ürün Görselleri</Label>
-                    <Input
-                      id="images"
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={(e) => {
-                        setSelectedFiles({...selectedFiles, images: e.target.files})
-                        console.log('Selected images:', e.target.files)
-                      }}
-                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
-                    <p className="text-xs text-muted-foreground">PNG, JPG, JPEG dosyaları desteklenir (Maksimum 5 dosya)</p>
                   </div>
 
-                  <div className="grid gap-2">
-                    <Label htmlFor="datasheet">Teknik Döküman (PDF)</Label>
-                    <Input
-                      id="datasheet"
-                      type="file"
-                      accept=".pdf"
-                      onChange={(e) => {
-                        setSelectedFiles({...selectedFiles, datasheet: e.target.files?.[0] || null})
-                        console.log('Selected datasheet:', e.target.files?.[0])
-                      }}
-                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
-                    />
-                    <p className="text-xs text-muted-foreground">Sadece PDF dosyaları desteklenir</p>
+                  <div className="space-y-4 rounded-lg border border-border/60 bg-white p-4 shadow-sm">
+                    <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Fiyat ve Stok</p>
+                    <div className="grid gap-3">
+                      <RoleGuard allowedRoles={['ADMIN']}>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="grid gap-2">
+                            <Label htmlFor="purchasePrice">Alış Fiyatı (₺)</Label>
+                            <Input
+                              id="purchasePrice"
+                              type="number"
+                              value={formData.purchasePrice ?? ''}
+                              onChange={(e) => setFormData({...formData, purchasePrice: Number(e.target.value)})}
+                              placeholder="0"
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="purchasePriceUsd">Alış Fiyatı (USD)</Label>
+                            <Input
+                              id="purchasePriceUsd"
+                              type="number"
+                              value={formData.purchasePriceUsd ?? ''}
+                              onChange={(e) => handleUsdPurchasePriceChange(e.target.value)}
+                              placeholder="0"
+                            />
+                            {renderUsdRateInfo()}
+                          </div>
+                        </div>
+                      </RoleGuard>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-2">
+                          <Label htmlFor="price">Satış Fiyatı (₺) *</Label>
+                          <Input
+                            id="price"
+                            type="number"
+                            value={formData.price ?? ''}
+                            onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
+                            placeholder="0"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="stock">Stok</Label>
+                          <Input
+                            id="stock"
+                            type="number"
+                            value={formData.stock || ''}
+                            onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})}
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                </div>
 
-                  <div className="grid gap-2">
-                    <Label htmlFor="manual">Kullanım Kılavuzu (PDF)</Label>
-                    <Input
-                      id="manual"
-                      type="file"
-                      accept=".pdf"
-                      onChange={(e) => {
-                        setSelectedFiles({...selectedFiles, manual: e.target.files?.[0] || null})
-                        console.log('Selected manual:', e.target.files?.[0])
-                      }}
-                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                    />
-                    <p className="text-xs text-muted-foreground">Sadece PDF dosyaları desteklenir</p>
+                <div className="space-y-4 rounded-lg border border-border/60 bg-white p-4 shadow-sm">
+                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Dosyalar</p>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor="images">Ürün Görselleri</Label>
+                      <Input
+                        id="images"
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={(e) => {
+                          setSelectedFiles({...selectedFiles, images: e.target.files})
+                          console.log('Selected images:', e.target.files)
+                        }}
+                        className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      <p className="text-xs text-muted-foreground">PNG, JPG, JPEG dosyaları desteklenir (Maks. 5 dosya)</p>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="datasheet">Teknik Döküman (PDF)</Label>
+                      <Input
+                        id="datasheet"
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => {
+                          setSelectedFiles({...selectedFiles, datasheet: e.target.files?.[0] || null})
+                          console.log('Selected datasheet:', e.target.files?.[0])
+                        }}
+                        className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                      />
+                      <p className="text-xs text-muted-foreground">Sadece PDF dosyaları desteklenir</p>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="manual">Kullanım Kılavuzu (PDF)</Label>
+                      <Input
+                        id="manual"
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => {
+                          setSelectedFiles({...selectedFiles, manual: e.target.files?.[0] || null})
+                          console.log('Selected manual:', e.target.files?.[0])
+                        }}
+                        className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                      />
+                      <p className="text-xs text-muted-foreground">Sadece PDF dosyaları desteklenir</p>
+                    </div>
                   </div>
                 </div>
               </div>
+
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowAddDialog(false)} disabled={saving}>
                   İptal
@@ -1911,9 +2081,11 @@ export default function ProductsPage() {
                   <thead>
                     <tr className="border-b">
                       <th className="text-left py-3 px-4">Ürün</th>
+                      <th className="text-left py-3 px-4">Kod</th>
                       <th className="text-left py-3 px-4">Kategori</th>
                       <th className="text-left py-3 px-4">Güç/Kapasite</th>
                       <th className="text-left py-3 px-4">Fiyat</th>
+                      <th className="text-left py-3 px-4">USD Alış</th>
                       <th className="text-left py-3 px-4">Stok</th>
                       <th className="text-left py-3 px-4">Durum</th>
                       <th className="text-left py-3 px-4">Oluşturan</th>
@@ -1983,6 +2155,9 @@ export default function ProductsPage() {
                             </div>
                           </div>
                         </td>
+                        <td className="py-3 px-4 text-sm text-muted-foreground">
+                          {product.code || 'Belirtilmedi'}
+                        </td>
                         <td className="py-3 px-4">
                           <Badge variant="secondary">{product.category}</Badge>
                         </td>
@@ -1991,6 +2166,11 @@ export default function ProductsPage() {
                         </td>
                         <td className="py-3 px-4 font-medium">
                           {formatCurrency(product.price)}
+                        </td>
+                        <td className="py-3 px-4 font-medium">
+                          {product.purchasePriceUsd !== undefined && product.purchasePriceUsd !== null
+                            ? formatCurrency(Number(product.purchasePriceUsd), 'USD')
+                            : 'Belirtilmedi'}
                         </td>
                         <td className="py-3 px-4">
                           <span className={`font-medium ${
@@ -2627,290 +2807,317 @@ export default function ProductsPage() {
 
         {/* Edit Product Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent className="max-w-md">
+          <DialogContent
+            className="max-w-5xl w-full max-h-[80vh] overflow-y-auto"
+            onInteractOutside={(event) => event.preventDefault()}
+            onPointerDownOutside={(event) => event.preventDefault()}
+          >
             <DialogHeader>
               <DialogTitle>Ürün Düzenle</DialogTitle>
               <DialogDescription>
                 Ürün bilgilerini güncelleyin.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-name">Ürün Adı *</Label>
-                <Input
-                  id="edit-name"
-                  value={formData.name || ''}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-category">Kategori *</Label>
-                <Select value={formData.category || ''} onValueChange={(value) => setFormData({...formData, category: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.name}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-brand">Marka</Label>
-                  <Input
-                    id="edit-brand"
-                    value={formData.brand || ''}
-                    onChange={(e) => setFormData({...formData, brand: e.target.value})}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-model">Model</Label>
-                  <Input
-                    id="edit-model"
-                    value={formData.model || ''}
-                    onChange={(e) => setFormData({...formData, model: e.target.value})}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-power">Güç (W)</Label>
-                  <Input
-                    id="edit-power"
-                    type="number"
-                    value={formData.power || ''}
-                    onChange={(e) => setFormData({...formData, power: e.target.value})}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-warranty">Garanti (yıl)</Label>
-                  <Input
-                    id="edit-warranty"
-                    type="number"
-                    value={formData.warranty || ''}
-                    onChange={(e) => setFormData({...formData, warranty: e.target.value})}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <RoleGuard allowedRoles={['ADMIN']}>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit-purchasePrice">Alış Fiyatı (₺)</Label>
-                    <Input
-                      id="edit-purchasePrice"
-                      type="number"
-                      value={formData.purchasePrice || ''}
-                      onChange={(e) => setFormData({...formData, purchasePrice: Number(e.target.value)})}
-                      placeholder="0"
-                    />
+            <div className="grid gap-6 py-4">
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div className="space-y-4 rounded-lg border border-border/60 bg-white p-4 shadow-sm">
+                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Temel Bilgiler</p>
+                  <div className="grid gap-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-name">Ürün Adı *</Label>
+                      <Input
+                        id="edit-name"
+                        value={formData.name || ''}
+                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-code">Ürün Kodu *</Label>
+                      <Input
+                        id="edit-code"
+                        value={formData.code || ''}
+                        onChange={(e) => setFormData({...formData, code: e.target.value})}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-category">Kategori *</Label>
+                      <Select value={formData.category || ''} onValueChange={(value) => setFormData({...formData, category: value})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.name}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-brand">Marka</Label>
+                        <Input
+                          id="edit-brand"
+                          value={formData.brand || ''}
+                          onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-model">Model</Label>
+                        <Input
+                          id="edit-model"
+                          value={formData.model || ''}
+                          onChange={(e) => setFormData({...formData, model: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-power">Güç (W)</Label>
+                        <Input
+                          id="edit-power"
+                          type="number"
+                          value={formData.power || ''}
+                          onChange={(e) => setFormData({...formData, power: e.target.value})}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-warranty">Garanti (yıl)</Label>
+                        <Input
+                          id="edit-warranty"
+                          type="number"
+                          value={formData.warranty || ''}
+                          onChange={(e) => setFormData({...formData, warranty: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-description">Açıklama</Label>
+                      <Textarea
+                        id="edit-description"
+                        value={formData.description || ''}
+                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                        placeholder="Ürün açıklaması"
+                        className="min-h-[88px]"
+                      />
+                    </div>
                   </div>
-                </RoleGuard>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-price">Satış Fiyatı (₺) *</Label>
-                  <Input
-                    id="edit-price"
-                    type="number"
-                    value={formData.price || ''}
-                    onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
-                  />
+                </div>
+
+                <div className="space-y-4 rounded-lg border border-border/60 bg-white p-4 shadow-sm">
+                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Fiyat ve Stok</p>
+                  <div className="grid gap-3">
+                    <RoleGuard allowedRoles={['ADMIN']}>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-2">
+                          <Label htmlFor="edit-purchasePrice">Alış Fiyatı (₺)</Label>
+                          <Input
+                            id="edit-purchasePrice"
+                            type="number"
+                            value={formData.purchasePrice ?? ''}
+                            onChange={(e) => setFormData({...formData, purchasePrice: Number(e.target.value)})}
+                            placeholder="0"
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="edit-purchasePriceUsd">Alış Fiyatı (USD)</Label>
+                          <Input
+                            id="edit-purchasePriceUsd"
+                            type="number"
+                            value={formData.purchasePriceUsd ?? ''}
+                            onChange={(e) => handleUsdPurchasePriceChange(e.target.value)}
+                            placeholder="0"
+                          />
+                          {renderUsdRateInfo()}
+                        </div>
+                      </div>
+                    </RoleGuard>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-price">Satış Fiyatı (₺) *</Label>
+                        <Input
+                          id="edit-price"
+                          type="number"
+                          value={formData.price ?? ''}
+                          onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-stock">Stok</Label>
+                        <Input
+                          id="edit-stock"
+                          type="number"
+                          value={formData.stock || ''}
+                          onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              {/* <div className="grid grid-cols-2 gap-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-purchaseDate">Alış Tarihi</Label>
-                  <Input
-                    id="edit-purchaseDate"
-                    type="date"
-                    value={formData.purchaseDate ? new Date(formData.purchaseDate).toISOString().split('T')[0] : ''}
-                    onChange={(e) => setFormData({...formData, purchaseDate: e.target.value ? new Date(e.target.value) : undefined})}
-                  />
-                </div> */}
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-stock">Stok</Label>
-                  <Input
-                    id="edit-stock"
-                    type="number"
-                    value={formData.stock || ''}
-                    onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})}
-                  />
-                </div>
-              {/* </div> */}
-              {/* <div className="grid gap-2">
-                <Label htmlFor="edit-editDate">Düzenleme Tarihi</Label>
-                <Input
-                  id="edit-editDate"
-                  type="date"
-                  value={formData.editDate ? new Date(formData.editDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
-                  onChange={(e) => setFormData({...formData, editDate: e.target.value ? new Date(e.target.value) : new Date()})}
-                />
-              </div> */}
 
-              {/* File Upload Section */}
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-images">Ürün Görselleri</Label>
+              <div className="space-y-4 rounded-lg border border-border/60 bg-white p-4 shadow-sm">
+                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Dosyalar</p>
+                <div className="grid gap-6 lg:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-images">Ürün Görselleri</Label>
 
-                  {/* Show existing images */}
-                  {selectedProduct && (() => {
-                    const existingImages = typeof selectedProduct.images === 'string'
-                      ? JSON.parse(selectedProduct.images || '[]')
-                      : selectedProduct.images || []
+                    {selectedProduct && (() => {
+                      const existingImages = typeof selectedProduct.images === 'string'
+                        ? JSON.parse(selectedProduct.images || '[]')
+                        : selectedProduct.images || []
 
-                    return existingImages.length > 0 ? (
-                      <div className="mb-2 p-2 bg-green-50 rounded border">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-sm text-green-700">
-                            <CheckCircle className="w-4 h-4" />
-                            <span>{existingImages.length} mevcut görsel</span>
+                      return existingImages.length > 0 ? (
+                        <div className="p-2 bg-green-50 rounded border">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm text-green-700">
+                              <CheckCircle className="w-4 h-4" />
+                              <span>{existingImages.length} mevcut görsel</span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                if (selectedProduct && confirm('Mevcut görselleri silmek istediğinize emin misiniz?')) {
+                                  await deleteProductImages(selectedProduct.id)
+                                }
+                              }}
+                              className="h-6 px-2 text-xs text-red-600 hover:text-red-800 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" />
+                              Sil
+                            </Button>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              if (confirm('Mevcut görselleri silmek istediğinize emin misiniz?')) {
-                                await deleteProductImages(selectedProduct.id)
-                              }
-                            }}
-                            className="h-6 px-2 text-xs text-red-600 hover:text-red-800 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-3 h-3 mr-1" />
-                            Sil
-                          </Button>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="mb-2 p-2 bg-gray-50 rounded border">
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <AlertCircle className="w-4 h-4" />
-                          <span>Henüz görsel yüklenmemiş</span>
-                        </div>
-                      </div>
-                    )
-                  })()}
-
-                  <Input
-                    id="edit-images"
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={(e) => {
-                      const files = e.target.files
-                      setSelectedFiles({...selectedFiles, images: files})
-                      console.log('Selected images for edit:', files)
-                    }}
-                    className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
-                  <p className="text-xs text-muted-foreground">PNG, JPG, JPEG dosyaları desteklenir (Maksimum 5 dosya)</p>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-datasheet">Teknik Döküman (PDF)</Label>
-
-                  {/* Show existing datasheet */}
-                  {selectedProduct && (() => {
-                    const hasDatasheet = !!(selectedProduct as any).datasheet
-
-                    return hasDatasheet ? (
-                      <div className="mb-2 p-2 bg-green-50 rounded border">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-sm text-green-700">
-                            <CheckCircle className="w-4 h-4" />
-                            <span>Mevcut teknik döküman var</span>
+                      ) : (
+                        <div className="p-2 bg-gray-50 rounded border">
+                          <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <AlertCircle className="w-4 h-4" />
+                            <span>Henüz görsel yüklenmemiş</span>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              if (confirm('Teknik dökümanı silmek istediğinize emin misiniz?')) {
-                                await deleteProductDatasheet(selectedProduct.id)
-                              }
-                            }}
-                            className="h-6 px-2 text-xs text-red-600 hover:text-red-800 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-3 h-3 mr-1" />
-                            Sil
-                          </Button>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="mb-2 p-2 bg-gray-50 rounded border">
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <AlertCircle className="w-4 h-4" />
-                          <span>Henüz teknik döküman yüklenmemiş</span>
-                        </div>
-                      </div>
-                    )
-                  })()}
+                      )
+                    })()}
 
-                  <Input
-                    id="edit-datasheet"
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      setSelectedFiles({...selectedFiles, datasheet: file || null})
-                      console.log('Selected datasheet for edit:', file)
-                    }}
-                    className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
-                  />
-                  <p className="text-xs text-muted-foreground">Sadece PDF dosyaları desteklenir</p>
-                </div>
+                    <Input
+                      id="edit-images"
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={(e) => {
+                        const files = e.target.files
+                        setSelectedFiles({...selectedFiles, images: files})
+                        console.log('Selected images for edit:', files)
+                      }}
+                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    <p className="text-xs text-muted-foreground">PNG, JPG, JPEG dosyaları desteklenir (Maks. 5 dosya)</p>
+                  </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-manual">Kullanım Kılavuzu (PDF)</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-datasheet">Teknik Döküman (PDF)</Label>
 
-                  {/* Show existing manual */}
-                  {selectedProduct && (() => {
-                    const hasManual = !!(selectedProduct as any).manual
+                    {selectedProduct && (() => {
+                      const hasDatasheet = !!(selectedProduct as any).datasheet
 
-                    return hasManual ? (
-                      <div className="mb-2 p-2 bg-green-50 rounded border">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-sm text-green-700">
-                            <CheckCircle className="w-4 h-4" />
-                            <span>Mevcut kullanım kılavuzu var</span>
+                      return hasDatasheet ? (
+                        <div className="p-2 bg-green-50 rounded border">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm text-green-700">
+                              <CheckCircle className="w-4 h-4" />
+                              <span>Mevcut teknik döküman var</span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                if (selectedProduct && confirm('Teknik dökümanı silmek istediğinize emin misiniz?')) {
+                                  await deleteProductDatasheet(selectedProduct.id)
+                                }
+                              }}
+                              className="h-6 px-2 text-xs text-red-600 hover:text-red-800 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" />
+                              Sil
+                            </Button>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              if (confirm('Kullanım kılavuzunu silmek istediğinize emin misiniz?')) {
-                                await deleteProductManual(selectedProduct.id)
-                              }
-                            }}
-                            className="h-6 px-2 text-xs text-red-600 hover:text-red-800 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-3 h-3 mr-1" />
-                            Sil
-                          </Button>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="mb-2 p-2 bg-gray-50 rounded border">
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <AlertCircle className="w-4 h-4" />
-                          <span>Henüz kullanım kılavuzu yüklenmemiş</span>
+                      ) : (
+                        <div className="p-2 bg-gray-50 rounded border">
+                          <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <AlertCircle className="w-4 h-4" />
+                            <span>Henüz teknik döküman yüklenmemiş</span>
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })()}
+                      )
+                    })()}
 
-                  <Input
-                    id="edit-manual"
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      setSelectedFiles({...selectedFiles, manual: file || null})
-                      console.log('Selected manual for edit:', file)
-                    }}
-                    className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                  />
-                  <p className="text-xs text-muted-foreground">Sadece PDF dosyaları desteklenir</p>
+                    <Input
+                      id="edit-datasheet"
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        setSelectedFiles({...selectedFiles, datasheet: file || null})
+                        console.log('Selected datasheet for edit:', file)
+                      }}
+                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                    />
+                    <p className="text-xs text-muted-foreground">Sadece PDF dosyaları desteklenir</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-manual">Kullanım Kılavuzu (PDF)</Label>
+
+                    {selectedProduct && (() => {
+                      const hasManual = !!(selectedProduct as any).manual
+
+                      return hasManual ? (
+                        <div className="p-2 bg-green-50 rounded border">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm text-green-700">
+                              <CheckCircle className="w-4 h-4" />
+                              <span>Mevcut kullanım kılavuzu var</span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                if (selectedProduct && confirm('Kullanım kılavuzunu silmek istediğinize emin misiniz?')) {
+                                  await deleteProductManual(selectedProduct.id)
+                                }
+                              }}
+                              className="h-6 px-2 text-xs text-red-600 hover:text-red-800 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" />
+                              Sil
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-2 bg-gray-50 rounded border">
+                          <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <AlertCircle className="w-4 h-4" />
+                            <span>Henüz kullanım kılavuzu yüklenmemiş</span>
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    <Input
+                      id="edit-manual"
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        setSelectedFiles({...selectedFiles, manual: file || null})
+                        console.log('Selected manual for edit:', file)
+                      }}
+                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                    />
+                    <p className="text-xs text-muted-foreground">Sadece PDF dosyaları desteklenir</p>
+                  </div>
                 </div>
               </div>
             </div>

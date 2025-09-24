@@ -21,6 +21,7 @@ export async function PUT(
     }
 
     const body = await request.json()
+    const trimmedCode = body.code?.trim()
     console.log('UPDATE body:', body)
 
     // Check if this is a file deletion request (only has file fields)
@@ -97,13 +98,19 @@ export async function PUT(
       updateData = {
         ...updateData,
         name: body.name,
+        code: trimmedCode ?? existingProduct.code,
         type: productType,
         categoryId: categoryId,
         brand: body.brand,
         model: body.model || '',
         description: body.description,
         price: parseFloat(body.price.toString()),
-        purchasePrice: body.purchasePrice ? parseFloat(body.purchasePrice.toString()) : null,
+        purchasePrice: body.purchasePrice !== undefined && body.purchasePrice !== null
+          ? parseFloat(body.purchasePrice.toString())
+          : null,
+        purchasePriceUsd: body.purchasePriceUsd !== undefined && body.purchasePriceUsd !== null
+          ? parseFloat(body.purchasePriceUsd.toString())
+          : null,
         purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : null,
         editDate: body.editDate ? new Date(body.editDate) : new Date(),
         stock: stock,
