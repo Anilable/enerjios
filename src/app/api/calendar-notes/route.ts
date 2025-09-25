@@ -17,9 +17,16 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const date = searchParams.get('date') // Optional: filter by specific date
 
-    const where: any = {
+    // Debug: Log user role
+    console.log('📅 Calendar Notes API - User role:', session.user.role)
+
+    // If user is installation team, they can see all notes
+    // Otherwise, they can only see their own notes
+    const where: any = session.user.role === 'INSTALLATION_TEAM' ? {} : {
       createdBy: session.user.id
     }
+
+    console.log('📅 Calendar Notes API - Where clause:', where)
 
     if (date) {
       where.date = date
