@@ -147,17 +147,15 @@ function getCategoryFromType(type: ProductType): string {
 const PACKAGE_TYPE_LABELS: Record<string, string> = {
   ON_GRID: 'Şebekeye Bağlı',
   OFF_GRID: 'Şebekeden Bağımsız',
-  HYBRID: 'Hibrit Sistem',
   TARIMSAL_SULAMA: 'Tarımsal Sulama',
-  AKILLI_SISTEM: 'Akıllı Sistem'
+  DC_POMPALAR: 'DC Pompalar'
 }
 
 const PACKAGE_TYPE_ICONS: Record<string, string> = {
   ON_GRID: '🔌',
   OFF_GRID: '🔋',
-  HYBRID: '⚡',
   TARIMSAL_SULAMA: '💧',
-  AKILLI_SISTEM: '🤖'
+  DC_POMPALAR: '⛽'
 }
 
 // Package type interface
@@ -283,7 +281,8 @@ export default function CreateQuotePage() {
         const searchInPackage = (p: Package): boolean => {
           const nameMatch = p.name.toLowerCase().includes(packageSearchTerm.toLowerCase())
           const descMatch = p.description?.toLowerCase().includes(packageSearchTerm.toLowerCase()) || false
-          const typeMatch = PACKAGE_TYPE_LABELS[p.type].toLowerCase().includes(packageSearchTerm.toLowerCase())
+          const typeLabel = PACKAGE_TYPE_LABELS[p.type] || p.type
+          const typeMatch = typeLabel.toLowerCase().includes(packageSearchTerm.toLowerCase())
 
           // Also search in children
           const childMatch = p.children?.some(child => searchInPackage(child)) || false
@@ -339,7 +338,7 @@ export default function CreateQuotePage() {
     total: 0,
     validity: 30,
     notes: '',
-    terms: 'Teklif geçerlilik süresi imza tarihinden itibaren 30 gündür.\nFiyatlara KDV dahildir.\nMontaj ve işçilik ücretleri dahildir.',
+    terms: 'Teklif geçerlilik süresi imza tarihinden itibaren 30 gündür.\nFiyatlara KDV dahildir.',
     status: 'DRAFT'
   })
 
@@ -456,18 +455,32 @@ export default function CreateQuotePage() {
         console.log('🔍 Fetching packages from API...')
         const response = await fetch('/api/packages?isActive=true&includeChildren=true')
         console.log('📡 Package API Response status:', response.status)
-        if (response.ok) {
-          const data = await response.json()
-          console.log('📦 Packages from API:', data.packages)
-          // Filter only root packages (no parentId) - children will be shown as nested
-          const rootPackages = data.packages?.filter((pkg: Package) => !pkg.parentId) || []
-          setAllPackages(rootPackages) // Store original for filtering
-          setPackages(rootPackages)
-        } else {
-          console.warn('Failed to fetch packages')
+
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error('❌ Package API Error:', {
+            status: response.status,
+            statusText: response.statusText,
+            url: response.url,
+            error: errorText
+          })
+          throw new Error(`HTTP ${response.status}: ${errorText}`)
         }
+
+        const data = await response.json()
+        console.log('📦 Packages from API:', data.packages)
+        // Filter only root packages (no parentId) - children will be shown as nested
+        const rootPackages = data.packages?.filter((pkg: Package) => !pkg.parentId) || []
+        setAllPackages(rootPackages) // Store original for filtering
+        setPackages(rootPackages)
       } catch (error) {
-        console.error('Error fetching packages:', error)
+        console.error('💥 Error fetching packages:', error)
+        // Show user-friendly error
+        toast({
+          title: "Paketler Yüklenemedi",
+          description: "Paket bilgileri alınırken bir hata oluştu. Lütfen sayfayı yenileyin.",
+          variant: "destructive"
+        })
       } finally {
         setLoadingPackages(false)
       }
@@ -1245,7 +1258,7 @@ export default function CreateQuotePage() {
                               )}
                             </CardTitle>
                             <Badge variant="outline" className="mt-1 w-fit">
-                              {PACKAGE_TYPE_LABELS[pkg.type]}
+                              {PACKAGE_TYPE_LABELS[pkg.type] || pkg.type}
                             </Badge>
                           </CardHeader>
                           <CardContent>

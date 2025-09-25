@@ -30,9 +30,9 @@ export async function PUT(
     )
 
     // Validate required fields only for full product updates (not file operations)
-    if (!isFileOperation && (!body.name || (!body.type && !body.category) || !body.brand || body.price === undefined)) {
+    if (!isFileOperation && (!body.name || (!body.type && !body.category && !body.categoryId) || !body.brand || body.price === undefined)) {
       return NextResponse.json(
-        { error: 'Missing required fields: name, category/type, brand, and price are required' },
+        { error: 'Missing required fields: name, categoryId/category/type, brand, and price are required' },
         { status: 400 }
       )
     }
@@ -66,9 +66,49 @@ export async function PUT(
       }
     } else {
       // Handle full product update
-      // Convert category to ProductType if needed
+      // Handle both new categoryId system and legacy category name system
       let productType: ProductType
-      if (body.category) {
+      let categoryId = null
+
+      if (body.categoryId) {
+        // New system: use categoryId directly
+        categoryId = body.categoryId
+        console.log('UPDATE: Using new category system with ID:', categoryId)
+
+        // Still need to set ProductType for enum field
+        const category = await prisma.category.findUnique({
+          where: { id: categoryId }
+        })
+
+        if (!category) {
+          return NextResponse.json(
+            { error: 'Category not found' },
+            { status: 400 }
+          )
+        }
+
+        // Import getTypeFromCategory function or define mapping locally
+        const getTypeFromCategoryLocal = (categoryName: string): ProductType => {
+          const typeMap: Record<string, ProductType> = {
+            'Panel': ProductType.SOLAR_PANEL,
+            'İnverter': ProductType.INVERTER,
+            'Batarya': ProductType.BATTERY,
+            'Konstrüksiyon': ProductType.MOUNTING_SYSTEM,
+            'Kablolar': ProductType.CABLE,
+            'İzleme Sistemleri': ProductType.MONITORING,
+            'Aksesuarlar': ProductType.ACCESSORY,
+            'Solar Paneller': ProductType.SOLAR_PANEL,
+            'İnverterler': ProductType.INVERTER,
+            'Bataryalar': ProductType.BATTERY,
+            'Montaj Malzemeleri': ProductType.MOUNTING_SYSTEM
+          }
+          return typeMap[categoryName] || ProductType.ACCESSORY
+        }
+
+        productType = getTypeFromCategoryLocal(category.name)
+        console.log('UPDATE: Mapped category to ProductType:', category.name, '->', productType)
+      } else if (body.category) {
+        // Legacy system: convert category name to ProductType
         const categoryTypeMap: Record<string, ProductType> = {
           'Solar Paneller': ProductType.SOLAR_PANEL,
           'İnverterler': ProductType.INVERTER,
@@ -79,17 +119,16 @@ export async function PUT(
           'Aksesuarlar': ProductType.ACCESSORY
         }
         productType = categoryTypeMap[body.category] || ProductType.ACCESSORY
-      } else {
-        productType = body.type
-      }
+        console.log('UPDATE: Using legacy category system:', body.category, '->', productType)
 
-      // Find category if available
-      let categoryId = null
-      if (body.category) {
+        // Try to find category by name
         const category = await prisma.category.findFirst({
           where: { name: body.category }
         })
         categoryId = category?.id || null
+      } else {
+        productType = body.type || existingProduct.type
+        categoryId = existingProduct.categoryId // Keep existing categoryId
       }
 
       // Parse and validate stock

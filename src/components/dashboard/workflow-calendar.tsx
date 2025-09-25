@@ -26,7 +26,7 @@ interface CalendarNote {
   date: string
   title: string
   content: string
-  type: 'task' | 'reminder' | 'event' | 'note'
+  type: 'TASK' | 'REMINDER' | 'EVENT' | 'NOTE'
   createdBy: string
 }
 
@@ -59,7 +59,7 @@ export function WorkflowCalendar({
   const [noteForm, setNoteForm] = useState({
     title: '',
     content: '',
-    type: 'note' as 'task' | 'reminder' | 'event' | 'note'
+    type: 'NOTE' as 'TASK' | 'REMINDER' | 'EVENT' | 'NOTE'
   })
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
 
@@ -135,20 +135,20 @@ export function WorkflowCalendar({
 
   const getNoteTypeColor = (type: string) => {
     switch (type) {
-      case 'task': return 'bg-blue-100 text-blue-800'
-      case 'reminder': return 'bg-yellow-100 text-yellow-800'
-      case 'event': return 'bg-purple-100 text-purple-800'
-      case 'note': return 'bg-gray-100 text-gray-800'
+      case 'TASK': return 'bg-blue-100 text-blue-800'
+      case 'REMINDER': return 'bg-yellow-100 text-yellow-800'
+      case 'EVENT': return 'bg-purple-100 text-purple-800'
+      case 'NOTE': return 'bg-gray-100 text-gray-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
 
   const getNoteTypeLabel = (type: string) => {
     switch (type) {
-      case 'task': return 'Görev'
-      case 'reminder': return 'Hatırlatma'
-      case 'event': return 'Etkinlik'
-      case 'note': return 'Not'
+      case 'TASK': return 'Görev'
+      case 'REMINDER': return 'Hatırlatma'
+      case 'EVENT': return 'Etkinlik'
+      case 'NOTE': return 'Not'
       default: return 'Not'
     }
   }
@@ -164,12 +164,12 @@ export function WorkflowCalendar({
         title: noteForm.title,
         content: noteForm.content,
         type: noteForm.type,
-        createdBy: 'current-user' // This should come from session
+        createdBy: 'current-user'
       })
     }
 
     // Reset form
-    setNoteForm({ title: '', content: '', type: 'note' })
+    setNoteForm({ title: '', content: '', type: 'NOTE' })
     setSelectedDate(null)
   }
 
@@ -185,7 +185,7 @@ export function WorkflowCalendar({
     }
 
     // Reset form
-    setNoteForm({ title: '', content: '', type: 'note' })
+    setNoteForm({ title: '', content: '', type: 'NOTE' })
     setEditingNoteId(null)
   }
 
@@ -278,16 +278,16 @@ export function WorkflowCalendar({
                       <div key={i} className="flex items-center gap-1">
                         <div
                           className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                            note.type === 'task' ? 'bg-blue-500' :
-                            note.type === 'reminder' ? 'bg-yellow-500' :
-                            note.type === 'event' ? 'bg-purple-500' :
+                            note.type === 'TASK' ? 'bg-blue-500' :
+                            note.type === 'REMINDER' ? 'bg-yellow-500' :
+                            note.type === 'EVENT' ? 'bg-purple-500' :
                             'bg-gray-500'
                           }`}
                         />
                         <span className={`text-xs truncate ${
-                          note.type === 'task' ? 'text-blue-700' :
-                          note.type === 'reminder' ? 'text-yellow-700' :
-                          note.type === 'event' ? 'text-purple-700' :
+                          note.type === 'TASK' ? 'text-blue-700' :
+                          note.type === 'REMINDER' ? 'text-yellow-700' :
+                          note.type === 'EVENT' ? 'text-purple-700' :
                           'text-gray-700'
                         }`}>
                           {note.title}
@@ -320,7 +320,7 @@ export function WorkflowCalendar({
                       variant="outline"
                       onClick={() => {
                         setSelectedDate(dayData.date)
-                        setNoteForm({ title: '', content: '', type: 'note' })
+                        setNoteForm({ title: '', content: '', type: 'NOTE' })
                         setEditingNoteId(null)
                       }}
                     >
@@ -407,10 +407,10 @@ export function WorkflowCalendar({
                           onChange={(e) => setNoteForm(prev => ({ ...prev, type: e.target.value as any }))}
                           className="w-full p-2 border rounded"
                         >
-                          <option value="note">Not</option>
-                          <option value="task">Görev</option>
-                          <option value="reminder">Hatırlatma</option>
-                          <option value="event">Etkinlik</option>
+                          <option value="NOTE">Not</option>
+                          <option value="TASK">Görev</option>
+                          <option value="REMINDER">Hatırlatma</option>
+                          <option value="EVENT">Etkinlik</option>
                         </select>
                       </div>
                       <Button

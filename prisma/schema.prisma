@@ -45,6 +45,7 @@ model User {
   quotesApproved          Quote[]                       @relation("QuoteApprovedBy")
   quotes                  Quote[]                       @relation("QuoteCreatedBy")
   sessions                Session[]
+  calendarNotes           CalendarNote[]
 }
 
 model Session {
@@ -1522,4 +1523,25 @@ model ChatbotContact {
   city      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model CalendarNote {
+  id        String           @id @default(cuid())
+  date      String           // Date in YYYY-MM-DD format
+  title     String
+  content   String
+  type      CalendarNoteType @default(NOTE)
+  createdBy String
+  user      User             @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@map("calendar_notes")
+}
+
+enum CalendarNoteType {
+  TASK
+  REMINDER
+  EVENT
+  NOTE
 }

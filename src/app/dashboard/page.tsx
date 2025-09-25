@@ -57,20 +57,7 @@ export default function DashboardPage() {
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([])
   const [projectsLoading, setProjectsLoading] = useState(true)
   const [calendarNotes, setCalendarNotes] = useState<any[]>([])
-
-  // Load notes from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedNotes = localStorage.getItem('calendar-notes')
-      if (savedNotes) {
-        try {
-          setCalendarNotes(JSON.parse(savedNotes))
-        } catch (error) {
-          console.error('Error loading calendar notes:', error)
-        }
-      }
-    }
-  }, [])
+  const [notesLoading, setNotesLoading] = useState(true)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -80,8 +67,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (session?.user) {
+      console.log('Dashboard useEffect - session found, calling API functions')
       fetchMetrics()
       fetchRecentProjects()
+      fetchCalendarNotes()
     }
   }, [session])
 
@@ -116,6 +105,26 @@ export default function DashboardPage() {
       console.error('Error fetching recent projects:', error)
     } finally {
       setProjectsLoading(false)
+    }
+  }
+
+  const fetchCalendarNotes = async () => {
+    console.log('fetchCalendarNotes called - TEST')
+    try {
+      setNotesLoading(true)
+      const response = await fetch('/api/calendar-notes')
+      console.log('Calendar notes response:', response.status)
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Calendar notes data:', data)
+        setCalendarNotes(data)
+      } else {
+        console.error('Failed to fetch calendar notes')
+      }
+    } catch (error) {
+      console.error('Error fetching calendar notes:', error)
+    } finally {
+      setNotesLoading(false)
     }
   }
 
@@ -154,34 +163,64 @@ export default function DashboardPage() {
 
   const user = session.user
 
-  const saveNotesToStorage = (notes: any[]) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('calendar-notes', JSON.stringify(notes))
+  const handleAddNote = async (note: any) => {
+    try {
+      const response = await fetch('/api/calendar-notes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(note)
+      })
+
+      if (response.ok) {
+        const newNote = await response.json()
+        setCalendarNotes(prev => [...prev, newNote])
+      } else {
+        console.error('Failed to create calendar note')
+      }
+    } catch (error) {
+      console.error('Error creating calendar note:', error)
     }
   }
 
-  const handleAddNote = (note: any) => {
-    const newNote = {
-      id: Date.now().toString(),
-      ...note
+  const handleEditNote = async (id: string, updatedNote: any) => {
+    try {
+      const response = await fetch(`/api/calendar-notes/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedNote)
+      })
+
+      if (response.ok) {
+        const updated = await response.json()
+        setCalendarNotes(prev =>
+          prev.map(note => note.id === id ? updated : note)
+        )
+      } else {
+        console.error('Failed to update calendar note')
+      }
+    } catch (error) {
+      console.error('Error updating calendar note:', error)
     }
-    const updatedNotes = [...calendarNotes, newNote]
-    setCalendarNotes(updatedNotes)
-    saveNotesToStorage(updatedNotes)
   }
 
-  const handleEditNote = (id: string, updatedNote: any) => {
-    const updatedNotes = calendarNotes.map(note =>
-      note.id === id ? { ...note, ...updatedNote } : note
-    )
-    setCalendarNotes(updatedNotes)
-    saveNotesToStorage(updatedNotes)
-  }
+  const handleDeleteNote = async (id: string) => {
+    try {
+      const response = await fetch(`/api/calendar-notes/${id}`, {
+        method: 'DELETE'
+      })
 
-  const handleDeleteNote = (id: string) => {
-    const updatedNotes = calendarNotes.filter(note => note.id !== id)
-    setCalendarNotes(updatedNotes)
-    saveNotesToStorage(updatedNotes)
+      if (response.ok) {
+        setCalendarNotes(prev => prev.filter(note => note.id !== id))
+      } else {
+        console.error('Failed to delete calendar note')
+      }
+    } catch (error) {
+      console.error('Error deleting calendar note:', error)
+    }
   }
 
   return (

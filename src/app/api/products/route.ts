@@ -124,29 +124,58 @@ export async function POST(request: NextRequest) {
     const trimmedCode = body.code?.trim()
     console.log('CREATE body:', body)
 
-    // Validate required fields
-    if (!body.name || (!body.type && !body.category) || !body.brand || body.price === undefined) {
+    // Validate required fields - now supporting both old and new category systems
+    if (!body.name || (!body.type && !body.category && !body.categoryId) || !body.brand || body.price === undefined) {
       console.log('CREATE validation failed:', {
         hasName: !!body.name,
         hasType: !!body.type,
         hasCategory: !!body.category,
+        hasCategoryId: !!body.categoryId,
         hasBrand: !!body.brand,
         hasPrice: body.price !== undefined,
         hasCode: !!trimmedCode
       })
       return NextResponse.json(
-        { error: 'Missing required fields: name, category/type, brand, and price are required' },
+        { error: 'Missing required fields: name, categoryId/category/type, brand, and price are required' },
         { status: 400 }
       )
     }
 
-    // Convert category to ProductType
-    const productType = getTypeFromCategory(body.category || body.type)
-    if (!productType) {
-      return NextResponse.json(
-        { error: 'Invalid product type' },
-        { status: 400 }
-      )
+    // Handle both new categoryId system and legacy category name system
+    let productType = null
+    let categoryId = null
+
+    if (body.categoryId) {
+      // New system: use categoryId directly
+      categoryId = body.categoryId
+      console.log('Using new category system with ID:', categoryId)
+
+      // We still need to set a ProductType for the enum field
+      // For now, let's use a default or try to map from category name if available
+      const category = await prisma.category.findUnique({
+        where: { id: categoryId }
+      })
+
+      if (!category) {
+        return NextResponse.json(
+          { error: 'Category not found' },
+          { status: 400 }
+        )
+      }
+
+      // Try to map category name to ProductType, fallback to ACCESSORY
+      productType = getTypeFromCategory(category.name) || ProductType.ACCESSORY
+      console.log('Mapped category to ProductType:', category.name, '->', productType)
+    } else {
+      // Legacy system: convert category name to ProductType
+      productType = getTypeFromCategory(body.category || body.type)
+      if (!productType) {
+        return NextResponse.json(
+          { error: 'Invalid product type' },
+          { status: 400 }
+        )
+      }
+      console.log('Using legacy category system:', body.category, '->', productType)
     }
 
     // Parse and validate stock
@@ -179,6 +208,7 @@ export async function POST(request: NextRequest) {
         manual: body.manual,
         unitType: body.unitType || 'adet',
         companyId: body.companyId,
+        categoryId: categoryId, // Set the categoryId if using new system
         createdById: session.user.id,
         updatedById: session.user.id
       },

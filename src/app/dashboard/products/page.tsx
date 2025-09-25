@@ -34,6 +34,7 @@ import {
   Archive,
   Edit,
   Trash2,
+  Copy,
   Upload,
   FileSpreadsheet,
   Cable,
@@ -41,6 +42,7 @@ import {
   Loader2,
   RefreshCw,
   Camera,
+  X,
   FileText,
   BookOpen,
   Eye,
@@ -117,10 +119,27 @@ export default function ProductsPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showBulkAddDialog, setShowBulkAddDialog] = useState(false)
+
+  // Raw price input values to avoid formatting conflicts
+  const [rawPriceInputs, setRawPriceInputs] = useState({
+    price: '',
+    purchasePrice: '',
+    editPrice: '',
+    editPurchasePrice: ''
+  })
+
+  // Price input editing states
+  const [editingPriceFields, setEditingPriceFields] = useState({
+    price: false,
+    purchasePrice: false,
+    editPrice: false,
+    editPurchasePrice: false
+  })
 
   // Excel Upload States
   const [excelFile, setExcelFile] = useState<File | null>(null)
@@ -355,14 +374,12 @@ export default function ProductsPage() {
         throw new Error(`Failed to fetch categories: ${response.status} ${response.statusText}`)
       }
       const data = await response.json()
-      console.log('📊 Categories data received:', data)
 
       // Use passed products or current state
       const productsToUse = currentProducts || products;
 
       // Map icons from string to component and ensure count is calculated correctly
       const mappedCategories = data.map((cat: any) => {
-        console.log(`🔍 Category "${cat.name}": API count = ${cat.count}`);
 
         // Always calculate count from products array
         let actualCount = 0;
@@ -390,7 +407,6 @@ export default function ProductsPage() {
           });
 
           actualCount = matchingProducts.length;
-          console.log(`  📊 Final count for "${cat.name}": ${actualCount}`);
         }
 
         return {
@@ -401,7 +417,6 @@ export default function ProductsPage() {
       })
 
       setCategories(mappedCategories)
-      console.log('✅ Categories updated successfully with counts:', mappedCategories.map((c: any) => `${c.name}: ${c.count}`))
     } catch (error) {
       console.error('❌ Error fetching categories:', error)
       toast({
@@ -480,12 +495,57 @@ export default function ProductsPage() {
 
 
   const searchValue = searchTerm.toLowerCase()
-  const filteredProducts = products.filter(product =>
-    (product.name || '').toLowerCase().includes(searchValue) ||
-    (product.brand || '').toLowerCase().includes(searchValue) ||
-    (product.category || '').toLowerCase().includes(searchValue) ||
-    (product.code || '').toLowerCase().includes(searchValue)
-  )
+  const filteredProducts = products.filter(product => {
+    // If we have a selected category filter, only show products from that category
+    if (selectedCategoryFilter && selectedCategoryFilter !== 'all') {
+      const selectedCategory = categories.find(cat => cat.id === selectedCategoryFilter)
+
+      // Check both categoryId and legacy category name matching
+      const matchesCategoryId = product.categoryId === selectedCategoryFilter
+
+      // Check if product category matches the selected category name
+      // Also check category mappings for different naming conventions
+      const categoryMappings: Record<string, string[]> = {
+        'Solar Paneller': ['Panel', 'panel', 'Solar Panel', 'Güneş Paneli'],
+        'İnverterler': ['İnverter', 'inverter', 'Inverter'],
+        'Bataryalar': ['Batarya', 'batarya', 'Battery'],
+        'Montaj Malzemeleri': ['Montaj', 'montaj', 'Mounting', 'Konstrüksiyon'],
+        'Kablolar': ['Kablo', 'kablo', 'Cable', 'Kablolar'],
+        'İzleme Sistemleri': ['İzleme', 'izleme', 'Monitoring'],
+        'Aksesuarlar': ['Aksesuar', 'aksesuar', 'Accessory', 'Aksesuarlar']
+      }
+
+      const categoryName = selectedCategory?.name || ''
+      const possibleMatches = categoryMappings[categoryName] || [categoryName]
+      const matchesCategoryName = possibleMatches.includes(product.category || '')
+
+      const matchesCategory = matchesCategoryId || matchesCategoryName
+
+      // If category filter is active, only return products that match the category
+      if (!matchesCategory) return false
+
+      // If no search term, show all products from the category
+      if (!searchValue) return true
+
+      // If search term exists, check if product matches search term
+      return (
+        (product.name || '').toLowerCase().includes(searchValue) ||
+        (product.brand || '').toLowerCase().includes(searchValue) ||
+        (product.category || '').toLowerCase().includes(searchValue) ||
+        (product.code || '').toLowerCase().includes(searchValue)
+      )
+    }
+
+    // No category filter - standard search functionality
+    if (!searchValue) return true // Show all products if no search term
+
+    return (
+      (product.name || '').toLowerCase().includes(searchValue) ||
+      (product.brand || '').toLowerCase().includes(searchValue) ||
+      (product.category || '').toLowerCase().includes(searchValue) ||
+      (product.code || '').toLowerCase().includes(searchValue)
+    )
+  })
 
   const filteredPackages = packages.filter(pkg => {
     // Sadece root paketleri göster (alt paketler parentları içinde gösterilecek)
@@ -991,7 +1051,7 @@ export default function ProductsPage() {
 
   const handleAddProduct = async () => {
     const trimmedCode = formData.code?.trim()
-    if (!formData.name || !formData.category || !formData.price || !formData.brand || !trimmedCode) {
+    if (!formData.name || !formData.categoryId || !formData.price || !formData.brand || !trimmedCode) {
       toast({
         title: "Hata",
         description: "Lütfen tüm gerekli alanları doldurun.",
@@ -1032,7 +1092,7 @@ export default function ProductsPage() {
 
       console.log('Sending product data:', {
         name: formData.name,
-        category: formData.category,
+        categoryId: formData.categoryId,
         code: trimmedCode,
         brand: formData.brand,
         model: formData.model || '',
@@ -1057,7 +1117,7 @@ export default function ProductsPage() {
         },
         body: JSON.stringify({
           name: formData.name,
-          category: formData.category,
+          categoryId: formData.categoryId,
           code: trimmedCode,
           brand: formData.brand,
           model: formData.model || '',
@@ -1096,26 +1156,138 @@ export default function ProductsPage() {
         throw new Error(errorMessage)
       }
 
-      // Success - update local state
-      // API returns { message, product } format, so use the product field
-      const productData = responseBody.product || responseBody
-      console.log('🔄 Adding product data:', productData)
-      setProducts(prevProducts => [...prevProducts, productData])
+      // Success - refresh data from server to ensure consistency
       setFormData({})
       setShowAddDialog(false)
-      
+
       toast({
         title: "Başarılı",
         description: "Ürün başarıyla eklendi."
       })
-      
-      // Refresh categories to update counts
-      fetchCategories()
+
+      // Refresh both products and categories
+      await fetchProducts()
+      await fetchCategories()
     } catch (error) {
       console.error('Error adding product:', error)
       toast({
         title: "Hata",
         description: error instanceof Error ? error.message : "Ürün eklenirken bir hata oluştu.",
+        variant: "destructive"
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Handle product duplication
+  const handleDuplicateProduct = async (product: Product) => {
+    try {
+      setSaving(true)
+
+      // Create new product data with "Kopya" prefix and updated code
+      const duplicatedProduct = {
+        name: `${product.name} - Kopya`,
+        categoryId: product.categoryId,
+        code: `${product.code || ''}-COPY-${Date.now().toString().slice(-4)}`,
+        brand: product.brand,
+        model: product.model || '',
+        power: product.power,
+        price: Number(product.price),
+        purchasePrice: product.purchasePrice,
+        purchasePriceUsd: product.purchasePriceUsd,
+        stock: 0, // Reset stock for duplicated product
+        minStock: product.minStock || 0,
+        warranty: product.warranty,
+        description: product.description || '',
+        images: product.images || '[]',
+        datasheet: product.datasheet,
+        specifications: product.specifications
+      }
+
+      console.log('🔄 Duplicating product:', duplicatedProduct)
+
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(duplicatedProduct)
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to duplicate product')
+      }
+
+      toast({
+        title: "Başarılı",
+        description: "Ürün başarıyla çoğaltıldı."
+      })
+
+      // Refresh products list
+      await fetchProducts()
+      await fetchCategories()
+    } catch (error) {
+      console.error('Error duplicating product:', error)
+      toast({
+        title: "Hata",
+        description: error instanceof Error ? error.message : "Ürün çoğaltılırken bir hata oluştu.",
+        variant: "destructive"
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Handle package duplication
+  const handleDuplicatePackage = async (pkg: any) => {
+    try {
+      setSaving(true)
+
+      // Create new package data with "Kopya" prefix
+      const duplicatedPackage = {
+        name: `${pkg.name} - Kopya`,
+        type: pkg.type,
+        description: pkg.description || '',
+        parentId: pkg.parentId, // Keep the same parent if it's a child package
+        items: pkg.items?.map((item: any) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice
+        })) || [],
+        totalPower: pkg.totalPower,
+        isActive: pkg.isActive,
+        isFeatured: false // Reset featured status for duplicated packages
+      }
+
+      console.log('🔄 Duplicating package:', duplicatedPackage)
+
+      const response = await fetch('/api/packages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(duplicatedPackage)
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to duplicate package')
+      }
+
+      toast({
+        title: "Başarılı",
+        description: "Paket başarıyla çoğaltıldı."
+      })
+
+      // Refresh packages list
+      await fetchPackages()
+    } catch (error) {
+      console.error('Error duplicating package:', error)
+      toast({
+        title: "Hata",
+        description: error instanceof Error ? error.message : "Paket çoğaltılırken bir hata oluştu.",
         variant: "destructive"
       })
     } finally {
@@ -1136,7 +1308,7 @@ export default function ProductsPage() {
 
     const trimmedCode = formData.code?.trim()
 
-    if (!selectedProduct || !formData.name || !formData.category || !formData.price || !trimmedCode) {
+    if (!selectedProduct || !formData.name || !formData.categoryId || !formData.price || !trimmedCode) {
       toast({
         title: "Hata",
         description: "Lütfen tüm gerekli alanları doldurun.",
@@ -1187,7 +1359,7 @@ export default function ProductsPage() {
 
       const requestBody = {
         name: formData.name,
-        category: formData.category,
+        categoryId: formData.categoryId,
         code: trimmedCode,
         brand: formData.brand,
         model: formData.model,
@@ -1231,21 +1403,18 @@ export default function ProductsPage() {
       const productData = updatedProduct.product || updatedProduct
       console.log('🔄 Using product data:', productData)
 
-      setProducts(products.map(product =>
-        product.id === selectedProduct.id ? productData : product
-      ))
-      
       setFormData({})
       setSelectedProduct(null)
       setShowEditDialog(false)
-      
+
       toast({
         title: "Başarılı",
         description: "Ürün başarıyla güncellendi."
       })
-      
-      // Refresh categories to update counts
-      fetchCategories()
+
+      // Refresh both products and categories
+      await fetchProducts()
+      await fetchCategories()
     } catch (error) {
       console.error('Error updating product:', error)
       toast({
@@ -1329,8 +1498,7 @@ export default function ProductsPage() {
         throw new Error(errorMessage)
       }
 
-      // Success - update local state
-      setProducts(prevProducts => prevProducts.filter(product => product.id !== selectedProduct.id))
+      // Success - close dialog first
       setSelectedProduct(null)
       setShowDeleteDialog(false)
 
@@ -1338,9 +1506,10 @@ export default function ProductsPage() {
         title: "Başarılı",
         description: "Ürün başarıyla silindi."
       })
-      
-      // Refresh categories to update counts
-      fetchCategories()
+
+      // Refresh both products and categories
+      await fetchProducts()
+      await fetchCategories()
     } catch (error) {
       console.error('Error deleting product:', error)
       toast({
@@ -1361,12 +1530,28 @@ export default function ProductsPage() {
   }
 
   const handleFilterByCategory = (categoryId: string) => {
-    // Add filter functionality - for now just log
-    console.log('Filtering by category:', categoryId)
-    // You can implement actual filtering logic here
+    // Find the category to show its name in the search
+    const category = categories.find(cat => cat.id === categoryId)
+    const categoryName = category?.name || ''
+
+
+    // Set the category filter instead of search term
+    setSelectedCategoryFilter(categoryId)
+    setSearchTerm('') // Clear search term when filtering by category
+
+    // Show toast with filter info
     toast({
-      title: "Filtre",
-      description: `${selectedCategory?.name} kategorisine göre filtrelendi.`
+      title: "Kategori Filtresi",
+      description: `${categoryName} kategorisine göre filtrelendi.`
+    })
+  }
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    setSelectedCategoryFilter(null)
+    toast({
+      title: "Filtreler Temizlendi",
+      description: "Tüm ürünler gösteriliyor."
     })
   }
 
@@ -1710,21 +1895,13 @@ export default function ProductsPage() {
 
     // Find the correct category name for the dropdown
     let categoryName = product.category || '';
-    console.log(`🔍 Product category info:`, {
-      productCategory: product.category,
-      productCategoryId: product.categoryId,
-      availableCategories: categories.map(c => ({ id: c.id, name: c.name }))
-    });
 
     // Priority: use categoryId if available, fallback to category string
     if (product.categoryId && categories.length > 0) {
       const categoryObj = categories.find(cat => cat.id === product.categoryId);
-      console.log(`🔍 Found category by ID:`, categoryObj);
       if (categoryObj) {
         categoryName = categoryObj.name;
-        console.log(`✅ Using category from ID: "${categoryName}"`);
       } else {
-        console.log(`❌ CategoryId "${product.categoryId}" not found in categories array`);
       }
     } else if (product.category) {
       // Fallback to string category with mapping
@@ -1750,7 +1927,7 @@ export default function ProductsPage() {
 
     setFormData({
       ...product,
-      category: categoryName,
+      categoryId: product.categoryId, // Use categoryId instead of category name
       power: typeof product.power === 'string' ? product.power.replace(/[^0-9.]/g, '') : String(product.power || ''),
       warranty: typeof product.warranty === 'string' ? product.warranty.replace(/[^0-9]/g, '') : String(product.warranty || '')
     })
@@ -1827,23 +2004,9 @@ export default function ProductsPage() {
         throw new Error(error.error || 'Failed to create package')
       }
 
-      const newPackage = await response.json()
+      await response.json()
 
-      // Alt paketse parent'ın children'ına ekle, değilse direkt listeye ekle
-      if (packageFormData.parentId) {
-        setPackages(prev => prev.map(pkg => {
-          if (pkg.id === packageFormData.parentId) {
-            return {
-              ...pkg,
-              children: [...(pkg.children || []), newPackage]
-            }
-          }
-          return pkg
-        }))
-      } else {
-        setPackages(prev => [...prev, newPackage])
-      }
-
+      // Reset form and close dialog
       setPackageFormData({
         name: '',
         type: 'ON_GRID',
@@ -1858,6 +2021,9 @@ export default function ProductsPage() {
         title: "Başarılı",
         description: "Paket başarıyla oluşturuldu."
       })
+
+      // Refresh packages list from server
+      await fetchPackages()
     } catch (error) {
       console.error('Error creating package:', error)
       toast({
@@ -1895,8 +2061,7 @@ export default function ProductsPage() {
         throw new Error(error.error || 'Failed to update package')
       }
 
-      const updatedPackage = await response.json()
-      setPackages(packages.map(pkg => pkg.id === selectedPackage.id ? updatedPackage : pkg))
+      await response.json()
       setSelectedPackage(null)
       setShowEditPackageDialog(false)
 
@@ -1904,6 +2069,9 @@ export default function ProductsPage() {
         title: "Başarılı",
         description: "Paket başarıyla güncellendi."
       })
+
+      // Refresh packages list from server
+      await fetchPackages()
     } catch (error) {
       console.error('Error updating package:', error)
       toast({
@@ -2095,14 +2263,39 @@ export default function ProductsPage() {
         {/* Header Actions */}
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input 
-                placeholder="Ürün ara..." 
-                className="pl-10 w-64"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Ürün ara..."
+                  className="pl-10 pr-10 w-64"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {(searchTerm || selectedCategoryFilter) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-100"
+                    onClick={clearFilters}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+              {selectedCategoryFilter && (
+                <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm">
+                  <span>Kategori: {categories.find(c => c.id === selectedCategoryFilter)?.name}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0 hover:bg-blue-100"
+                    onClick={clearFilters}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
             </div>
             <Button
               variant="outline"
@@ -2165,13 +2358,13 @@ export default function ProductsPage() {
                         </div>
                         <div className="grid gap-2">
                           <Label htmlFor="category" className="text-sm font-medium">Kategori *</Label>
-                          <Select value={formData.category || ''} onValueChange={(value) => setFormData({...formData, category: value})}>
+                          <Select value={formData.categoryId || ''} onValueChange={(value) => setFormData({...formData, categoryId: value})}>
                             <SelectTrigger className="bg-white">
                               <SelectValue placeholder="Kategori seçin" />
                             </SelectTrigger>
                             <SelectContent>
                               {categories.map((category) => (
-                                <SelectItem key={category.id} value={category.name}>
+                                <SelectItem key={category.id} value={category.id}>
                                   {category.name}
                                 </SelectItem>
                               ))}
@@ -2255,10 +2448,43 @@ export default function ProductsPage() {
                             <div className="flex gap-2">
                               <Input
                                 id="purchasePrice"
-                                type="number"
-                                value={formData.purchasePrice ?? ''}
-                                onChange={(e) => setFormData({...formData, purchasePrice: Number(e.target.value)})}
-                                placeholder="0"
+                                type="text"
+                                value={editingPriceFields.purchasePrice ?
+                                  rawPriceInputs.purchasePrice :
+                                  (formData.purchasePrice ? formData.purchasePrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '')
+                                }
+                                onChange={(e) => {
+                                  let inputValue = e.target.value
+                                  // Allow only numbers, comma, dot and minus
+                                  inputValue = inputValue.replace(/[^0-9.,\-]/g, '')
+
+                                  // Update raw input for editing
+                                  setRawPriceInputs(prev => ({...prev, purchasePrice: inputValue}))
+
+                                  if (inputValue === '' || inputValue === '-') {
+                                    setFormData({...formData, purchasePrice: undefined})
+                                  } else {
+                                    // Convert Turkish format to number
+                                    let cleanValue = inputValue.replace(/\./g, '').replace(',', '.')
+                                    const numValue = parseFloat(cleanValue)
+                                    if (!isNaN(numValue) && numValue >= 0) {
+                                      setFormData({...formData, purchasePrice: numValue})
+                                    }
+                                  }
+                                }}
+                                onFocus={() => {
+                                  // Switch to editing mode and show raw number
+                                  setEditingPriceFields(prev => ({...prev, purchasePrice: true}))
+                                  if (formData.purchasePrice) {
+                                    setRawPriceInputs(prev => ({...prev, purchasePrice: formData.purchasePrice!.toString()}))
+                                  }
+                                }}
+                                onBlur={() => {
+                                  // Switch back to formatted display
+                                  setEditingPriceFields(prev => ({...prev, purchasePrice: false}))
+                                  setRawPriceInputs(prev => ({...prev, purchasePrice: ''}))
+                                }}
+                                placeholder="0,00"
                                 className="bg-white flex-1"
                               />
                               <span className="flex items-center px-2 text-xs text-gray-500 bg-gray-100 rounded-r border-l">₺</span>
@@ -2289,10 +2515,43 @@ export default function ProductsPage() {
                         <div className="flex gap-2">
                           <Input
                             id="price"
-                            type="number"
-                            value={formData.price ?? ''}
-                            onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
-                            placeholder="0"
+                            type="text"
+                            value={editingPriceFields.price ?
+                              rawPriceInputs.price :
+                              (formData.price ? formData.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '')
+                            }
+                            onChange={(e) => {
+                              let inputValue = e.target.value
+                              // Allow only numbers, comma, dot and minus
+                              inputValue = inputValue.replace(/[^0-9.,\-]/g, '')
+
+                              // Update raw input for editing
+                              setRawPriceInputs(prev => ({...prev, price: inputValue}))
+
+                              if (inputValue === '' || inputValue === '-') {
+                                setFormData({...formData, price: undefined})
+                              } else {
+                                // Convert Turkish format to number
+                                let cleanValue = inputValue.replace(/\./g, '').replace(',', '.')
+                                const numValue = parseFloat(cleanValue)
+                                if (!isNaN(numValue) && numValue >= 0) {
+                                  setFormData({...formData, price: numValue})
+                                }
+                              }
+                            }}
+                            onFocus={() => {
+                              // Switch to editing mode and show raw number
+                              setEditingPriceFields(prev => ({...prev, price: true}))
+                              if (formData.price !== undefined) {
+                                setRawPriceInputs(prev => ({...prev, price: formData.price!.toString()}))
+                              }
+                            }}
+                            onBlur={(e) => {
+                              // Switch back to formatted display
+                              setEditingPriceFields(prev => ({...prev, price: false}))
+                              setRawPriceInputs(prev => ({...prev, price: ''}))
+                            }}
+                            placeholder="0,00"
                             className="bg-white flex-1"
                           />
                           <span className="flex items-center px-2 text-xs text-gray-500 bg-gray-100 rounded-r border-l">₺</span>
@@ -2612,7 +2871,11 @@ export default function ProductsPage() {
                                 <Edit className="w-4 h-4 mr-2" />
                                 Düzenle
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem onClick={() => handleDuplicateProduct(product)}>
+                                <Copy className="w-4 h-4 mr-2" />
+                                Çoğalt
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
                                 onClick={() => openDeleteDialog(product)}
                                 className="text-red-600"
                               >
@@ -3266,13 +3529,13 @@ export default function ProductsPage() {
                       </div>
                       <div className="grid gap-2">
                         <Label htmlFor="edit-category" className="text-sm font-medium">Kategori *</Label>
-                        <Select value={formData.category || ''} onValueChange={(value) => setFormData({...formData, category: value})}>
+                        <Select value={formData.categoryId || ''} onValueChange={(value) => setFormData({...formData, categoryId: value})}>
                           <SelectTrigger className="bg-white">
                             <SelectValue placeholder="Kategori seçin" />
                           </SelectTrigger>
                           <SelectContent>
                             {categories.map((category) => (
-                              <SelectItem key={category.id} value={category.name}>
+                              <SelectItem key={category.id} value={category.id}>
                                 {category.name}
                               </SelectItem>
                             ))}
@@ -3356,10 +3619,43 @@ export default function ProductsPage() {
                           <div className="flex gap-2">
                             <Input
                               id="edit-purchasePrice"
-                              type="number"
-                              value={formData.purchasePrice ?? ''}
-                              onChange={(e) => setFormData({...formData, purchasePrice: Number(e.target.value)})}
-                              placeholder="0"
+                              type="text"
+                              value={editingPriceFields.editPurchasePrice ?
+                                rawPriceInputs.editPurchasePrice :
+                                (formData.purchasePrice ? formData.purchasePrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '')
+                              }
+                              onChange={(e) => {
+                                let inputValue = e.target.value
+                                // Allow only numbers, comma, dot and minus
+                                inputValue = inputValue.replace(/[^0-9.,\-]/g, '')
+
+                                // Update raw input for editing
+                                setRawPriceInputs(prev => ({...prev, editPurchasePrice: inputValue}))
+
+                                if (inputValue === '' || inputValue === '-') {
+                                  setFormData({...formData, purchasePrice: undefined})
+                                } else {
+                                  // Convert Turkish format to number
+                                  let cleanValue = inputValue.replace(/\./g, '').replace(',', '.')
+                                  const numValue = parseFloat(cleanValue)
+                                  if (!isNaN(numValue) && numValue >= 0) {
+                                    setFormData({...formData, purchasePrice: numValue})
+                                  }
+                                }
+                              }}
+                              onFocus={() => {
+                                // Switch to editing mode and show raw number
+                                setEditingPriceFields(prev => ({...prev, editPurchasePrice: true}))
+                                if (formData.purchasePrice) {
+                                  setRawPriceInputs(prev => ({...prev, editPurchasePrice: formData.purchasePrice!.toString()}))
+                                }
+                              }}
+                              onBlur={() => {
+                                // Switch back to formatted display
+                                setEditingPriceFields(prev => ({...prev, editPurchasePrice: false}))
+                                setRawPriceInputs(prev => ({...prev, editPurchasePrice: ''}))
+                              }}
+                              placeholder="0,00"
                               className="bg-white flex-1"
                             />
                             <span className="flex items-center px-2 text-xs text-gray-500 bg-gray-100 rounded-r border-l">₺</span>
@@ -3390,11 +3686,44 @@ export default function ProductsPage() {
                       <div className="flex gap-2">
                         <Input
                           id="edit-price"
-                          type="number"
-                          value={formData.price ?? ''}
-                          onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
+                          type="text"
+                          value={editingPriceFields.editPrice ?
+                            rawPriceInputs.editPrice :
+                            (formData.price ? formData.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '')
+                          }
+                          onChange={(e) => {
+                            let inputValue = e.target.value
+                            // Allow only numbers, comma, dot and minus
+                            inputValue = inputValue.replace(/[^0-9.,\-]/g, '')
+
+                            // Update raw input for editing
+                            setRawPriceInputs(prev => ({...prev, editPrice: inputValue}))
+
+                            if (inputValue === '' || inputValue === '-') {
+                              setFormData({...formData, price: undefined})
+                            } else {
+                              // Convert Turkish format to number
+                              let cleanValue = inputValue.replace(/\./g, '').replace(',', '.')
+                              const numValue = parseFloat(cleanValue)
+                              if (!isNaN(numValue) && numValue >= 0) {
+                                setFormData({...formData, price: numValue})
+                              }
+                            }
+                          }}
+                          onFocus={() => {
+                            // Switch to editing mode and show raw number
+                            setEditingPriceFields(prev => ({...prev, editPrice: true}))
+                            if (formData.price) {
+                              setRawPriceInputs(prev => ({...prev, editPrice: formData.price!.toString()}))
+                            }
+                          }}
+                          onBlur={() => {
+                            // Switch back to formatted display
+                            setEditingPriceFields(prev => ({...prev, editPrice: false}))
+                            setRawPriceInputs(prev => ({...prev, editPrice: ''}))
+                          }}
                           className="bg-white flex-1"
-                          placeholder="0"
+                          placeholder="0,00"
                         />
                         <span className="flex items-center px-3 text-sm text-gray-500">₺</span>
                       </div>
@@ -4356,6 +4685,13 @@ export default function ProductsPage() {
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={(e) => {
                                     e.stopPropagation()
+                                    handleDuplicatePackage(pkg)
+                                  }}>
+                                    <Copy className="w-4 h-4 mr-2" />
+                                    Çoğalt
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={(e) => {
+                                    e.stopPropagation()
                                     openAddSubPackageDialog(pkg)
                                   }}>
                                     <Plus className="w-4 h-4 mr-2" />
@@ -4411,6 +4747,10 @@ export default function ProductsPage() {
                                         <DropdownMenuItem onClick={() => openEditPackageDialog(childPkg)}>
                                           <Edit className="w-4 h-4 mr-2" />
                                           Düzenle
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleDuplicatePackage(childPkg)}>
+                                          <Copy className="w-4 h-4 mr-2" />
+                                          Çoğalt
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
                                           onClick={() => openDeletePackageDialog(childPkg)}

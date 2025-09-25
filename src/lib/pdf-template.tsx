@@ -717,21 +717,23 @@ export const QuotePDF: React.FC<QuotePDFProps> = ({ quote }) => {
             </View>
           ))}
           
-          {/* Labor Row */}
-          <View style={styles.tableRow}>
-            <View style={styles.tableCellProduct}>
-              <Text style={styles.productName}>{sanitizeText('Kurulum ve İşçilik')}</Text>
-              <Text style={styles.productSpecs}>Profesyonel kurulum hizmeti</Text>
+          {/* Labor Row - Only show if laborCost > 0 */}
+          {(quote.laborCost || 0) > 0 && (
+            <View style={styles.tableRow}>
+              <View style={styles.tableCellProduct}>
+                <Text style={styles.productName}>{sanitizeText('Kurulum ve İşçilik')}</Text>
+                <Text style={styles.productSpecs}>Profesyonel kurulum hizmeti</Text>
+              </View>
+              <Text style={[styles.tableCell, styles.tableCellBrand]}>-</Text>
+              <Text style={[styles.tableCell, styles.tableCellQuantity]}>1</Text>
+              <Text style={[styles.tableCell, styles.tableCellPrice]}>
+                {formatCurrency(quote.laborCost || 0)}
+              </Text>
+              <Text style={[styles.tableCell, styles.tableCellTotal]}>
+                {formatCurrency(quote.laborCost || 0)}
+              </Text>
             </View>
-            <Text style={[styles.tableCell, styles.tableCellBrand]}>-</Text>
-            <Text style={[styles.tableCell, styles.tableCellQuantity]}>1</Text>
-            <Text style={[styles.tableCell, styles.tableCellPrice]}>
-              {formatCurrency(quote.laborCost || 0)}
-            </Text>
-            <Text style={[styles.tableCell, styles.tableCellTotal]}>
-              {formatCurrency(quote.laborCost || 0)}
-            </Text>
-          </View>
+          )}
         </View>
 
         {/* Pricing Summary */}
@@ -740,10 +742,12 @@ export const QuotePDF: React.FC<QuotePDFProps> = ({ quote }) => {
             <Text style={styles.summaryLabel}>Alt Toplam:</Text>
             <Text style={styles.summaryValue}>{formatCurrency(quote.subtotal)}</Text>
           </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>İşçilik:</Text>
-            <Text style={styles.summaryValue}>{formatCurrency(quote.laborCost || 0)}</Text>
-          </View>
+          {(quote.laborCost || 0) > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>İşçilik:</Text>
+              <Text style={styles.summaryValue}>{formatCurrency(quote.laborCost || 0)}</Text>
+            </View>
+          )}
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>KDV (%20):</Text>
             <Text style={styles.summaryValue}>{formatCurrency(quote.tax)}</Text>
@@ -809,7 +813,9 @@ export const QuotePDF: React.FC<QuotePDFProps> = ({ quote }) => {
           <Text style={styles.sectionTitle}>Şartlar ve Koşullar</Text>
           <Text style={styles.termItem}>{`• Bu teklif ${formatDate(quote.validUntil)} tarihine kadar geçerlidir.`}</Text>
           <Text style={styles.termItem}>• Fiyatlar KDV dahil olarak gösterilmiştir.</Text>
-          <Text style={styles.termItem}>• Kurulum süresi hava koşullarına bağlı olarak 3-5 iş günü arasındadır.</Text>
+          {(quote.laborCost || 0) > 0 && (
+            <Text style={styles.termItem}>• Kurulum süresi hava koşullarına bağlı olarak 3-5 iş günü arasındadır.</Text>
+          )}
           <Text style={styles.termItem}>• Paneller için 25 yıl performans garantisi mevcuttur.</Text>
           <Text style={styles.termItem}>• İnverterler için 10 yıl üretici garantisi mevcuttur.</Text>
           <Text style={styles.termItem}>• YEKDEM mevzuatı değişikliklerinden sorumlu değiliz.</Text>

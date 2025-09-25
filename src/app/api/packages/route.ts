@@ -8,8 +8,10 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
+      console.log('🔒 No session found for packages API')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    console.log('✅ Session found for packages API:', { userId: session.user.id, role: session.user.role })
 
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type') as PackageType | null
