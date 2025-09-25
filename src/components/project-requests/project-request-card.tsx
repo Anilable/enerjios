@@ -24,6 +24,12 @@ import {
   Trash2,
   Edit
 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useRouter } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
 import { useEffect, useState } from 'react'
@@ -199,258 +205,202 @@ export function ProjectRequestCard({ request, onClick, onDelete, onStatusUpdate,
           </svg>
         </div>
       </div>
-      <CardHeader className="pb-3 pr-20">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center space-x-3 min-w-0 flex-1">
-            <Avatar className="w-8 h-8 flex-shrink-0">
-              <AvatarFallback className="text-xs font-medium bg-primary/10 text-primary">
-                {getInitials(request.customerName)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1 space-y-1">
-              <h3 className="font-semibold text-sm leading-tight truncate" title={request.customerName}>
-                {request.customerName}
-              </h3>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <MapPin className="w-3 h-3 flex-shrink-0" />
-                <span className="truncate max-w-[120px]" title={request.location}>
-                  {request.location}
-                </span>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg">{REQUEST_SOURCE_ICONS[request.source]}</span>
+              <h3 className="font-semibold">{request.customerName}</h3>
+              <Badge className={`text-xs ${REQUEST_SOURCE_COLORS[request.source].badge}`}>
+                {REQUEST_SOURCE_LABELS[request.source]}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+              <MapPin className="w-4 h-4" />
+              <span>{request.location}</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+              <div>
+                <p className="text-sm font-medium">Kapasite</p>
+                <p className="text-lg font-bold text-blue-600">{request.estimatedCapacity} kW</p>
+              </div>
+              {request.estimatedBudget && canViewFinancials && (
+                <div>
+                  <p className="text-sm font-medium">Bütçe</p>
+                  <p className="text-lg font-bold text-green-600">{formatCurrency(request.estimatedBudget)}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-medium">Proje Tipi</p>
+                <p className="text-lg font-bold">{PROJECT_TYPE_LABELS[request.projectType]}</p>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">İletişim:</p>
+              <div className="flex flex-wrap gap-1">
+                <Badge variant="outline" className="text-xs flex items-center gap-1">
+                  <Phone className="w-3 h-3" />
+                  {request.customerPhone}
+                </Badge>
+                <Badge variant="outline" className="text-xs flex items-center gap-1">
+                  <Mail className="w-3 h-3" />
+                  {request.customerEmail}
+                </Badge>
+                {request.assignedEngineerName && (
+                  <Badge variant="outline" className="text-xs flex items-center gap-1">
+                    <User className="w-3 h-3" />
+                    {request.assignedEngineerName}
+                  </Badge>
+                )}
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {request.status !== 'LOST' && request.status !== 'CONVERTED_TO_PROJECT' && canViewFinancials && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary"
-                  onClick={(e) => {
+          <div className="flex items-center gap-2 ml-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {request.status !== 'LOST' && request.status !== 'CONVERTED_TO_PROJECT' && canViewFinancials && (
+                  <DropdownMenuItem onClick={(e) => {
                     e.stopPropagation()
-                    e.preventDefault()
                     if (hasQuote) {
-                      console.log('Edit quote button clicked for:', request.id)
                       router.push(`/dashboard/quotes/create/${request.id}`)
                     } else {
-                      console.log('Create quote button clicked for:', request.id)
                       router.push(`/dashboard/quotes/create/${request.id}`)
                     }
-                  }}
-                  title={hasQuote ? "Teklifi Düzenle" : "Teklif Oluştur"}
-                >
-                  {hasQuote ? <Edit className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                </Button>
-                {hasQuote && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 hover:bg-orange-50 hover:text-orange-600"
-                    onClick={async (e) => {
-                      e.stopPropagation()
-                      e.preventDefault()
-                      console.log('Request photo button clicked for:', request.id)
-                      // Create photo request for this project
-                      try {
-                        const response = await fetch('/api/photo-request/simple', {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                          },
-                          body: JSON.stringify({
-                            projectRequestId: request.id,
-                            requestType: 'SITE_PHOTOS',
-                            notes: 'Müşteri teklif sonrası fotoğraf talebinde bulundu'
-                          })
-                        })
-                        if (response.ok) {
-                          const data = await response.json()
-                          alert(`Fotoğraf talebi oluşturuldu! Upload linki: ${data.uploadUrl}`)
-                        } else {
-                          alert('Fotoğraf talebi oluşturulamadı!')
-                        }
-                      } catch (error) {
-                        console.error('Error creating photo request:', error)
-                        alert('Hata oluştu!')
-                      }
-                    }}
-                    title="Fotoğraf Talep Et"
-                  >
-                    <Camera className="h-4 w-4" />
-                  </Button>
+                  }}>
+                    {hasQuote ? <Edit className="w-4 h-4 mr-2" /> : <FileText className="w-4 h-4 mr-2" />}
+                    {hasQuote ? 'Teklifi Düzenle' : 'Teklif Oluştur'}
+                  </DropdownMenuItem>
                 )}
-              </>
-            )}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-7 w-7 p-0 hover:bg-gray-100"
-              onClick={(e) => {
-                e.stopPropagation()
-                e.preventDefault()
-                console.log('More actions clicked for:', request.id)
-                // TODO: Hızlı işlemler menüsü açılacak
-              }}
-            >
-              <MoreHorizontal className="h-3 w-3" />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="project-card-content pt-0 space-y-3">
-        {/* Project Type, Priority & Source */}
-        <div className="flex items-center justify-between gap-1 mb-3 flex-wrap">
-          <Badge variant="outline" className="text-xs truncate max-w-[90px] flex-shrink">
-            {PROJECT_TYPE_LABELS[request.projectType]}
-          </Badge>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <Badge
-              variant="outline"
-              className={`text-xs flex items-center gap-1 ${getPriorityColor(request.priority)}`}
-            >
-              {getPriorityIcon(request.priority)}
-              <span className="hidden sm:inline">{getPriorityLabel(request.priority)}</span>
-            </Badge>
-            <Badge
-              variant="outline"
-              className={`text-xs flex items-center gap-1 ${REQUEST_SOURCE_COLORS[request.source].badge}`}
-              title={`Kaynak: ${REQUEST_SOURCE_LABELS[request.source]}`}
-            >
-              <span className="text-xs">{REQUEST_SOURCE_ICONS[request.source]}</span>
-              <span className="hidden lg:inline">{REQUEST_SOURCE_LABELS[request.source]}</span>
-            </Badge>
-          </div>
-        </div>
-
-        {/* Key Details */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <Zap className="w-3 h-3 flex-shrink-0" />
-              <span className="text-xs">Kapasite:</span>
-            </div>
-            <span className="font-medium text-xs">{request.estimatedCapacity} kW</span>
-          </div>
-
-          {request.estimatedBudget && canViewFinancials && (
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <DollarSign className="w-3 h-3 flex-shrink-0" />
-                <span className="text-xs">Bütçe:</span>
-              </div>
-              <span className="font-medium text-xs truncate max-w-[80px]" title={formatCurrency(request.estimatedBudget)}>
-                {formatCurrency(request.estimatedBudget)}
-              </span>
-            </div>
-          )}
-
-          {request.assignedEngineerName && (
-            <div className="flex items-center justify-between text-sm gap-2">
-              <div className="flex items-center gap-1 text-muted-foreground flex-shrink-0">
-                <User className="w-3 h-3" />
-                <span className="text-xs">Atanan:</span>
-              </div>
-              <span className="font-medium text-xs truncate max-w-[90px]" title={request.assignedEngineerName}>
-                {request.assignedEngineerName}
-              </span>
-            </div>
-          )}
-
-          {request.scheduledVisitDate && (
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-1 text-muted-foreground flex-shrink-0">
-                <Calendar className="w-3 h-3" />
-                <span className="text-xs">Ziyaret:</span>
-              </div>
-              <span className="font-medium text-xs truncate max-w-[85px]" title={formatDate(request.scheduledVisitDate)}>
-                {formatDate(request.scheduledVisitDate)}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Contact Info */}
-        <div className="space-y-1 border-t pt-2">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Phone className="w-3 h-3 flex-shrink-0" />
-            <span className="truncate max-w-[140px]" title={request.customerPhone}>
-              {request.customerPhone}
-            </span>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Mail className="w-3 h-3 flex-shrink-0" />
-            <span className="truncate max-w-[140px]" title={request.customerEmail}>
-              {request.customerEmail}
-            </span>
+                {hasQuote && canViewFinancials && (
+                  <DropdownMenuItem onClick={async (e) => {
+                    e.stopPropagation()
+                    try {
+                      const response = await fetch('/api/photo-request/simple', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          projectRequestId: request.id,
+                          requestType: 'SITE_PHOTOS',
+                          notes: 'Müşteri teklif sonrası fotoğraf talebinde bulundu'
+                        })
+                      })
+                      if (response.ok) {
+                        const data = await response.json()
+                        alert(`Fotoğraf talebi oluşturuldu! Upload linki: ${data.uploadUrl}`)
+                      } else {
+                        alert('Fotoğraf talebi oluşturulamadı!')
+                      }
+                    } catch (error) {
+                      console.error('Error creating photo request:', error)
+                      alert('Hata oluştu!')
+                    }
+                  }}>
+                    <Camera className="w-4 h-4 mr-2" />
+                    Fotoğraf Talep Et
+                  </DropdownMenuItem>
+                )}
+                {canDelete && onDelete && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onDelete(request.id)
+                    }}
+                    className="text-red-600"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Sil
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
-        {/* Description */}
-        {request.description && (
-          <div className="border-t pt-2">
-            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+        {/* Additional Info Section */}
+        <div className="mt-3 pt-3 border-t">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className={`text-xs flex items-center gap-1 ${getPriorityColor(request.priority)}`}
+              >
+                {getPriorityIcon(request.priority)}
+                {getPriorityLabel(request.priority)}
+              </Badge>
+              {request.scheduledVisitDate && (
+                <Badge variant="outline" className="text-xs flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  {formatDate(request.scheduledVisitDate)}
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {request.hasPhotos && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Camera className="w-3 h-3" />
+                </div>
+              )}
+              <NotesIndicator
+                projectRequestId={request.id}
+                customerName={request.customerName}
+                compact={true}
+                showCount={true}
+              />
+            </div>
+          </div>
+
+          {/* Description */}
+          {request.description && (
+            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed mb-2">
               {request.description}
             </p>
-          </div>
-        )}
+          )}
 
-        {/* Status Update and Actions */}
-        <div className="flex items-center justify-between gap-2 border-t pt-2">
-          <div className="flex items-center gap-1">
-            {onStatusUpdate && (
-              <StatusUpdateDropdown
-                request={request}
-                onStatusUpdate={onStatusUpdate}
-                variant="compact"
-                className="h-6"
-              />
-            )}
-          </div>
+          {/* Tags */}
+          {request.tags && request.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {request.tags.slice(0, 2).map((tag, index) => (
+                <Badge
+                  key={index}
+                  variant="secondary"
+                  className="text-xs px-2 py-0.5 bg-primary/5 text-primary"
+                  title={tag}
+                >
+                  {tag}
+                </Badge>
+              ))}
+              {request.tags.length > 2 && (
+                <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                  +{request.tags.length - 2}
+                </Badge>
+              )}
+            </div>
+          )}
 
-          <div className="flex items-center gap-2">
-            {request.hasPhotos && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
-                <Camera className="w-3 h-3" />
-                <span className="hidden sm:inline">Fotoğraf</span>
-              </div>
-            )}
-            <NotesIndicator
-              projectRequestId={request.id}
-              customerName={request.customerName}
-              compact={true}
-              showCount={true}
-            />
+          {/* Footer with Status and Date */}
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              {onStatusUpdate && (
+                <StatusUpdateDropdown
+                  request={request}
+                  onStatusUpdate={onStatusUpdate}
+                  variant="compact"
+                  className="h-6"
+                />
+              )}
+              <span className="font-mono" title={request.requestNumber || `PR-${new Date(request.createdAt).getFullYear()}-${request.id.slice(-3)}`}>
+                {request.requestNumber || `PR-${new Date(request.createdAt).getFullYear()}-${request.id.slice(-3)}`}
+              </span>
+            </div>
+            <span>{formatDate(request.createdAt)}</span>
           </div>
-        </div>
-
-        {/* Tags */}
-        {request.tags && request.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {request.tags.slice(0, 2).map((tag, index) => (
-              <Badge
-                key={index}
-                variant="secondary"
-                className="text-xs px-2 py-0.5 bg-primary/5 text-primary truncate max-w-[70px] h-5"
-                title={tag}
-              >
-                {tag}
-              </Badge>
-            ))}
-            {request.tags.length > 2 && (
-              <Badge variant="secondary" className="text-xs px-2 py-0.5 flex-shrink-0 h-5">
-                +{request.tags.length - 2}
-              </Badge>
-            )}
-          </div>
-        )}
-
-        {/* Footer */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground border-t pt-2 gap-2 mt-auto">
-          <span className="font-mono truncate max-w-[120px]" title={request.requestNumber || `PR-${new Date(request.createdAt).getFullYear()}-${request.id.slice(-3)}`}>
-            {request.requestNumber || `PR-${new Date(request.createdAt).getFullYear()}-${request.id.slice(-3)}`}
-          </span>
-          <span className="flex-shrink-0 text-xs">{formatDate(request.createdAt)}</span>
         </div>
       </CardContent>
     </Card>

@@ -1241,157 +1241,120 @@ export default function CreateQuotePage() {
                   )}
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                     {packages.map((pkg) => (
-                      <div key={pkg.id} className="space-y-2">
-                        {/* Main Package */}
-                        <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50"
-                              onClick={() => applyPackage(pkg)}>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-lg flex items-center gap-2">
-                              <span className="text-lg">{PACKAGE_TYPE_ICONS[pkg.type]}</span>
-                              {pkg.name}
-                              {pkg.children && pkg.children.length > 0 && (
-                                <Badge variant="secondary" className="ml-auto">
-                                  {pkg.children.length} alt paket
-                                </Badge>
-                              )}
-                            </CardTitle>
-                            <Badge variant="outline" className="mt-1 w-fit">
-                              {PACKAGE_TYPE_LABELS[pkg.type] || pkg.type}
-                            </Badge>
-                          </CardHeader>
-                          <CardContent>
-                            {pkg.description && (
-                              <p className="text-sm text-gray-600 mb-3">{pkg.description}</p>
-                            )}
-                            <div className="space-y-1">
-                              {pkg.totalPower && (
-                                <div className="flex justify-between text-sm">
-                                  <span>Kapasite:</span>
-                                  <span className="font-medium">{(pkg.totalPower / 1000).toFixed(1)} kW</span>
+                      <div key={pkg.id} className="space-y-3">
+                        {/* Main Package Card */}
+                        <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => applyPackage(pkg)}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-lg">{PACKAGE_TYPE_ICONS[pkg.type]}</span>
+                                  <h3 className="font-semibold">{pkg.name}</h3>
+                                  <Badge className="text-xs">
+                                    {PACKAGE_TYPE_LABELS[pkg.type] || pkg.type}
+                                  </Badge>
                                 </div>
-                              )}
-                              <div className="flex justify-between text-sm">
-                                <span>Ürün Sayısı:</span>
-                                <span className="font-medium">{pkg.items?.length || 0} adet</span>
-                              </div>
-
-                              {/* Package Items List */}
-                              {pkg.items && pkg.items.length > 0 && (
-                                <div className="mt-3 border rounded-lg p-2 bg-gray-50">
-                                  <p className="text-xs font-medium mb-2 text-gray-700">Paket İçeriği:</p>
-                                  <div className="space-y-1">
-                                    {pkg.items.slice(0, 4).map((item, index) => (
-                                      <div key={index} className="flex justify-between text-xs">
-                                        <span className="text-gray-600">
-                                          {item.quantity}x {item.productName || 'Ürün'}
-                                        </span>
-                                        <span className="font-medium text-gray-800">
-                                          ₺{((item.quantity || 1) * (item.unitPrice || 0)).toLocaleString()}
-                                        </span>
-                                      </div>
-                                    ))}
-                                    {pkg.items.length > 4 && (
-                                      <div className="text-xs text-gray-500 italic">
-                                        +{pkg.items.length - 4} daha fazla ürün
-                                      </div>
+                                {pkg.description && (
+                                  <p className="text-sm text-muted-foreground mb-3">{pkg.description}</p>
+                                )}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                                  <div>
+                                    <p className="text-sm font-medium">Toplam Fiyat</p>
+                                    <p className="text-lg font-bold text-green-600">₺{pkg.totalPrice.toLocaleString()}</p>
+                                  </div>
+                                  {pkg.totalPower && (
+                                    <div>
+                                      <p className="text-sm font-medium">Toplam Güç</p>
+                                      <p className="text-lg font-bold">{(pkg.totalPower / 1000).toFixed(1)} kW</p>
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="text-sm font-medium">Ürün Sayısı</p>
+                                    <p className="text-lg font-bold">{pkg.items?.length || 0} ürün</p>
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-xs font-medium text-muted-foreground">Ürünler:</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {pkg.items && pkg.items.length > 0 ? (
+                                      <>
+                                        {pkg.items.slice(0, 3).map((item, index) => (
+                                          <Badge key={index} variant="outline" className="text-xs">
+                                            {item.quantity}x {item.productName || 'Ürün'}
+                                          </Badge>
+                                        ))}
+                                        {pkg.items.length > 3 && (
+                                          <Badge variant="outline" className="text-xs">
+                                            +{pkg.items.length - 3} daha
+                                          </Badge>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <Badge variant="outline" className="text-xs">
+                                        Ürün yok
+                                      </Badge>
                                     )}
                                   </div>
                                 </div>
-                              )}
-
-                              <div className="flex justify-between items-center text-sm border-t pt-2 mt-2">
-                                <span className="font-medium">Toplam Fiyat:</span>
-                                <span className="text-lg font-bold text-primary bg-primary/10 px-3 py-1 rounded-lg">
-                                  ₺{pkg.totalPrice.toLocaleString()}
-                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 ml-4">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    applyPackage(pkg)
+                                  }}
+                                >
+                                  Bu Paketi Seç
+                                </Button>
                               </div>
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full mt-3"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                applyPackage(pkg)
-                              }}
-                            >
-                              Bu Paketi Seç
-                            </Button>
                           </CardContent>
                         </Card>
 
                         {/* Sub Packages */}
                         {pkg.children && pkg.children.length > 0 && (
-                          <div className="ml-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          <div className="ml-8 space-y-2">
                             {pkg.children.map((subPkg) => (
                               <Card
                                 key={subPkg.id}
-                                className="cursor-pointer hover:shadow-md transition-shadow border border-gray-200 hover:border-primary/50 bg-gray-50/50"
+                                className="cursor-pointer hover:shadow-md transition-all border-l-4 border-blue-500"
                                 onClick={() => applyPackage(subPkg)}
                               >
-                                <CardContent className="p-4">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <span className="text-sm">📁</span>
-                                    <h4 className="font-medium text-sm">{subPkg.name}</h4>
-                                  </div>
-                                  {subPkg.description && (
-                                    <p className="text-xs text-gray-600 mb-2">{subPkg.description}</p>
-                                  )}
-                                  <div className="space-y-1 text-xs">
-                                    {subPkg.totalPower && (
-                                      <div className="flex justify-between">
-                                        <span>Kapasite:</span>
-                                        <span className="font-medium">{(subPkg.totalPower / 1000).toFixed(1)} kW</span>
+                                <CardContent className="p-3">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-sm">📦</span>
+                                        <h4 className="font-medium text-sm">{subPkg.name}</h4>
+                                        <Badge variant="outline" className="text-xs">Alt Paket</Badge>
                                       </div>
-                                    )}
-                                    <div className="flex justify-between">
-                                      <span>Ürünler:</span>
-                                      <span className="font-medium">{subPkg.items?.length || 0} adet</span>
+                                      {subPkg.description && (
+                                        <p className="text-xs text-muted-foreground mb-2">{subPkg.description}</p>
+                                      )}
+                                      <div className="flex items-center gap-4 text-xs">
+                                        <span className="font-medium text-green-600">₺{subPkg.totalPrice.toLocaleString()}</span>
+                                        {subPkg.totalPower && <span>{(subPkg.totalPower / 1000).toFixed(1)} kW</span>}
+                                        <span>{subPkg.items?.length || 0} ürün</span>
+                                      </div>
                                     </div>
-
-                                    {/* Sub Package Items List */}
-                                    {subPkg.items && subPkg.items.length > 0 && (
-                                      <div className="mt-2 p-1 bg-white rounded border">
-                                        <div className="space-y-0.5">
-                                          {subPkg.items.slice(0, 3).map((item, index) => (
-                                            <div key={index} className="flex justify-between text-xs">
-                                              <span className="text-gray-600 truncate">
-                                                {item.quantity}x {(item.productName || 'Ürün').substring(0, 15)}
-                                              </span>
-                                              <span className="font-medium">
-                                                ₺{((item.quantity || 1) * (item.unitPrice || 0)).toLocaleString()}
-                                              </span>
-                                            </div>
-                                          ))}
-                                          {subPkg.items.length > 3 && (
-                                            <div className="text-xs text-gray-500 italic">
-                                              +{subPkg.items.length - 3} daha
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    <div className="flex justify-between items-center border-t pt-1 mt-1">
-                                      <span className="font-medium">Fiyat:</span>
-                                      <span className="font-bold text-primary">
-                                        ₺{subPkg.totalPrice.toLocaleString()}
-                                      </span>
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          applyPackage(subPkg)
+                                        }}
+                                      >
+                                        Alt Paketi Seç
+                                      </Button>
                                     </div>
                                   </div>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full mt-2 h-7 text-xs"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      applyPackage(subPkg)
-                                    }}
-                                  >
-                                    Alt Paketi Seç
-                                  </Button>
                                 </CardContent>
                               </Card>
                             ))}

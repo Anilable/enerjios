@@ -43,7 +43,8 @@ import {
   ClockIcon,
   Briefcase,
   FileX,
-  MessageCircle
+  MessageCircle,
+  FileSpreadsheet
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getRoleName } from '@/lib/role-utils'
@@ -130,6 +131,12 @@ export const getNavItemsByRole = (role: string): NavItem[] => {
           title: 'Ürün Yönetimi',
           href: '/dashboard/products',
           icon: FileText,
+        },
+        {
+          title: 'Bayi Excel İçe Aktar',
+          href: '/dashboard/bayi-excel',
+          icon: FileSpreadsheet,
+          badge: 'Excel',
         },
         {
           title: 'Finansal Veriler',
@@ -329,6 +336,11 @@ export const getNavItemsByRole = (role: string): NavItem[] => {
           title: 'Müşteri Bilgileri',
           href: '/dashboard/customers',
           icon: Users,
+        },
+        {
+          title: 'Ürün Bilgileri',
+          href: '/dashboard/products',
+          icon: Database,
         },
         {
           title: 'Teknik Dokümanlar',

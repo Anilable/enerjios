@@ -711,6 +711,7 @@ export default function ProductManagementPage() {
     }
   }
 
+
   // Calculate summary statistics
   const totalProducts = products.length
   const activeProducts = products.filter(p => p.status === 'ACTIVE').length
@@ -745,10 +746,6 @@ export default function ProductManagementPage() {
             <Button variant="outline" onClick={exportProducts}>
               <Download className="w-4 h-4 mr-2" />
               Export
-            </Button>
-            <Button variant="outline">
-              <Upload className="w-4 h-4 mr-2" />
-              Import
             </Button>
             <Button variant="outline" onClick={() => setIsCategoryModalOpen(true)}>
               <Grid3x3 className="w-4 h-4 mr-2" />

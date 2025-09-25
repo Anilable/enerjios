@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Toaster } from '@/components/ui/toaster'
 import { formatCurrency } from '@/lib/utils'
 import { useExchangeRates, RateSource } from '@/hooks/use-exchange-rates'
-import { RoleGuard } from '@/components/ui/permission-guard'
+import { RoleGuard, FinancialDataGuard, PricingGuard } from '@/components/ui/permission-guard'
 import { Package as PackageType, PACKAGE_TYPES, PACKAGE_TYPE_LABELS, PACKAGE_TYPE_COLORS, PACKAGE_TYPE_ICONS, CreatePackageData, PackageItem } from '@/types/package'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
@@ -1968,6 +1968,66 @@ export default function ProductsPage() {
     fetchPackages()
   }
 
+  const handleImportComplete = async (importedProducts: any[]) => {
+    console.log('📊 Excel import completed:', importedProducts.length, 'products')
+
+    // Create products via API
+    const createdProducts = []
+    const errors = []
+
+    for (const productData of importedProducts) {
+      try {
+        const response = await fetch('/api/products', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: productData.name,
+            brand: productData.brand,
+            model: productData.model,
+            category: productData.category,
+            price: productData.price,
+            costPrice: productData.usdPrice ? productData.usdPrice * (rates?.USD || 30) : undefined,
+            stock: productData.stock,
+            power: productData.power?.toString(),
+            warranty: productData.warranty?.toString(),
+            description: productData.description,
+            code: productData.code,
+          }),
+        })
+
+        if (response.ok) {
+          const createdProduct = await response.json()
+          createdProducts.push(createdProduct)
+        } else {
+          const error = await response.json()
+          errors.push(`${productData.name}: ${error.error}`)
+        }
+      } catch (error) {
+        errors.push(`${productData.name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+    }
+
+    // Show results
+    if (createdProducts.length > 0) {
+      toast({
+        title: "Başarılı",
+        description: `✅ ${createdProducts.length} ürün başarıyla eklendi!${errors.length > 0 ? `\n\n❌ ${errors.length} hata oluştu.` : ''}`
+      })
+
+      // Refresh products list
+      await fetchProducts()
+      await fetchCategories()
+    } else {
+      toast({
+        title: "Hata",
+        description: `❌ Hiçbir ürün eklenemedi!\n\n${errors.slice(0, 3).join('\n')}`,
+        variant: "destructive"
+      })
+    }
+  }
+
   // Package Management Functions
   const handleAddPackage = async () => {
     console.log('🚀 handleAddPackage called with data:', packageFormData)
@@ -2729,8 +2789,12 @@ export default function ProductsPage() {
                       <th className="text-left py-3 px-4">Kod</th>
                       <th className="text-left py-3 px-4">Kategori</th>
                       <th className="text-left py-3 px-4">Güç/Kapasite</th>
-                      <th className="text-left py-3 px-4">Fiyat</th>
-                      <th className="text-left py-3 px-4">USD Alış</th>
+                      <FinancialDataGuard>
+                        <th className="text-left py-3 px-4">Fiyat</th>
+                      </FinancialDataGuard>
+                      <FinancialDataGuard>
+                        <th className="text-left py-3 px-4">USD Alış</th>
+                      </FinancialDataGuard>
                       <th className="text-left py-3 px-4">Stok</th>
                       <th className="text-left py-3 px-4">Durum</th>
                       <th className="text-left py-3 px-4">Oluşturan</th>
@@ -2810,12 +2874,16 @@ export default function ProductsPage() {
                           {product.power}
                         </td>
                         <td className="py-3 px-4 font-medium">
-                          {formatCurrency(product.price)}
+                          <FinancialDataGuard fallback={<span className="text-muted-foreground">Gizli</span>}>
+                            {formatCurrency(product.price)}
+                          </FinancialDataGuard>
                         </td>
                         <td className="py-3 px-4 font-medium">
-                          {product.purchasePriceUsd !== undefined && product.purchasePriceUsd !== null
-                            ? formatCurrency(Number(product.purchasePriceUsd), 'USD')
-                            : 'Belirtilmedi'}
+                          <FinancialDataGuard fallback={<span className="text-muted-foreground">Gizli</span>}>
+                            {product.purchasePriceUsd !== undefined && product.purchasePriceUsd !== null
+                              ? formatCurrency(Number(product.purchasePriceUsd), 'USD')
+                              : 'Belirtilmedi'}
+                          </FinancialDataGuard>
                         </td>
                         <td className="py-3 px-4">
                           <span className={`font-medium ${
@@ -3017,64 +3085,70 @@ export default function ProductsPage() {
               
               <div className="mt-4 pt-4 border-t space-y-4">
                 {/* Sales Value */}
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">Toplam Satış Değeri</p>
-                  <p className="text-2xl font-bold">
-                    {formatCurrency(totalSalesValueTRY)}
-                    {totalSalesValueUSD !== null && (
-                      <span className="ml-2 text-base font-medium text-muted-foreground">
-                        ({formatCurrency(totalSalesValueUSD, 'USD')})
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-sm text-green-600">
-                    {totalUnits} toplam adet
-                  </p>
-                </div>
+                <FinancialDataGuard>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">Toplam Satış Değeri</p>
+                    <p className="text-2xl font-bold">
+                      {formatCurrency(totalSalesValueTRY)}
+                      {totalSalesValueUSD !== null && (
+                        <span className="ml-2 text-base font-medium text-muted-foreground">
+                          ({formatCurrency(totalSalesValueUSD, 'USD')})
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-sm text-green-600">
+                      {totalUnits} toplam adet
+                    </p>
+                  </div>
+                </FinancialDataGuard>
 
                 {/* Admin-only Financial Data */}
                 <RoleGuard allowedRoles={['ADMIN']}>
                   {/* Purchase Value */}
-                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-sm text-blue-800 font-medium mb-2">Toplam Alış Değeri (Admin)</p>
-                    <p className="text-xl font-bold text-blue-900">
-                      {formatCurrency(totalPurchaseValueTRY)}
-                      {totalPurchaseValueUSD !== null && (
-                        <span className="ml-2 text-sm font-medium text-blue-700">
-                          ({formatCurrency(totalPurchaseValueUSD, 'USD')})
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-sm text-blue-700">
-                      {products.filter(p => p.purchasePrice && p.purchasePrice > 0).length} ürünün alış fiyatı mevcut
-                    </p>
-                  </div>
+                  <FinancialDataGuard>
+                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-sm text-blue-800 font-medium mb-2">Toplam Alış Değeri (Admin)</p>
+                      <p className="text-xl font-bold text-blue-900">
+                        {formatCurrency(totalPurchaseValueTRY)}
+                        {totalPurchaseValueUSD !== null && (
+                          <span className="ml-2 text-sm font-medium text-blue-700">
+                            ({formatCurrency(totalPurchaseValueUSD, 'USD')})
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-sm text-blue-700">
+                        {products.filter(p => p.purchasePrice && p.purchasePrice > 0).length} ürünün alış fiyatı mevcut
+                      </p>
+                    </div>
+                  </FinancialDataGuard>
 
                   {/* Profit Analysis */}
-                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                    <p className="text-sm text-green-800 font-medium mb-2">Potansiyel Kar (Admin)</p>
-                    <p className="text-xl font-bold text-green-900">
-                      {formatCurrency(totalProfitTRY)}
-                      {totalProfitUSD !== null && (
-                        <span className="ml-2 text-sm font-medium text-green-700">
-                          ({formatCurrency(totalProfitUSD, 'USD')})
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-sm text-green-700">
-                      Ortalama kar marjı: {
-                        (() => {
-                          const validProducts = products.filter(p => p.purchasePrice && p.purchasePrice > 0)
-                          if (validProducts.length === 0) return '0%'
-                          const avgMargin = validProducts.reduce((sum, p) => {
-                            const margin = ((p.price - (p.purchasePrice || 0)) / (p.purchasePrice || 1)) * 100
-                            return sum + margin
-                          }, 0) / validProducts.length
-                          return `${avgMargin.toFixed(1)}%`
-                        })()
-                      }
-                    </p>
-                  </div>
+                  <FinancialDataGuard>
+                    <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                      <p className="text-sm text-green-800 font-medium mb-2">Potansiyel Kar (Admin)</p>
+                      <p className="text-xl font-bold text-green-900">
+                        {formatCurrency(totalProfitTRY)}
+                        {totalProfitUSD !== null && (
+                          <span className="ml-2 text-sm font-medium text-green-700">
+                            ({formatCurrency(totalProfitUSD, 'USD')})
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-sm text-green-700">
+                        Ortalama kar marjı: {
+                          (() => {
+                            const validProducts = products.filter(p => p.purchasePrice && p.purchasePrice > 0)
+                            if (validProducts.length === 0) return '0%'
+                            const avgMargin = validProducts.reduce((sum, p) => {
+                              const margin = ((p.price - (p.purchasePrice || 0)) / (p.purchasePrice || 1)) * 100
+                              return sum + margin
+                            }, 0) / validProducts.length
+                            return `${avgMargin.toFixed(1)}%`
+                          })()
+                        }
+                      </p>
+                    </div>
+                  </FinancialDataGuard>
                 </RoleGuard>
               </div>
             </CardContent>
@@ -3091,13 +3165,14 @@ export default function ProductsPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Dialog open={showBulkAddDialog} onOpenChange={setShowBulkAddDialog}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="flex flex-col items-center gap-2 h-20">
-                    <Plus className="w-5 h-5" />
-                    Excel Yükle
-                  </Button>
-                </DialogTrigger>
+              <RoleGuard allowedRoles={['ADMIN']}>
+                <Dialog open={showBulkAddDialog} onOpenChange={setShowBulkAddDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="flex flex-col items-center gap-2 h-20">
+                      <Plus className="w-5 h-5" />
+                      Excel Yükle
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent className="max-w-[90vw] w-[85vw] min-w-[1400px] max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Excel Dosyası ile Toplu Ürün Ekleme</DialogTitle>
@@ -3389,15 +3464,17 @@ export default function ProductsPage() {
                     )}
                   </DialogFooter>
                 </DialogContent>
-              </Dialog>
+                </Dialog>
+              </RoleGuard>
 
-              <Dialog open={showStockUpdateDialog} onOpenChange={setShowStockUpdateDialog}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="flex flex-col items-center gap-2 h-20">
-                    <Archive className="w-5 h-5" />
-                    Stok Güncelle
-                  </Button>
-                </DialogTrigger>
+              <RoleGuard allowedRoles={['ADMIN']}>
+                <Dialog open={showStockUpdateDialog} onOpenChange={setShowStockUpdateDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="flex flex-col items-center gap-2 h-20">
+                      <Archive className="w-5 h-5" />
+                      Stok Güncelle
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Toplu Stok Güncelleme</DialogTitle>
@@ -3418,15 +3495,17 @@ export default function ProductsPage() {
                     }}>Güncelle</Button>
                   </DialogFooter>
                 </DialogContent>
-              </Dialog>
+                </Dialog>
+              </RoleGuard>
 
-              <Dialog open={showPriceUpdateDialog} onOpenChange={setShowPriceUpdateDialog}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="flex flex-col items-center gap-2 h-20">
-                    <TrendingUp className="w-5 h-5" />
-                    Fiyat Güncelle
-                  </Button>
-                </DialogTrigger>
+              <FinancialDataGuard>
+                <Dialog open={showPriceUpdateDialog} onOpenChange={setShowPriceUpdateDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="flex flex-col items-center gap-2 h-20">
+                      <TrendingUp className="w-5 h-5" />
+                      Fiyat Güncelle
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Toplu Fiyat Güncelleme</DialogTitle>
@@ -3462,16 +3541,19 @@ export default function ProductsPage() {
                     }}>Güncelle</Button>
                   </DialogFooter>
                 </DialogContent>
-              </Dialog>
+                </Dialog>
+              </FinancialDataGuard>
 
-              <Button
-                variant="outline"
-                className="flex flex-col items-center gap-2 h-20"
-                onClick={handleExportProducts}
-              >
-                <FileSpreadsheet className="w-5 h-5" />
-                Ürünleri Dışa Aktar
-              </Button>
+              <RoleGuard allowedRoles={['ADMIN']}>
+                <Button
+                  variant="outline"
+                  className="flex flex-col items-center gap-2 h-20"
+                  onClick={handleExportProducts}
+                >
+                  <FileSpreadsheet className="w-5 h-5" />
+                  Ürünleri Dışa Aktar
+                </Button>
+              </RoleGuard>
               <Button
                 variant="outline"
                 className="flex flex-col items-center gap-2 h-20"
@@ -4318,7 +4400,7 @@ export default function ProductsPage() {
                     Yeni Paket Oluştur
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-7xl w-[90vw] max-h-[80vh] overflow-y-auto">
+                <DialogContent className="max-w-none w-[95vw] max-h-[85vh] overflow-y-auto" style={{ width: '95vw', maxWidth: 'none' }}>
                   <DialogHeader>
                     <DialogTitle>
                       {packageFormData.parentId ? 'Alt Paket Oluştur' : 'Yeni Paket Oluştur'}
@@ -4379,82 +4461,104 @@ export default function ProductsPage() {
                         </Badge>
                       </div>
 
-                      {/* Selected Products */}
+                      {/* Selected Products - Table Format */}
                       {selectedProducts.length > 0 && (
                         <Card>
                           <CardHeader>
                             <CardTitle className="text-sm">Seçilen Ürünler</CardTitle>
                           </CardHeader>
-                          <CardContent className="space-y-2">
-                            {selectedProducts.map((item) => {
-                              const product = products.find(p => p.id === item.productId)
-                              if (!product) return null
-                              return (
-                                <div key={item.productId} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
-                                  <div className="flex-1">
-                                    <p className="font-medium text-sm">{product.name}</p>
-                                    <p className="text-xs text-muted-foreground">{product.brand}</p>
-                                    <p className="text-xs text-green-600">Stok: {product.stock}</p>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex flex-col gap-1">
-                                      <Label className="text-xs">Miktar</Label>
-                                      <Input
-                                        type="number"
-                                        value={item.quantity}
-                                        onChange={(e) => updateProductQuantity(item.productId, parseInt(e.target.value) || 0)}
-                                        className="w-20 h-8 text-center"
-                                        min="1"
-                                      />
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                      <Label className="text-xs">Fiyat (₺)</Label>
-                                      <div className="relative">
-                                        <Input
-                                          type="number"
-                                          value={item.unitPrice}
-                                          onChange={(e) => updateProductPrice(item.productId, parseFloat(e.target.value) || 0)}
-                                          className="w-24 h-8 text-right pr-6"
-                                          min="0"
-                                          step="0.01"
-                                          title={`Orijinal fiyat: ${formatCurrency(product.price)}`}
-                                        />
-                                        {item.unitPrice !== product.price && (
-                                          <span className="absolute right-1 top-1/2 transform -translate-y-1/2 text-xs text-orange-500">
-                                            ✱
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                      <Label className="text-xs">Toplam</Label>
-                                      <div className="w-20 h-8 bg-white border rounded text-xs text-right px-2 flex items-center justify-end font-medium">
-                                        {formatCurrency(item.quantity * item.unitPrice)}
-                                      </div>
-                                    </div>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => removeProductFromPackage(item.productId)}
-                                      className="h-8"
-                                    >
-                                      <Trash className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              )
-                            })}
-                            <div className="pt-2 border-t">
-                              <div className="flex justify-between font-medium">
-                                <span>Toplam:</span>
-                                <span>{formatCurrency(selectedProducts.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0))}</span>
-                              </div>
+                          <CardContent>
+                            <div className="overflow-x-auto">
+                              <table className="w-full">
+                                <thead>
+                                  <tr className="border-b">
+                                    <th className="text-left py-3 px-4">Ürün</th>
+                                    <th className="text-left py-3 px-4">Marka</th>
+                                    <th className="text-center py-3 px-4">Stok</th>
+                                    <th className="text-center py-3 px-4">Miktar</th>
+                                    <th className="text-right py-3 px-4">Birim Fiyat</th>
+                                    <th className="text-right py-3 px-4">Toplam</th>
+                                    <th className="text-center py-3 px-4">İşlem</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {selectedProducts.map((item) => {
+                                    const product = products.find(p => p.id === item.productId)
+                                    if (!product) return null
+                                    return (
+                                      <tr key={item.productId} className="border-b hover:bg-gray-50">
+                                        <td className="py-3 px-4">
+                                          <div className="font-medium text-sm">{product.name}</div>
+                                          <div className="text-xs text-muted-foreground">{product.model}</div>
+                                        </td>
+                                        <td className="py-3 px-4 text-sm">{product.brand}</td>
+                                        <td className="py-3 px-4 text-center">
+                                          <Badge variant={product.stock > 0 ? "default" : "destructive"} className="text-xs">
+                                            {product.stock}
+                                          </Badge>
+                                        </td>
+                                        <td className="py-3 px-4 text-center">
+                                          <Input
+                                            type="number"
+                                            value={item.quantity}
+                                            onChange={(e) => updateProductQuantity(item.productId, parseInt(e.target.value) || 0)}
+                                            className="w-20 h-8 text-center mx-auto"
+                                            min="1"
+                                          />
+                                        </td>
+                                        <td className="py-3 px-4 text-right">
+                                          <div className="relative">
+                                            <Input
+                                              type="number"
+                                              value={item.unitPrice}
+                                              onChange={(e) => updateProductPrice(item.productId, parseFloat(e.target.value) || 0)}
+                                              className="w-24 h-8 text-right pr-6 ml-auto"
+                                              min="0"
+                                              step="0.01"
+                                              title={`Orijinal fiyat: ${formatCurrency(product.price)}`}
+                                            />
+                                            {item.unitPrice !== product.price && (
+                                              <span className="absolute right-1 top-1/2 transform -translate-y-1/2 text-xs text-orange-500">
+                                                ✱
+                                              </span>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td className="py-3 px-4 text-right font-medium">
+                                          {formatCurrency(item.quantity * item.unitPrice)}
+                                        </td>
+                                        <td className="py-3 px-4 text-center">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => removeProductFromPackage(item.productId)}
+                                            className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
+                                          >
+                                            <Trash className="w-4 h-4" />
+                                          </Button>
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                                <tfoot>
+                                  <tr className="border-t">
+                                    <td colSpan={5} className="py-3 px-4 text-right font-medium">
+                                      Toplam:
+                                    </td>
+                                    <td className="py-3 px-4 text-right font-bold text-green-600">
+                                      {formatCurrency(selectedProducts.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0))}
+                                    </td>
+                                    <td></td>
+                                  </tr>
+                                </tfoot>
+                              </table>
                             </div>
                           </CardContent>
                         </Card>
                       )}
 
-                      {/* Available Products */}
+                      {/* Available Products - Table Format */}
                       <Card>
                         <CardHeader>
                           <CardTitle className="text-sm">Mevcut Ürünler</CardTitle>
@@ -4468,31 +4572,74 @@ export default function ProductsPage() {
                           </div>
                         </CardHeader>
                         <CardContent>
-                          <div className="grid gap-2 max-h-60 overflow-y-auto">
+                          <div className="overflow-x-auto max-h-[60vh]">
+                            <table className="w-full">
+                              <thead className="sticky top-0 bg-white border-b">
+                                <tr>
+                                  <th className="text-left py-2 px-3 text-xs font-medium">Kategori</th>
+                                  <th className="text-left py-2 px-3 text-xs font-medium">Ürün</th>
+                                  <th className="text-left py-2 px-3 text-xs font-medium">Marka</th>
+                                  <th className="text-center py-2 px-3 text-xs font-medium">Stok</th>
+                                  <th className="text-right py-2 px-3 text-xs font-medium">Fiyat</th>
+                                  <th className="text-center py-2 px-3 text-xs font-medium">İşlem</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {products
+                                  .filter((product) =>
+                                    product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                                    product.brand.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                                    product.category?.toLowerCase().includes(productSearchTerm.toLowerCase())
+                                  )
+                                  .map((product) => {
+                                  const isSelected = selectedProducts.some(item => item.productId === product.id)
+                                  return (
+                                    <tr key={product.id} className="border-b hover:bg-gray-50">
+                                      <td className="py-2 px-3">
+                                        <Badge variant="outline" className="text-xs">
+                                          {product.category || 'Diğer'}
+                                        </Badge>
+                                      </td>
+                                      <td className="py-2 px-3">
+                                        <div>
+                                          <div className="font-medium text-sm">{product.name}</div>
+                                          <div className="text-xs text-muted-foreground">{product.model}</div>
+                                        </div>
+                                      </td>
+                                      <td className="py-2 px-3 text-sm">{product.brand}</td>
+                                      <td className="py-2 px-3 text-center">
+                                        <Badge variant={product.stock > 0 ? "default" : "destructive"} className="text-xs">
+                                          {product.stock}
+                                        </Badge>
+                                      </td>
+                                      <td className="py-2 px-3 text-right font-medium">
+                                        {formatCurrency(product.price)}
+                                      </td>
+                                      <td className="py-2 px-3 text-center">
+                                        <Button
+                                          variant={isSelected ? "secondary" : "outline"}
+                                          size="sm"
+                                          onClick={() => isSelected ? removeProductFromPackage(product.id) : addProductToPackage(product.id)}
+                                          className="h-7 px-3 text-xs"
+                                        >
+                                          {isSelected ? "Çıkar" : "Ekle"}
+                                        </Button>
+                                      </td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
                             {products
                               .filter((product) =>
                                 product.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
                                 product.brand.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
                                 product.category?.toLowerCase().includes(productSearchTerm.toLowerCase())
-                              )
-                              .map((product) => {
-                              const isSelected = selectedProducts.some(item => item.productId === product.id)
-                              return (
-                                <div key={product.id} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
-                                  <div className="flex-1">
-                                    <p className="font-medium text-sm">{product.name}</p>
-                                    <p className="text-xs text-muted-foreground">{product.brand} - {formatCurrency(product.price)}</p>
-                                  </div>
-                                  <Button
-                                    variant={isSelected ? "secondary" : "outline"}
-                                    size="sm"
-                                    onClick={() => isSelected ? removeProductFromPackage(product.id) : addProductToPackage(product.id)}
-                                  >
-                                    {isSelected ? "Çıkar" : "Ekle"}
-                                  </Button>
-                                </div>
-                              )
-                            })}
+                              ).length === 0 && (
+                              <div className="p-8 text-center text-muted-foreground text-sm">
+                                Arama kriterinize uygun ürün bulunamadı
+                              </div>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
@@ -4611,7 +4758,7 @@ export default function ProductsPage() {
                             <h3 className="text-lg font-semibold">{type.label}</h3>
                             <Badge variant="secondary">{typePackages.length} paket</Badge>
                           </div>
-                          <div className="grid gap-3 ml-4">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 ml-4">
                             {typePackages.map((pkg) => (
                               <div key={pkg.id} className="space-y-2">
                                 <Card className="hover:shadow-md transition-all cursor-pointer" onClick={() => openEditPackageDialog(pkg)}>
