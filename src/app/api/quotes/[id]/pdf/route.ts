@@ -141,8 +141,8 @@ export async function GET(
       'quote.company?.name': quote.company?.name,
       'quote.createdBy?.company?.name': quote.createdBy?.company?.name,
       'quote.createdBy?.email': quote.createdBy?.email,
-      'quote.companyId': quote.companyId,
-      'quote.createdBy?.companyId': quote.createdBy?.companyId
+      'quote.companyId': quote.company?.id,
+      'quote.createdBy?.companyId': quote.createdBy?.company?.id
     })
 
     // Helper function to convert project type to Turkish

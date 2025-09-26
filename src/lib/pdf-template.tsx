@@ -966,6 +966,23 @@ export const ProjectPDF: React.FC<ProjectPDFProps> = ({ project }) => {
     return `${firstName} ${lastName}`.trim() || 'N/A'
   }
 
+  // Company-specific information
+  const getCompanyInfo = () => {
+    // Default EnerjiOS
+    return {
+      name: 'EnerjiOS',
+      tagline: 'Güneş Enerjisi Yönetim Platformu',
+      address: 'Levazım, Vadi Cd Zorlu Center , 34340 Beşiktaş/İstanbul',
+      phones: ['+90 541 593 26 55', '+90 288 415 20 05'],
+      email: 'info@enerjios.com',
+      website: 'www.enerjios.com',
+      logo: EnerjiOSLogo
+    }
+  }
+
+  const companyInfo = getCompanyInfo()
+  const LogoComponent = companyInfo.logo
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -1219,6 +1236,23 @@ export const ProjectRequestPDF: React.FC<ProjectRequestPDFProps> = ({ projectReq
     const fullName = `${firstName} ${lastName}`.trim()
     return fullName || projectRequest.customerName || 'N/A'
   }
+
+  // Company-specific information
+  const getCompanyInfo = () => {
+    // Default EnerjiOS
+    return {
+      name: 'EnerjiOS',
+      tagline: 'Güneş Enerjisi Yönetim Platformu',
+      address: 'Levazım, Vadi Cd Zorlu Center , 34340 Beşiktaş/İstanbul',
+      phones: ['+90 541 593 26 55', '+90 288 415 20 05'],
+      email: 'info@enerjios.com',
+      website: 'www.enerjios.com',
+      logo: EnerjiOSLogo
+    }
+  }
+
+  const companyInfo = getCompanyInfo()
+  const LogoComponent = companyInfo.logo
 
   const getStatusLabel = (status: string) => {
     const statusLabels: Record<string, string> = {
