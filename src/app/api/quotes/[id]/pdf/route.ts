@@ -3,6 +3,7 @@ import { getServerSession } from '@/lib/get-session'
 import { prisma } from '@/lib/prisma'
 import { renderToStream } from '@react-pdf/renderer'
 import PDFTemplates from '@/lib/pdf-template'
+import CompanyQuotePDF from '@/lib/company-pdf-template'
 import React from 'react'
 
 // Fallback PDF generation function for production compatibility
@@ -55,6 +56,12 @@ export async function GET(
                 email: true
               }
             }
+          }
+        },
+        company: true,
+        createdBy: {
+          include: {
+            company: true
           }
         },
         project: {
@@ -127,6 +134,15 @@ export async function GET(
       panelCount,
       annualProduction,
       paybackPeriod
+    })
+
+    // Debug company information
+    console.log('🏢 COMPANY DEBUG INFO:', {
+      'quote.company?.name': quote.company?.name,
+      'quote.createdBy?.company?.name': quote.createdBy?.company?.name,
+      'quote.createdBy?.email': quote.createdBy?.email,
+      'quote.companyId': quote.companyId,
+      'quote.createdBy?.companyId': quote.createdBy?.companyId
     })
 
     // Helper function to convert project type to Turkish
@@ -231,6 +247,7 @@ export async function GET(
       createdAt: quote.createdAt,
       validUntil: quote.validUntil,
       version: 1, // TODO: Add version to Quote model
+      company: quote.company || quote.createdBy?.company || null,
       items: quote.items?.map(item => {
         // Parse stored description for custom item details
         let itemDetails: any = {}
@@ -280,7 +297,23 @@ export async function GET(
     // Generate PDF using react-pdf with production-safe error handling
     let stream
     try {
-      stream = await renderToStream(React.createElement(PDFTemplates.QuotePDF as any, { quote: quoteData }) as any)
+      // Check if this is a company quote and use appropriate template
+      const isCompanyQuote = quote.company?.name === 'DMR Solar' || quote.createdBy?.company?.name === 'DMR Solar'
+
+      console.log('🏢 TEMPLATE SELECTION DEBUG:', {
+        isCompanyQuote,
+        companyNameCheck: quote.company?.name === 'DMR Solar',
+        createdByCompanyNameCheck: quote.createdBy?.company?.name === 'DMR Solar',
+        templateToUse: isCompanyQuote ? 'CompanyQuotePDF (DMR Solar)' : 'PDFTemplates.QuotePDF (EnerjiOS)'
+      })
+
+      if (isCompanyQuote) {
+        console.log('🏢 Using Company PDF template for DMR Solar')
+        stream = await renderToStream(React.createElement(CompanyQuotePDF as any, { quote: quoteData }) as any)
+      } else {
+        console.log('🏛️ Using default EnerjiOS PDF template')
+        stream = await renderToStream(React.createElement(PDFTemplates.QuotePDF as any, { quote: quoteData }) as any)
+      }
     } catch (renderError) {
       console.error('PDF rendering failed, attempting fallback:', renderError)
       // Production fallback: Create simple text-based PDF

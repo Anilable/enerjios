@@ -61,7 +61,7 @@ export class EmailService {
   }
 
   async sendQuoteDeliveryEmail(
-    quote: Quote & { customer: Customer | null; createdBy: User },
+    quote: Quote & { customer: Customer | null; createdBy: User & { company?: { name: string } | null } },
     customerEmail: string,
     customerName: string,
     companyName: string,

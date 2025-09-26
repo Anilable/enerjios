@@ -6,8 +6,8 @@ import { ProductType } from '@prisma/client'
 // GET all products
 export async function GET(request: NextRequest) {
   try {
-    // Authentication disabled for product listing (public access)
-    // Products are public information that can be viewed without login
+    // Get session to check user role
+    const session = await getServerSession()
 
     // Get query params for filtering
     const searchParams = request.nextUrl.searchParams
@@ -15,8 +15,30 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
     const available = searchParams.get('available')
 
-    // Build where clause
+    // Build where clause with company filtering
     const where: any = {}
+
+    // Role-based product filtering
+    if (session?.user?.role === 'COMPANY') {
+      // Company users only see their own company's products
+      const userCompany = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        include: { company: true }
+      })
+
+      if (userCompany?.company?.id) {
+        where.companyId = userCompany.company.id
+      } else {
+        // If company user has no company, return empty array
+        return NextResponse.json([])
+      }
+    } else if (session?.user?.role === 'ADMIN' || session?.user?.role === 'GENERAL_MANAGER' || session?.user?.role === 'INSTALLATION_TEAM') {
+      // Admin, General Manager and Installation Team users only see admin products (companyId is null)
+      where.companyId = null
+    } else {
+      // Other roles (CUSTOMER, etc.) should not see any products
+      return NextResponse.json([])
+    }
     
     if (type && type !== 'all') {
       where.type = type as ProductType
@@ -207,7 +229,7 @@ export async function POST(request: NextRequest) {
         datasheet: body.datasheet,
         manual: body.manual,
         unitType: body.unitType || 'adet',
-        companyId: body.companyId,
+        companyId: session.user.role === 'COMPANY' ? await getUserCompanyId(session.user.id) : body.companyId,
         categoryId: categoryId, // Set the categoryId if using new system
         createdById: session.user.id,
         updatedById: session.user.id
@@ -331,4 +353,13 @@ function getStockStatus(stock: number): string {
   if (stock === 0) return 'Tükendi'
   if (stock < 20) return 'Azalıyor'
   return 'Stokta'
+}
+
+// Helper function to get user's company ID
+async function getUserCompanyId(userId: string): Promise<string | null> {
+  const userWithCompany = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { company: true }
+  })
+  return userWithCompany?.company?.id || null
 }

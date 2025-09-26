@@ -69,6 +69,31 @@ const EnerjiOSLogo: React.FC<{ width?: number; height?: number }> = ({ width = 1
   </View>
 )
 
+// DMR Solar Logo Component
+const DMRSolarLogo: React.FC<{ width?: number; height?: number }> = ({ width = 120, height = 40 }) => (
+  <View style={{ width, height, backgroundColor: 'transparent' }}>
+    <Svg viewBox="0 0 300 100" style={{ width, height }}>
+      {/* Main solar symbol */}
+      <Circle cx="50" cy="50" r="35" fill="#FFD700" opacity={0.9}/>
+
+      {/* Solar rays */}
+      <Line x1="50" y1="10" x2="50" y2="20" stroke="#FF4500" strokeWidth="3"/>
+      <Line x1="73" y1="17" x2="67" y2="23" stroke="#FF4500" strokeWidth="3"/>
+      <Line x1="90" y1="50" x2="80" y2="50" stroke="#FF4500" strokeWidth="3"/>
+      <Line x1="83" y1="83" x2="77" y2="77" stroke="#FF4500" strokeWidth="3"/>
+      <Line x1="50" y1="90" x2="50" y2="80" stroke="#FF4500" strokeWidth="3"/>
+      <Line x1="17" y1="83" x2="23" y2="77" stroke="#FF4500" strokeWidth="3"/>
+      <Line x1="10" y1="50" x2="20" y2="50" stroke="#FF4500" strokeWidth="3"/>
+      <Line x1="27" y1="17" x2="33" y2="23" stroke="#FF4500" strokeWidth="3"/>
+
+      {/* Central energy symbol */}
+      <Circle cx="50" cy="50" r="12" fill="white" opacity={0.9}/>
+      {/* Simple diamond/lightning shape */}
+      <Rect x="45" y="40" width="10" height="20" fill="#FF6B35"/>
+    </Svg>
+  </View>
+)
+
 // Define QuoteData interface for PDF
 interface QuoteData {
   id: string
@@ -90,6 +115,16 @@ interface QuoteData {
   validUntil: string | Date
   version?: number
   items?: QuoteItem[]
+  company?: {
+    id: string
+    name: string
+    contactInfo?: {
+      address?: string
+      phone?: string[]
+      email?: string
+      website?: string
+    }
+  }
   financialAnalysis?: {
     annualProduction: number
     annualSavings: number
@@ -537,6 +572,35 @@ export const QuotePDF: React.FC<QuotePDFProps> = ({ quote }) => {
     return formatTurkishCurrency(amount)
   }
 
+  // Company-specific information
+  const getCompanyInfo = () => {
+    if (quote.company?.name === 'DMR Solar Enerji') {
+      return {
+        name: 'DMR Solar',
+        tagline: 'Güneş Enerjisi Çözümleri',
+        address: 'Yakuplu Mahallesi 194 Sokak 3. Matbaacılar Sitesi No: 1/200 Beylikdüzü - İstanbul',
+        phones: ['0212 441 10 14', '0532 434 49 99', '0535 715 12 17'],
+        email: 'info@dmrsolar.com.tr',
+        website: 'www.dmrsolar.com.tr',
+        logo: DMRSolarLogo
+      }
+    }
+
+    // Default EnerjiOS
+    return {
+      name: 'EnerjiOS',
+      tagline: 'Güneş Enerjisi Yönetim Platformu',
+      address: 'Levazım, Vadi Cd Zorlu Center , 34340 Beşiktaş/İstanbul',
+      phones: ['+90 541 593 26 55', '+90 288 415 20 05'],
+      email: 'info@enerjios.com',
+      website: 'www.enerjios.com',
+      logo: EnerjiOSLogo
+    }
+  }
+
+  const companyInfo = getCompanyInfo()
+  const LogoComponent = companyInfo.logo
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -544,7 +608,7 @@ export const QuotePDF: React.FC<QuotePDFProps> = ({ quote }) => {
         <View style={styles.header}>
           <View style={styles.logoSection}>
             <View style={{ width: 85, height: 30, marginRight: 15 }}>
-              <EnerjiOSLogo width={80} height={26} />
+              <LogoComponent width={80} height={26} />
             </View>
             <View style={styles.companyInfo}>
               <View style={styles.companyName}>
@@ -829,7 +893,7 @@ export const QuotePDF: React.FC<QuotePDFProps> = ({ quote }) => {
 
           <View style={styles.signatureContainer}>
             <View style={styles.signatureBox}>
-              <Text style={styles.signatureTitle}>EnerjiOS</Text>
+              <Text style={styles.signatureTitle}>{companyInfo.name}</Text>
               <Text style={styles.signatureLine}>Yetkili İmza</Text>
             </View>
             <View style={styles.signatureBox}>
@@ -839,7 +903,7 @@ export const QuotePDF: React.FC<QuotePDFProps> = ({ quote }) => {
           </View>
 
           <Text style={styles.footerCopyright}>
-            'Bu teklif EnerjiOS tarafından hazırlanmış olup, tüm hakları saklıdır.          </Text>
+            Bu teklif {companyInfo.name} tarafından hazırlanmış olup, tüm hakları saklıdır.          </Text>
         </View>
       </Page>
     </Document>
@@ -909,7 +973,7 @@ export const ProjectPDF: React.FC<ProjectPDFProps> = ({ project }) => {
         <View style={styles.header}>
           <View style={styles.logoSection}>
             <View style={{ width: 85, height: 30, marginRight: 15 }}>
-              <EnerjiOSLogo width={80} height={26} />
+              <LogoComponent width={80} height={26} />
             </View>
             <View style={styles.companyInfo}>
               <View style={styles.companyName}>
@@ -1217,7 +1281,7 @@ export const ProjectRequestPDF: React.FC<ProjectRequestPDFProps> = ({ projectReq
         <View style={styles.header}>
           <View style={styles.logoSection}>
             <View style={{ width: 85, height: 30, marginRight: 15 }}>
-              <EnerjiOSLogo width={80} height={26} />
+              <LogoComponent width={80} height={26} />
             </View>
             <View style={styles.companyInfo}>
               <View style={styles.companyName}>

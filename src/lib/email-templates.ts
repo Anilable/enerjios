@@ -3,7 +3,7 @@ import { Quote, Customer, User } from '@prisma/client';
 interface EmailTemplateData {
   quote: Quote & {
     customer: Customer | null;
-    createdBy: User;
+    createdBy: User & { company?: { name: string } | null };
   };
   customerName: string;
   companyName: string;
@@ -37,9 +37,29 @@ export class EmailTemplateService {
 
   static getQuoteDeliveryTemplate(data: EmailTemplateData): EmailTemplate {
     const { quote, customerName, companyName, viewUrl } = data;
-    
-    const subject = `${companyName} - Solar Enerji Sistemi Teklifi #${quote.quoteNumber}`;
-    
+
+    // Company-specific information
+    const isCompanyQuote = quote.createdBy.company?.name === 'DMR Solar';
+    const companyInfo = isCompanyQuote ? {
+      name: 'DMR Solar',
+      address: 'Yakuplu Mahallesi 194 Sokak 3. Matbaacılar Sitesi No: 1/200 Beylikdüzü - İstanbul',
+      phones: ['0212 441 10 14', '0532 434 49 99', '0535 715 12 17'],
+      email: 'info@dmrsolar.com.tr',
+      website: 'www.dmrsolar.com.tr',
+      primaryColor: '#FF6B35',
+      secondaryColor: '#FFD700'
+    } : {
+      name: 'EnerjiOS',
+      address: 'Levazım, Vadi Cd Zorlu Center , 34340 Beşiktaş/İstanbul',
+      phones: ['+90 541 593 26 55', '+90 288 415 20 05'],
+      email: 'info@enerjios.com',
+      website: 'www.enerjios.com',
+      primaryColor: '#2563eb',
+      secondaryColor: '#f39c12'
+    };
+
+    const subject = `${companyInfo.name} - Solar Enerji Sistemi Teklifi #${quote.quoteNumber}`;
+
     const html = `
 <!DOCTYPE html>
 <html lang="tr">
@@ -57,7 +77,7 @@ export class EmailTemplateService {
       padding: 20px;
     }
     .header {
-      background: linear-gradient(135deg, #f39c12, #e67e22);
+      background: linear-gradient(135deg, ${companyInfo.primaryColor}, ${companyInfo.secondaryColor});
       color: white;
       padding: 20px;
       text-align: center;
@@ -74,7 +94,7 @@ export class EmailTemplateService {
       padding: 20px;
       border-radius: 8px;
       margin: 20px 0;
-      border-left: 4px solid #f39c12;
+      border-left: 4px solid ${companyInfo.primaryColor};
     }
     .cta-button {
       background: #27ae60;
@@ -114,8 +134,8 @@ export class EmailTemplateService {
     <h2>Sayın ${customerName},</h2>
     
     <p>
-      <strong>${companyName}</strong> olarak, güneş enerji sistemi kurulum talebiniz için hazırladığımız 
-      detaylı teklifimizi sunuyoruz. Ekibimiz, sizin için en uygun çözümü geliştirmek adına 
+      <strong>${companyInfo.name}</strong> olarak, güneş enerji sistemi kurulum talebiniz için hazırladığımız
+      detaylı teklifimizi sunuyoruz. Ekibimiz, sizin için en uygun çözümü geliştirmek adına
       kapsamlı bir analiz gerçekleştirmiştir.
     </p>
 
@@ -165,12 +185,14 @@ export class EmailTemplateService {
 
     <h3>📞 İletişim</h3>
     <p>
-      Teklif hakkında sorularınız varsa veya detaylı bilgi almak istiyorsanız, 
+      Teklif hakkında sorularınız varsa veya detaylı bilgi almak istiyorsanız,
       bizimle iletişime geçmekten çekinmeyin:
     </p>
     <ul>
-      <li>📧 Email: ${quote.createdBy.email}</li>
-      ${quote.createdBy.phone ? `<li>📱 Telefon: ${quote.createdBy.phone}</li>` : ''}
+      <li>📧 Email: ${companyInfo.email}</li>
+      <li>📱 Telefon: ${companyInfo.phones.join(' - ')}</li>
+      <li>🌐 Website: ${companyInfo.website}</li>
+      <li>📍 Adres: ${companyInfo.address}</li>
     </ul>
 
     <p>
@@ -180,7 +202,7 @@ export class EmailTemplateService {
 
     <p style="margin-top: 30px;">
       Saygılarımızla,<br>
-      <strong>${companyName}</strong><br>
+      <strong>${companyInfo.name}</strong><br>
       <em>Güneş Enerji Çözümleri</em>
     </p>
   </div>

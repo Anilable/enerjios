@@ -37,14 +37,33 @@ export async function PUT(
       )
     }
 
-    // Find existing product
+    // Find existing product with company access check
+    const whereClause: any = { id: productId }
+
+    // Company users can only update their own company's products
+    if (session.user.role === 'COMPANY') {
+      const userCompany = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        include: { company: true }
+      })
+
+      if (userCompany?.company?.id) {
+        whereClause.companyId = userCompany.company.id
+      } else {
+        return NextResponse.json(
+          { error: 'Access denied: No company associated' },
+          { status: 403 }
+        )
+      }
+    }
+
     const existingProduct = await prisma.product.findUnique({
-      where: { id: productId }
+      where: whereClause
     })
 
     if (!existingProduct) {
       return NextResponse.json(
-        { error: 'Product not found' },
+        { error: 'Product not found or access denied' },
         { status: 404 }
       )
     }
@@ -227,14 +246,33 @@ export async function DELETE(
       )
     }
 
-    // Find existing product
+    // Find existing product with company access check
+    const whereClause: any = { id: productId }
+
+    // Company users can only delete their own company's products
+    if (session.user.role === 'COMPANY') {
+      const userCompany = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        include: { company: true }
+      })
+
+      if (userCompany?.company?.id) {
+        whereClause.companyId = userCompany.company.id
+      } else {
+        return NextResponse.json(
+          { error: 'Access denied: No company associated' },
+          { status: 403 }
+        )
+      }
+    }
+
     const existingProduct = await prisma.product.findUnique({
-      where: { id: productId }
+      where: whereClause
     })
 
     if (!existingProduct) {
       return NextResponse.json(
-        { error: 'Product not found' },
+        { error: 'Product not found or access denied' },
         { status: 404 }
       )
     }

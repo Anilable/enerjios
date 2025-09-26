@@ -23,11 +23,34 @@ export async function GET(request: NextRequest) {
 
     const where: any = {}
 
+    // Apply company-based filtering based on user role
+    if (session?.user?.role === 'COMPANY') {
+      // Company users only see their own company's packages
+      const userCompany = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        include: { company: true }
+      })
+
+      if (userCompany?.company?.id) {
+        where.companyId = userCompany.company.id
+      } else {
+        // If company user has no company, return empty array
+        return NextResponse.json([])
+      }
+    } else if (session?.user?.role === 'ADMIN' || session?.user?.role === 'GENERAL_MANAGER' || session?.user?.role === 'INSTALLATION_TEAM') {
+      // Admin, General Manager and Installation Team users only see admin packages (companyId is null)
+      where.companyId = null
+    } else {
+      // Other roles (CUSTOMER, etc.) should not see any packages
+      return NextResponse.json([])
+    }
+
     if (type) {
       where.type = type
     }
 
-    if (companyId) {
+    // Override companyId if explicitly provided (only for ADMIN users)
+    if (companyId && session?.user?.role === 'ADMIN') {
       where.companyId = companyId
     }
 

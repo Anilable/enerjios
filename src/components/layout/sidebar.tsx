@@ -130,7 +130,7 @@ export const getNavItemsByRole = (role: string): NavItem[] => {
         {
           title: 'Ürün Yönetimi',
           href: '/dashboard/products',
-          icon: FileText,
+          icon: Package,
         },
         {
           title: 'Bayi Excel İçe Aktar',
@@ -208,9 +208,9 @@ export const getNavItemsByRole = (role: string): NavItem[] => {
           badge: '45',
         },
         {
-          title: 'Ürün Kataloğu',
-          href: '/dashboard/products',
-          icon: Database,
+          title: 'Ürün Yönetimi',
+          href: '/dashboard/company-products',
+          icon: Package,
         },
         {
           title: 'Kurulumlar',

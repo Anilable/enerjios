@@ -1,0 +1,854 @@
+import * as React from 'react'
+import { Document, Page, Text, View, StyleSheet, Svg, Circle, Line, Rect, Font } from '@react-pdf/renderer'
+
+// Register Turkish-compatible fonts with production-safe fallbacks
+try {
+  Font.register({
+    family: 'Turkish',
+    fonts: [
+      {
+        src: 'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5Q.ttf',
+        fontWeight: 'normal',
+      },
+      {
+        src: 'https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlvAw.ttf',
+        fontWeight: 'bold',
+      }
+    ]
+  });
+} catch (error) {
+  console.warn('Failed to register custom fonts, using default:', error);
+}
+
+// Text encoding and sanitization utilities
+const sanitizeText = (text: string | null | undefined): string => {
+  if (!text) return ''
+
+  // Fix common Turkish character encoding issues
+  return text
+    .replace(/Mü_teri/g, 'Müşteri')
+    .replace(/Ko_ullar/g, 'Koşullar')
+    .replace(/Gü_ne_/g, 'Güneş')
+    .replace(/Tü_rki_e/g, 'Türkiye')
+    .replace(/Si_temi/g, 'Sistemi')
+    .replace(/_/g, '')  // Remove any remaining underscores
+    .replace(/º/g, '₺')  // Fix currency symbol
+    .normalize('NFC')    // Normalize Unicode
+}
+
+const formatTurkishCurrency = (amount: number): string => {
+  return `₺${amount.toLocaleString('tr-TR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  })}`
+}
+
+// DMR Solar Logo Component
+const DMRSolarLogo: React.FC<{ width?: number; height?: number }> = ({ width = 120, height = 40 }) => (
+  <View style={{ width, height, backgroundColor: 'transparent' }}>
+    <Svg viewBox="0 0 300 100" style={{ width, height }}>
+      {/* Main solar symbol */}
+      <Circle cx="50" cy="50" r="35" fill="#FFD700" opacity={0.9}/>
+
+      {/* Solar rays */}
+      <Line x1="50" y1="10" x2="50" y2="20" stroke="#FF4500" strokeWidth="3"/>
+      <Line x1="73" y1="17" x2="67" y2="23" stroke="#FF4500" strokeWidth="3"/>
+      <Line x1="90" y1="50" x2="80" y2="50" stroke="#FF4500" strokeWidth="3"/>
+      <Line x1="83" y1="83" x2="77" y2="77" stroke="#FF4500" strokeWidth="3"/>
+      <Line x1="50" y1="90" x2="50" y2="80" stroke="#FF4500" strokeWidth="3"/>
+      <Line x1="17" y1="83" x2="23" y2="77" stroke="#FF4500" strokeWidth="3"/>
+      <Line x1="10" y1="50" x2="20" y2="50" stroke="#FF4500" strokeWidth="3"/>
+      <Line x1="27" y1="17" x2="33" y2="23" stroke="#FF4500" strokeWidth="3"/>
+
+      {/* Central energy symbol */}
+      <Circle cx="50" cy="50" r="12" fill="white" opacity={0.9}/>
+      {/* Simple diamond/lightning shape */}
+      <Rect x="45" y="40" width="10" height="20" fill="#FF6B35"/>
+    </Svg>
+  </View>
+)
+
+// Define QuoteData interface for PDF
+interface QuoteData {
+  id: string
+  quoteNumber: string
+  customerName: string
+  customerEmail: string
+  customerPhone?: string
+  projectTitle?: string
+  systemSize?: number
+  panelCount?: number
+  capacity?: number
+  subtotal: number
+  tax: number
+  discount: number
+  total: number
+  laborCost?: number
+  status: 'DRAFT' | 'SENT' | 'VIEWED' | 'APPROVED' | 'REJECTED' | 'EXPIRED'
+  createdAt: string | Date
+  validUntil: string | Date
+  version?: number
+  items?: QuoteItem[]
+  company?: {
+    id: string
+    name: string
+  }
+  financialAnalysis?: {
+    annualProduction: number
+    annualSavings: number
+    npv25: number
+    paybackPeriod: number
+    irr: number
+  }
+  designData?: {
+    location: string
+    roofArea: number
+    tiltAngle: number
+    azimuth: number
+    irradiance: number
+  }
+}
+
+interface QuoteItem {
+  id: string
+  name: string
+  type: string
+  brand?: string
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+  specifications?: {
+    power?: number
+    efficiency?: number
+  }
+}
+
+const styles = StyleSheet.create({
+  page: {
+    fontFamily: 'Turkish',
+    fontSize: 10,
+    padding: 20,
+    lineHeight: 1.3,
+  },
+  // Header Section - Fixed layout
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 15,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FF6B35',
+    minHeight: 45,
+  },
+  logoSection: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    width: '100%',
+  },
+  companyInfo: {
+    marginLeft: 15,
+    flex: 1,
+    minWidth: 0,
+  },
+  companyName: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 3,
+  },
+  companyNameMain: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FF6B35',
+    letterSpacing: 0.2,
+  },
+  companyTagline: {
+    fontSize: 9,
+    color: '#666',
+    marginBottom: 2,
+    fontWeight: 'normal',
+    opacity: 0.8,
+  },
+  companyContact: {
+    fontSize: 7,
+    color: '#9ca3af',
+    lineHeight: 1.3,
+    flexWrap: 'wrap',
+  },
+
+  // Two column layout - Compact
+  twoColumnContainer: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    gap: 15,
+  },
+  column: {
+    flex: 1,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#374151',
+    marginBottom: 6,
+    paddingBottom: 3,
+    borderBottomWidth: 1,
+    borderBottomColor: '#d1d5db',
+    letterSpacing: 0.2,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    marginBottom: 3,
+    alignItems: 'flex-start',
+  },
+  infoLabel: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#6b7280',
+    width: 60,
+    lineHeight: 1.2,
+  },
+  infoValue: {
+    fontSize: 8,
+    color: '#374151',
+    flex: 1,
+    lineHeight: 1.2,
+  },
+
+  // Project title - Compact
+  projectTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: '#1f2937',
+    marginBottom: 10,
+    letterSpacing: 0.3,
+    lineHeight: 1.1,
+  },
+
+  // System overview cards - Compact
+  systemOverview: {
+    backgroundColor: '#fff7ed',
+    padding: 8,
+    marginBottom: 10,
+    borderRadius: 4,
+  },
+  overviewTitle: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#FF6B35',
+    marginBottom: 6,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    padding: 6,
+    borderRadius: 3,
+    textAlign: 'center',
+  },
+  statValue: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  statValuePrimary: {
+    color: '#FF6B35',
+  },
+  statValueBlue: {
+    color: '#3b82f6',
+  },
+  statValueGreen: {
+    color: '#059669',
+  },
+  statValueOrange: {
+    color: '#ea580c',
+  },
+  statLabel: {
+    fontSize: 7,
+    color: '#6b7280',
+  },
+
+  // Technical details - Compact
+  technicalDetails: {
+    marginBottom: 8,
+  },
+  detailsGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  detailsColumn: {
+    flex: 1,
+  },
+
+  // Items table - Very compact
+  table: {
+    marginBottom: 10,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#f8fafc',
+    padding: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    padding: 4,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#f1f5f9',
+    minHeight: 20,
+    alignItems: 'center',
+  },
+  tableCell: {
+    fontSize: 8,
+    lineHeight: 1.1,
+  },
+  tableCellProduct: {
+    flex: 3,
+  },
+  tableCellBrand: {
+    flex: 1.5,
+    textAlign: 'center',
+  },
+  tableCellQuantity: {
+    flex: 1,
+    textAlign: 'center',
+  },
+  tableCellPrice: {
+    flex: 1.5,
+    textAlign: 'right',
+  },
+  tableCellTotal: {
+    flex: 1.5,
+    textAlign: 'right',
+    fontWeight: 'bold',
+  },
+  productName: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    marginBottom: 1,
+    color: '#374151',
+    lineHeight: 1.1,
+  },
+  productSpecs: {
+    fontSize: 7,
+    color: '#6b7280',
+    lineHeight: 1.0,
+    fontWeight: 'normal',
+  },
+
+  // Pricing summary - Compact
+  pricingSummary: {
+    backgroundColor: '#f8fafc',
+    padding: 8,
+    marginBottom: 10,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 3,
+    alignItems: 'center',
+  },
+  summaryLabel: {
+    fontSize: 8,
+    color: '#374151',
+    fontWeight: 500,
+  },
+  summaryValue: {
+    fontSize: 8,
+    color: '#374151',
+    fontWeight: 500,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#FF6B35',
+    alignItems: 'center',
+  },
+  totalLabel: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#FF6B35',
+    letterSpacing: 0.3,
+  },
+  totalValue: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#FF6B35',
+    letterSpacing: 0.2,
+  },
+
+  // Financial analysis - Compact
+  financialAnalysis: {
+    marginBottom: 8,
+  },
+  analysisGrid: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  analysisCard: {
+    flex: 1,
+    padding: 6,
+    borderRadius: 3,
+    textAlign: 'center',
+  },
+  analysisCardGreen: {
+    backgroundColor: '#f0fdf4',
+  },
+  analysisCardBlue: {
+    backgroundColor: '#eff6ff',
+  },
+  analysisCardOrange: {
+    backgroundColor: '#fff7ed',
+  },
+  analysisCardPurple: {
+    backgroundColor: '#faf5ff',
+  },
+  analysisValue: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  analysisValueGreen: {
+    color: '#059669',
+  },
+  analysisValueBlue: {
+    color: '#2563eb',
+  },
+  analysisValueOrange: {
+    color: '#ea580c',
+  },
+  analysisValuePurple: {
+    color: '#9333ea',
+  },
+  analysisLabel: {
+    fontSize: 6,
+  },
+  analysisLabelGreen: {
+    color: '#166534',
+  },
+  analysisLabelBlue: {
+    color: '#1e40af',
+  },
+  analysisLabelOrange: {
+    color: '#9a3412',
+  },
+  analysisLabelPurple: {
+    color: '#7c2d12',
+  },
+
+  // Notes section - Compact
+  notesSection: {
+    backgroundColor: '#f9fafb',
+    padding: 6,
+    marginBottom: 6,
+    borderRadius: 3,
+  },
+  notesTitle: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    marginBottom: 3,
+  },
+  notesList: {
+    fontSize: 7,
+    color: '#374151',
+  },
+  noteItem: {
+    marginBottom: 1,
+  },
+
+  // Terms section - Compact
+  termsSection: {
+    marginBottom: 8,
+  },
+  termItem: {
+    fontSize: 7,
+    color: '#374151',
+    marginBottom: 1,
+  },
+
+  // Footer - Compact
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    paddingTop: 8,
+    textAlign: 'center',
+  },
+  footerMessage: {
+    fontSize: 7,
+    color: '#6b7280',
+    marginBottom: 8,
+  },
+  signatureContainer: {
+    flexDirection: 'row',
+    gap: 20,
+    marginBottom: 6,
+  },
+  signatureBox: {
+    flex: 1,
+    textAlign: 'center',
+  },
+  signatureTitle: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  signatureLine: {
+    borderTopWidth: 1,
+    borderTopColor: '#9ca3af',
+    paddingTop: 3,
+    fontSize: 6,
+    color: '#6b7280',
+  },
+  footerCopyright: {
+    fontSize: 6,
+    color: '#9ca3af',
+  },
+})
+
+interface QuotePDFProps {
+  quote: QuoteData
+}
+
+export const CompanyQuotePDF: React.FC<QuotePDFProps> = ({ quote }) => {
+  const formatDate = (date: string | Date) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date
+    return new Intl.DateTimeFormat('tr-TR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    }).format(dateObj)
+  }
+
+  const formatCurrency = (amount: number) => {
+    return formatTurkishCurrency(amount)
+  }
+
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        {/* DMR Solar Header */}
+        <View style={styles.header}>
+          <View style={styles.logoSection}>
+            <View style={{ width: 85, height: 30, marginRight: 15 }}>
+              <DMRSolarLogo width={80} height={26} />
+            </View>
+            <View style={styles.companyInfo}>
+              <View style={styles.companyName}>
+                <Text style={styles.companyNameMain}>DMR Solar</Text>
+              </View>
+              <Text style={styles.companyTagline}>{sanitizeText('Güneş Enerjisi Çözümleri')}</Text>
+              <View style={{ marginTop: 2 }}>
+                <Text style={styles.companyContact}>
+                  Yakuplu Mahallesi 194 Sokak 3. Matbaacılar Sitesi No: 1/200 Beylikdüzü - İstanbul
+                </Text>
+                <Text style={styles.companyContact}>
+                  0212 441 10 14 • 0532 434 49 99 • 0535 715 12 17
+                </Text>
+                <Text style={styles.companyContact}>
+                  info@dmrsolar.com.tr • www.dmrsolar.com.tr
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Quote and Customer Info */}
+        <View style={styles.twoColumnContainer}>
+          <View style={styles.column}>
+            <Text style={styles.sectionTitle}>{sanitizeText('Teklif Bilgileri')}</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Teklif No:</Text>
+              <Text style={styles.infoValue}>{quote.quoteNumber}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Tarih:</Text>
+              <Text style={styles.infoValue}>{formatDate(quote.createdAt)}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Geçerlilik:</Text>
+              <Text style={styles.infoValue}>{formatDate(quote.validUntil)}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Versiyon:</Text>
+              <Text style={styles.infoValue}>v{quote.version}</Text>
+            </View>
+          </View>
+
+          <View style={styles.column}>
+            <Text style={styles.sectionTitle}>{sanitizeText('Müşteri Bilgileri')}</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Ad Soyad:</Text>
+              <Text style={styles.infoValue}>{sanitizeText(quote.customerName)}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Email:</Text>
+              <Text style={styles.infoValue}>{quote.customerEmail}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Telefon:</Text>
+              <Text style={styles.infoValue}>{quote.customerPhone || '-'}</Text>
+            </View>
+            {quote.designData && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Konum:</Text>
+                <Text style={styles.infoValue}>{quote.designData.location}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Project Title */}
+        <Text style={styles.projectTitle}>{quote.projectTitle || ''}</Text>
+
+        {/* System Overview */}
+        <View style={styles.systemOverview}>
+          <Text style={styles.overviewTitle}>Sistem Özellikleri</Text>
+          <View style={styles.statsContainer}>
+            <View style={styles.statCard}>
+              <Text style={[styles.statValue, styles.statValuePrimary]}>
+                {quote.systemSize} kW
+              </Text>
+              <Text style={styles.statLabel}>Sistem Gücü</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={[styles.statValue, styles.statValueBlue]}>
+                {quote.panelCount}
+              </Text>
+              <Text style={styles.statLabel}>Panel Sayısı</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={[styles.statValue, styles.statValueGreen]}>
+                {quote.financialAnalysis?.annualProduction?.toLocaleString() || '0'} kWh
+              </Text>
+              <Text style={styles.statLabel}>Yıllık Üretim</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={[styles.statValue, styles.statValueOrange]}>
+                {quote.financialAnalysis?.paybackPeriod || '0'} Yıl
+              </Text>
+              <Text style={styles.statLabel}>Geri Ödeme Süresi</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Technical Details */}
+        {quote.designData && (
+          <View style={styles.technicalDetails}>
+            <Text style={styles.sectionTitle}>Teknik Detaylar</Text>
+            <View style={styles.detailsGrid}>
+              <View style={styles.detailsColumn}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Konum:</Text>
+                  <Text style={styles.infoValue}>{quote.designData.location}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Çatı Alanı:</Text>
+                  <Text style={styles.infoValue}>{quote.designData.roofArea} m²</Text>
+                </View>
+              </View>
+              <View style={styles.detailsColumn}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Güneşlenme:</Text>
+                  <Text style={styles.infoValue}>{quote.designData.irradiance} kWh/m²/yıl</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Çatı Eğimi:</Text>
+                  <Text style={styles.infoValue}>
+                    {quote.designData.tiltAngle}° / Azimuth: {quote.designData.azimuth}°
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Items Table */}
+        <View style={styles.table}>
+          <Text style={styles.sectionTitle}>Teklif Detayları</Text>
+
+          {/* Table Header */}
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableCell, styles.tableCellProduct]}>Ürün/Hizmet</Text>
+            <Text style={[styles.tableCell, styles.tableCellBrand]}>Marka</Text>
+            <Text style={[styles.tableCell, styles.tableCellQuantity]}>Adet</Text>
+            <Text style={[styles.tableCell, styles.tableCellPrice]}>Birim Fiyat</Text>
+            <Text style={[styles.tableCell, styles.tableCellTotal]}>Toplam</Text>
+          </View>
+
+          {/* Table Rows */}
+          {quote.items?.map((item: QuoteItem) => (
+            <View key={item.id} style={styles.tableRow}>
+              <View style={styles.tableCellProduct}>
+                <Text style={styles.productName}>{sanitizeText(item.name)}</Text>
+                {item.specifications && (
+                  <Text style={styles.productSpecs}>
+                    {item.type === 'PANEL' &&
+                      `${item.specifications?.power || 0}W - %${item.specifications?.efficiency || 0} verimlilik`}
+                    {item.type === 'INVERTER' &&
+                      `${(item.specifications?.power || 0)/1000}kW - %${item.specifications?.efficiency || 0} verimlilik`}
+                  </Text>
+                )}
+              </View>
+              <Text style={[styles.tableCell, styles.tableCellBrand]}>
+                {item.brand || '-'}
+              </Text>
+              <Text style={[styles.tableCell, styles.tableCellQuantity]}>
+                {item.quantity}
+              </Text>
+              <Text style={[styles.tableCell, styles.tableCellPrice]}>
+                {formatCurrency(item.unitPrice)}
+              </Text>
+              <Text style={[styles.tableCell, styles.tableCellTotal]}>
+                {formatCurrency(item.totalPrice)}
+              </Text>
+            </View>
+          ))}
+
+          {/* Labor Row - Only show if laborCost > 0 */}
+          {(quote.laborCost || 0) > 0 && (
+            <View style={styles.tableRow}>
+              <View style={styles.tableCellProduct}>
+                <Text style={styles.productName}>{sanitizeText('Kurulum ve İşçilik')}</Text>
+                <Text style={styles.productSpecs}>Profesyonel kurulum hizmeti</Text>
+              </View>
+              <Text style={[styles.tableCell, styles.tableCellBrand]}>-</Text>
+              <Text style={[styles.tableCell, styles.tableCellQuantity]}>1</Text>
+              <Text style={[styles.tableCell, styles.tableCellPrice]}>
+                {formatCurrency(quote.laborCost || 0)}
+              </Text>
+              <Text style={[styles.tableCell, styles.tableCellTotal]}>
+                {formatCurrency(quote.laborCost || 0)}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Pricing Summary */}
+        <View style={styles.pricingSummary}>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Alt Toplam:</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(quote.subtotal)}</Text>
+          </View>
+          {(quote.laborCost || 0) > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>İşçilik:</Text>
+              <Text style={styles.summaryValue}>{formatCurrency(quote.laborCost || 0)}</Text>
+            </View>
+          )}
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>KDV (%20):</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(quote.tax)}</Text>
+          </View>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>TOPLAM TUTAR:</Text>
+            <Text style={styles.totalValue}>{formatCurrency(quote.total)}</Text>
+          </View>
+        </View>
+
+        {/* Financial Analysis */}
+        {quote.financialAnalysis && (
+          <View style={styles.financialAnalysis}>
+            <Text style={styles.sectionTitle}>Finansal Analiz & Getiri Hesaplaması</Text>
+
+            <View style={styles.analysisGrid}>
+              <View style={[styles.analysisCard, styles.analysisCardGreen]}>
+                <Text style={[styles.analysisValue, styles.analysisValueGreen]}>
+                  {formatCurrency(quote.financialAnalysis.annualSavings)}
+                </Text>
+                <Text style={[styles.analysisLabel, styles.analysisLabelGreen]}>
+                  Yıllık Elektrik Tasarrufu
+                </Text>
+              </View>
+
+              <View style={[styles.analysisCard, styles.analysisCardBlue]}>
+                <Text style={[styles.analysisValue, styles.analysisValueBlue]}>
+                  {formatCurrency(quote.financialAnalysis.npv25)}
+                </Text>
+                <Text style={[styles.analysisLabel, styles.analysisLabelBlue]}>
+                  25 Yıllık Net Bugünkü Değer
+                </Text>
+              </View>
+
+              <View style={[styles.analysisCard, styles.analysisCardOrange]}>
+                <Text style={[styles.analysisValue, styles.analysisValueOrange]}>
+                  {quote.financialAnalysis.paybackPeriod} Yıl
+                </Text>
+                <Text style={[styles.analysisLabel, styles.analysisLabelOrange]}>
+                  Yatırım Geri Ödeme Süresi
+                </Text>
+              </View>
+
+              <View style={[styles.analysisCard, styles.analysisCardPurple]}>
+                <Text style={[styles.analysisValue, styles.analysisValuePurple]}>
+                  %{quote.financialAnalysis.irr}
+                </Text>
+                <Text style={[styles.analysisLabel, styles.analysisLabelPurple]}>
+                  İç Karlılık Oranı (IRR)
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.notesSection}>
+              <Text style={styles.notesTitle}>Hesaplama Notları:</Text>
+              <View style={styles.notesList}>
+                <Text style={styles.noteItem}>• Elektrik fiyatı 2.20 TL/kWh baz alınmıştır</Text>
+                <Text style={styles.noteItem}>• Yıllık %5 elektrik fiyat artışı hesaplanmıştır</Text>
+                <Text style={styles.noteItem}>• Sistem verimliliği %90 olarak kabul edilmiştir</Text>
+                <Text style={styles.noteItem}>• Panel performansı 25 yılda %80'e düşer varsayımı kullanılmıştır</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Terms & Conditions */}
+        <View style={styles.termsSection}>
+          <Text style={styles.sectionTitle}>Şartlar ve Koşullar</Text>
+          <Text style={styles.termItem}>{`• Bu teklif ${formatDate(quote.validUntil)} tarihine kadar geçerlidir.`}</Text>
+          <Text style={styles.termItem}>• Fiyatlar KDV dahil olarak gösterilmiştir.</Text>
+          {(quote.laborCost || 0) > 0 && (
+            <Text style={styles.termItem}>• Kurulum süresi hava koşullarına bağlı olarak 3-5 iş günü arasındadır.</Text>
+          )}
+          <Text style={styles.termItem}>• Paneller için 25 yıl performans garantisi mevcuttur.</Text>
+          <Text style={styles.termItem}>• İnverterler için 10 yıl üretici garantisi mevcuttur.</Text>
+          <Text style={styles.termItem}>• YEKDEM mevzuatı değişikliklerinden sorumlu değiliz.</Text>
+          <Text style={styles.termItem}>• Ödeme koşulları: %50 avans, %50 kurulum tamamlandıktan sonra.</Text>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerMessage}>
+            Bu teklifi kabul ediyorsanız, lütfen imzalayarak bize geri gönderiniz.
+          </Text>
+
+          <View style={styles.signatureContainer}>
+            <View style={styles.signatureBox}>
+              <Text style={styles.signatureTitle}>DMR Solar</Text>
+              <Text style={styles.signatureLine}>Yetkili İmza</Text>
+            </View>
+            <View style={styles.signatureBox}>
+              <Text style={styles.signatureTitle}>Müşteri Onayı</Text>
+              <Text style={styles.signatureLine}>İmza & Tarih</Text>
+            </View>
+          </View>
+
+          <Text style={styles.footerCopyright}>
+            Bu teklif DMR Solar tarafından hazırlanmış olup, tüm hakları saklıdır.
+          </Text>
+        </View>
+      </Page>
+    </Document>
+  )
+}
+
+export default CompanyQuotePDF
