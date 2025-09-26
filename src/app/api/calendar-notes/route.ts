@@ -20,9 +20,10 @@ export async function GET(request: NextRequest) {
     // Debug: Log user role
     console.log('📅 Calendar Notes API - User role:', session.user.role)
 
-    // If user is installation team, they can see all notes
-    // Otherwise, they can only see their own notes
-    const where: any = session.user.role === 'INSTALLATION_TEAM' ? {} : {
+    // Admin, installation team, and general manager can see all notes
+    // Others can only see their own notes
+    const canSeeAllNotes = ['ADMIN', 'INSTALLATION_TEAM', 'GENERAL_MANAGER'].includes(session.user.role || '')
+    const where: any = canSeeAllNotes ? {} : {
       createdBy: session.user.id
     }
 
@@ -39,6 +40,13 @@ export async function GET(request: NextRequest) {
       },
       include: {
         user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        completedUser: {
           select: {
             id: true,
             name: true,
@@ -107,6 +115,13 @@ export async function POST(request: NextRequest) {
       },
       include: {
         user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        completedUser: {
           select: {
             id: true,
             name: true,

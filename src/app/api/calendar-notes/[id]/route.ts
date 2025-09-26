@@ -31,7 +31,10 @@ export async function PATCH(
       )
     }
 
-    if (existingNote.createdBy !== session.user.id) {
+    // Admin, installation team, and general manager can edit all notes
+    // Others can only edit their own notes
+    const canEditAllNotes = ['ADMIN', 'INSTALLATION_TEAM', 'GENERAL_MANAGER'].includes(session.user.role || '')
+    if (!canEditAllNotes && existingNote.createdBy !== session.user.id) {
       return NextResponse.json(
         { error: 'Not authorized to update this note' },
         { status: 403 }
@@ -39,7 +42,7 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { date, title, content, type } = body
+    const { date, title, content, type, isCompleted } = body
 
     // Validate date format if provided
     if (date) {
@@ -60,16 +63,38 @@ export async function PATCH(
       )
     }
 
+    // Prepare update data
+    const updateData: any = {
+      ...(date && { date }),
+      ...(title && { title }),
+      ...(content && { content }),
+      ...(type && { type })
+    }
+
+    // Handle completion status
+    if (typeof isCompleted === 'boolean') {
+      updateData.isCompleted = isCompleted
+      if (isCompleted) {
+        updateData.completedBy = session.user.id
+        updateData.completedAt = new Date()
+      } else {
+        updateData.completedBy = null
+        updateData.completedAt = null
+      }
+    }
+
     const updatedNote = await prisma.calendarNote.update({
       where: { id },
-      data: {
-        ...(date && { date }),
-        ...(title && { title }),
-        ...(content && { content }),
-        ...(type && { type })
-      },
+      data: updateData,
       include: {
         user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        completedUser: {
           select: {
             id: true,
             name: true,
@@ -122,7 +147,10 @@ export async function DELETE(
       )
     }
 
-    if (existingNote.createdBy !== session.user.id) {
+    // Admin, installation team, and general manager can delete all notes
+    // Others can only delete their own notes
+    const canDeleteAllNotes = ['ADMIN', 'INSTALLATION_TEAM', 'GENERAL_MANAGER'].includes(session.user.role || '')
+    if (!canDeleteAllNotes && existingNote.createdBy !== session.user.id) {
       return NextResponse.json(
         { error: 'Not authorized to delete this note' },
         { status: 403 }

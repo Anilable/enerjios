@@ -45,7 +45,8 @@ model User {
   quotesApproved          Quote[]                       @relation("QuoteApprovedBy")
   quotes                  Quote[]                       @relation("QuoteCreatedBy")
   sessions                Session[]
-  calendarNotes           CalendarNote[]
+  createdCalendarNotes    CalendarNote[]                @relation("CreatedCalendarNotes")
+  completedCalendarNotes  CalendarNote[]                @relation("CompletedCalendarNotes")
 }
 
 model Session {
@@ -1526,15 +1527,19 @@ model ChatbotContact {
 }
 
 model CalendarNote {
-  id        String           @id @default(cuid())
-  date      String           // Date in YYYY-MM-DD format
-  title     String
-  content   String
-  type      CalendarNoteType @default(NOTE)
-  createdBy String
-  user      User             @relation(fields: [createdBy], references: [id], onDelete: Cascade)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  id            String           @id @default(cuid())
+  date          String           // Date in YYYY-MM-DD format
+  title         String
+  content       String
+  type          CalendarNoteType @default(NOTE)
+  isCompleted   Boolean          @default(false)
+  completedBy   String?
+  completedAt   DateTime?
+  completedUser User?            @relation("CompletedCalendarNotes", fields: [completedBy], references: [id])
+  createdBy     String
+  user          User             @relation("CreatedCalendarNotes", fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   @@map("calendar_notes")
 }

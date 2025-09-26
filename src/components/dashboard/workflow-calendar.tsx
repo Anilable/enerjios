@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   ChevronLeft,
   ChevronRight,
@@ -28,6 +29,19 @@ interface CalendarNote {
   content: string
   type: 'TASK' | 'REMINDER' | 'EVENT' | 'NOTE'
   createdBy: string
+  isCompleted?: boolean
+  completedBy?: string | null
+  completedAt?: string | null
+  user?: {
+    id: string
+    name: string | null
+    email: string
+  }
+  completedUser?: {
+    id: string
+    name: string | null
+    email: string
+  } | null
 }
 
 interface WorkflowCalendarProps {
@@ -195,6 +209,14 @@ export function WorkflowCalendar({
     }
   }
 
+  const handleToggleComplete = (note: CalendarNote) => {
+    if (onNoteEdit) {
+      onNoteEdit(note.id, {
+        isCompleted: !note.isCompleted
+      })
+    }
+  }
+
   const openEditModal = (note: CalendarNote) => {
     setNoteForm({
       title: note.title,
@@ -278,6 +300,7 @@ export function WorkflowCalendar({
                       <div key={i} className="flex items-center gap-1">
                         <div
                           className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                            note.isCompleted ? 'bg-green-500' :
                             note.type === 'TASK' ? 'bg-blue-500' :
                             note.type === 'REMINDER' ? 'bg-yellow-500' :
                             note.type === 'EVENT' ? 'bg-purple-500' :
@@ -285,6 +308,7 @@ export function WorkflowCalendar({
                           }`}
                         />
                         <span className={`text-xs truncate ${
+                          note.isCompleted ? 'text-green-700 line-through' :
                           note.type === 'TASK' ? 'text-blue-700' :
                           note.type === 'REMINDER' ? 'text-yellow-700' :
                           note.type === 'EVENT' ? 'text-purple-700' :
@@ -343,16 +367,32 @@ export function WorkflowCalendar({
                       {dayData.notes.map((note) => (
                         <div key={note.id} className="border rounded p-2 space-y-1">
                           <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <Badge className={getNoteTypeColor(note.type)} variant="secondary">
-                                  {getNoteTypeLabel(note.type)}
-                                </Badge>
-                                <h4 className="font-medium text-sm">{note.title}</h4>
+                            <div className="flex items-start gap-2 flex-1">
+                              <Checkbox
+                                checked={note.isCompleted || false}
+                                onCheckedChange={() => handleToggleComplete(note)}
+                                className="mt-0.5 flex-shrink-0"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <Badge className={getNoteTypeColor(note.type)} variant="secondary">
+                                    {getNoteTypeLabel(note.type)}
+                                  </Badge>
+                                  <h4 className={`font-medium text-sm ${note.isCompleted ? 'line-through text-gray-500' : ''}`}>
+                                    {note.title}
+                                  </h4>
+                                </div>
+                                {note.content && (
+                                  <p className={`text-xs text-muted-foreground mt-1 ${note.isCompleted ? 'line-through' : ''}`}>
+                                    {note.content}
+                                  </p>
+                                )}
+                                {note.isCompleted && note.completedUser && (
+                                  <p className="text-xs text-green-600 mt-1">
+                                    ✓ {note.completedUser.name} tarafından tamamlandı
+                                  </p>
+                                )}
                               </div>
-                              {note.content && (
-                                <p className="text-xs text-muted-foreground mt-1">{note.content}</p>
-                              )}
                             </div>
                             <div className="flex items-center gap-1">
                               <Button
