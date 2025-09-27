@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useToast } from '@/hooks/use-toast'
 import { Toaster } from '@/components/ui/toaster'
 import { formatCurrency } from '@/lib/utils'
@@ -389,7 +390,7 @@ export default function ProductsPage() {
             'Solar Paneller': ['Panel', 'panel', 'Solar Panel', 'Güneş Paneli'],
             'İnverterler': ['İnverter', 'inverter', 'Inverter'],
             'Bataryalar': ['Batarya', 'batarya', 'Battery'],
-            'Montaj Malzemeleri': ['Montaj', 'montaj', 'Mounting'],
+            'Montaj Malzemeleri': ['Montaj', 'montaj', 'Mounting', 'Konstrüksiyon', 'konstrüksiyon'],
             'Kablolar': ['Kablo', 'kablo', 'Cable', 'Kablolar'],
             'İzleme Sistemleri': ['İzleme', 'izleme', 'Monitoring'],
             'Aksesuarlar': ['Aksesuar', 'aksesuar', 'Accessory', 'Aksesuarlar'],
@@ -1185,10 +1186,26 @@ export default function ProductsPage() {
     try {
       setSaving(true)
 
+      // Find categoryId if missing
+      let categoryId = product.categoryId
+      if (!categoryId && product.category) {
+        // Try to find category by name
+        const category = categories.find(cat =>
+          cat.name === product.category ||
+          cat.name.toLowerCase() === product.category.toLowerCase()
+        )
+        categoryId = category?.id
+      }
+      // If still no categoryId, use the first category as default
+      if (!categoryId && categories.length > 0) {
+        categoryId = categories[0].id
+        console.log(`⚠️ No category found for product, using default: ${categories[0].name}`)
+      }
+
       // Create new product data with "Kopya" prefix and updated code
       const duplicatedProduct = {
         name: `${product.name} - Kopya`,
-        categoryId: product.categoryId,
+        categoryId: categoryId,
         code: `${product.code || ''}-COPY-${Date.now().toString().slice(-4)}`,
         brand: product.brand,
         model: product.model || '',
@@ -1296,7 +1313,9 @@ export default function ProductsPage() {
   }
 
   const handleEditProduct = async () => {
+    console.log('🔄 Starting handleEditProduct')
     console.log('🔄 Form data before edit:', formData)
+    console.log('🔄 Selected product:', selectedProduct)
     console.log('🔄 FormData types:', {
       price: typeof formData.price,
       purchasePrice: typeof formData.purchasePrice,
@@ -1306,9 +1325,18 @@ export default function ProductsPage() {
       purchasePriceUsdValue: formData.purchasePriceUsd
     })
 
-    const trimmedCode = formData.code?.trim()
+    const trimmedCode = formData.code?.trim() || ''
+    console.log('🔍 Validation check:', {
+      selectedProduct: !!selectedProduct,
+      name: !!formData.name,
+      categoryId: !!formData.categoryId,
+      price: !!formData.price,
+      trimmedCode: !!trimmedCode,
+      originalCode: formData.code
+    })
 
-    if (!selectedProduct || !formData.name || !formData.categoryId || !formData.price || !trimmedCode) {
+    if (!selectedProduct || !formData.name || !formData.categoryId || !formData.price) {
+      console.log('❌ Validation failed - missing required fields')
       toast({
         title: "Hata",
         description: "Lütfen tüm gerekli alanları doldurun.",
@@ -1317,20 +1345,25 @@ export default function ProductsPage() {
       return
     }
 
-    if (formData.purchasePriceUsd !== undefined && formData.purchasePriceUsd !== null && Number(formData.purchasePriceUsd) < 0) {
-      toast({
-        title: "Hata",
-        description: "USD alış fiyatı negatif olamaz.",
-        variant: "destructive"
-      })
-      return
-    }
+    console.log('✅ Validation passed, proceeding with update')
 
     try {
+      setSaving(true)
+      console.log('🔄 Setting saving to true')
+
+      if (formData.purchasePriceUsd !== undefined && formData.purchasePriceUsd !== null && Number(formData.purchasePriceUsd) < 0) {
+        console.log('❌ USD price validation failed')
+        toast({
+          title: "Hata",
+          description: "USD alış fiyatı negatif olamaz.",
+          variant: "destructive"
+        })
+        setSaving(false)
+        return
+      }
+
       console.log('🔄 Starting edit product process...')
       console.log('Selected files state:', selectedFiles)
-
-      setSaving(true)
       setUploadingFiles(true)
 
       // Upload files first if any selected
@@ -1354,7 +1387,14 @@ export default function ProductsPage() {
       }
 
       // Merge uploaded files with existing data
-      const existingImages = selectedProduct.images ? JSON.parse(selectedProduct.images) : []
+      let existingImages = []
+      try {
+        existingImages = selectedProduct.images ? JSON.parse(selectedProduct.images) : []
+        if (!Array.isArray(existingImages)) existingImages = []
+      } catch (error) {
+        console.error('Error parsing selectedProduct.images in handleEditProduct:', error)
+        existingImages = []
+      }
       const allImages = [...existingImages, ...uploadedFiles.images]
 
       const requestBody = {
@@ -1379,6 +1419,12 @@ export default function ProductsPage() {
       }
 
       console.log('📤 Sending PUT request with body:', requestBody)
+      console.log('🔍 Category debugging:', {
+        selectedCategoryId: formData.categoryId,
+        selectedCategoryName: categories.find(c => c.id === formData.categoryId)?.name,
+        originalProductCategory: selectedProduct.category,
+        originalProductCategoryId: selectedProduct.categoryId
+      })
 
       const response = await fetch(`/api/products/${selectedProduct.id}`, {
         method: 'PUT',
@@ -1910,6 +1956,7 @@ export default function ProductsPage() {
         'Panel': 'Solar Paneller',
         'Batarya': 'Bataryalar',
         'Montaj': 'Montaj Malzemeleri',
+        'Konstrüksiyon': 'Montaj Malzemeleri', // Map old Konstrüksiyon to Montaj Malzemeleri
         'Kablo': 'Kablolar',
         'İzleme': 'İzleme Sistemleri',
         'Aksesuar': 'Aksesuarlar',
@@ -1925,17 +1972,47 @@ export default function ProductsPage() {
 
     console.log(`🎯 Final category name for dropdown: "${categoryName}"`)
 
+    // Find categoryId if missing but category name exists
+    let finalCategoryId = product.categoryId
+    if (!finalCategoryId && product.category && categories.length > 0) {
+      const categoryObj = categories.find(cat =>
+        cat.name === product.category ||
+        cat.name === categoryName ||
+        cat.name.toLowerCase() === product.category.toLowerCase()
+      )
+      if (categoryObj) {
+        finalCategoryId = categoryObj.id
+        console.log(`🔧 Found categoryId for "${product.category}": ${finalCategoryId}`)
+      } else {
+        // If category doesn't exist, use the first available category as default
+        console.log(`⚠️ Category "${product.category}" not found in current categories. Using default.`)
+        finalCategoryId = categories[0]?.id
+        if (finalCategoryId) {
+          console.log(`🔧 Using default category: ${categories[0].name} (${finalCategoryId})`)
+        }
+      }
+    }
+
     setFormData({
       ...product,
-      categoryId: product.categoryId, // Use categoryId instead of category name
+      categoryId: finalCategoryId, // Use found or existing categoryId
       power: typeof product.power === 'string' ? product.power.replace(/[^0-9.]/g, '') : String(product.power || ''),
       warranty: typeof product.warranty === 'string' ? product.warranty.replace(/[^0-9]/g, '') : String(product.warranty || '')
     })
 
     // Parse existing files from database
-    const existingImages = typeof product.images === 'string'
-      ? JSON.parse(product.images || '[]')
-      : product.images || []
+    let existingImages = []
+    try {
+      existingImages = typeof product.images === 'string'
+        ? JSON.parse(product.images || '[]')
+        : product.images || []
+      if (!Array.isArray(existingImages)) {
+        existingImages = []
+      }
+    } catch (error) {
+      console.error('Error parsing product images in openEditDialog:', error)
+      existingImages = []
+    }
 
     console.log('📋 Existing files found:', {
       images: existingImages.length,
@@ -2131,7 +2208,9 @@ export default function ProductsPage() {
       })
 
       // Refresh packages list from server
+      console.log('🔄 Fetching updated packages after edit...')
       await fetchPackages()
+      console.log('✅ Package list refreshed after edit')
     } catch (error) {
       console.error('Error updating package:', error)
       toast({
@@ -2814,21 +2893,39 @@ export default function ProductsPage() {
                             </div>
                             {/* File indicators */}
                             <div className="flex gap-1">
-                              {product.images && JSON.parse(product.images).length > 0 && (
+                              {(() => {
+                                try {
+                                  const images = product.images ? JSON.parse(product.images) : []
+                                  return Array.isArray(images) && images.length > 0
+                                } catch {
+                                  return false
+                                }
+                              })() && (
                                 <div className="group relative">
                                   <Camera
                                     className="w-4 h-4 text-blue-600 cursor-pointer hover:text-blue-800"
                                     onClick={() => {
-                                      const images = JSON.parse(product.images || '[]')
-                                      if (images.length > 0) {
-                                        setCurrentFile({type: 'image', url: images[0], name: 'Ürün Görselleri', images: images})
-                                        setCurrentImageIndex(0)
-                                        setShowFileModal(true)
+                                      try {
+                                        const images = product.images ? JSON.parse(product.images) : []
+                                        if (Array.isArray(images) && images.length > 0) {
+                                          setCurrentFile({type: 'image', url: images[0], name: 'Ürün Görselleri', images: images})
+                                          setCurrentImageIndex(0)
+                                          setShowFileModal(true)
+                                        }
+                                      } catch (error) {
+                                        console.error('Error parsing product images:', error)
                                       }
                                     }}
                                   />
                                   <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                                    {JSON.parse(product.images).length} görsel
+                                    {(() => {
+                                      try {
+                                        const images = product.images ? JSON.parse(product.images) : []
+                                        return Array.isArray(images) ? images.length : 0
+                                      } catch {
+                                        return 0
+                                      }
+                                    })()} görsel
                                   </div>
                                 </div>
                               )}
@@ -3850,9 +3947,18 @@ export default function ProductsPage() {
                     <Label htmlFor="edit-images">Ürün Görselleri</Label>
 
                     {selectedProduct && (() => {
-                      const existingImages = typeof selectedProduct.images === 'string'
-                        ? JSON.parse(selectedProduct.images || '[]')
-                        : selectedProduct.images || []
+                      let existingImages = []
+                      try {
+                        existingImages = typeof selectedProduct.images === 'string'
+                          ? JSON.parse(selectedProduct.images || '[]')
+                          : selectedProduct.images || []
+                        if (!Array.isArray(existingImages)) {
+                          existingImages = []
+                        }
+                      } catch (error) {
+                        console.error('Error parsing selectedProduct images:', error)
+                        existingImages = []
+                      }
 
                       return existingImages.length > 0 ? (
                         <div className="p-2 bg-green-50 rounded border">
@@ -4758,164 +4864,143 @@ export default function ProductsPage() {
                             <h3 className="text-lg font-semibold">{type.label}</h3>
                             <Badge variant="secondary">{typePackages.length} paket</Badge>
                           </div>
-                          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 ml-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 ml-4">
                             {typePackages.map((pkg) => (
-                              <div key={pkg.id} className="space-y-2">
-                                <Card className="hover:shadow-md transition-all cursor-pointer" onClick={() => openEditPackageDialog(pkg)}>
-                                  <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="text-lg">{PACKAGE_TYPE_ICONS[pkg.type as keyof typeof PACKAGE_TYPE_ICONS]}</span>
-                                <h3 className="font-semibold">{pkg.name}</h3>
-                                <Badge className={PACKAGE_TYPE_COLORS[pkg.type as keyof typeof PACKAGE_TYPE_COLORS]}>
-                                  {PACKAGE_TYPE_LABELS[pkg.type as keyof typeof PACKAGE_TYPE_LABELS]}
-                                </Badge>
-                              </div>
-                              {pkg.description && (
-                                <p className="text-sm text-muted-foreground mb-3">{pkg.description}</p>
-                              )}
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                                <div>
-                                  <p className="text-sm font-medium">Toplam Fiyat</p>
-                                  <p className="text-lg font-bold text-green-600">{formatCurrency(pkg.totalPrice)}</p>
-                                </div>
-                                {pkg.totalPower && (
-                                  <div>
-                                    <p className="text-sm font-medium">Toplam Güç</p>
-                                    <p className="text-lg font-bold">{pkg.totalPower} kW</p>
-                                  </div>
-                                )}
-                                <div>
-                                  <p className="text-sm font-medium">Ürün Sayısı</p>
-                                  <p className="text-lg font-bold">{pkg.items.length} ürün</p>
-                                </div>
-                              </div>
-                              <div className="space-y-1">
-                                <p className="text-xs font-medium text-muted-foreground">Ürünler:</p>
-                                <div className="flex flex-wrap gap-1">
-                                  {pkg.items && pkg.items.length > 0 ? (
-                                    <>
-                                      {pkg.items.slice(0, 3).map((item: any, index: number) => (
-                                        <Badge key={item.id || index} variant="outline" className="text-xs">
-                                          {item.quantity}x {item.productName || item.product?.name || 'Ürün'}
-                                        </Badge>
-                                      ))}
-                                      {pkg.items.length > 3 && (
-                                        <Badge variant="outline" className="text-xs">
-                                          +{pkg.items.length - 3} daha
-                                        </Badge>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <Badge variant="outline" className="text-xs">
-                                      Ürün yok
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 ml-4">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent>
-                                  <DropdownMenuItem onClick={(e) => {
-                                    e.stopPropagation()
-                                    openEditPackageDialog(pkg)
-                                  }}>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Düzenle
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleDuplicatePackage(pkg)
-                                  }}>
-                                    <Copy className="w-4 h-4 mr-2" />
-                                    Çoğalt
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={(e) => {
-                                    e.stopPropagation()
-                                    openAddSubPackageDialog(pkg)
-                                  }}>
-                                    <Plus className="w-4 h-4 mr-2" />
-                                    Alt Paket Ekle
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      openDeletePackageDialog(pkg)
-                                    }}
-                                    className="text-red-600"
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Sil
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                              <Popover key={pkg.id}>
+                                <PopoverTrigger asChild>
+                                  <div className="cursor-pointer hover:shadow-md transition-all border-2 border-gray-200 hover:border-blue-300 rounded-lg bg-white h-fit">
+                                    <div className="p-3">
+                                      <div className="space-y-2">
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-sm">{PACKAGE_TYPE_ICONS[pkg.type as keyof typeof PACKAGE_TYPE_ICONS]}</span>
+                                          <h4 className="font-medium text-sm truncate" title={pkg.name}>{pkg.name}</h4>
+                                        </div>
 
-                      {/* Alt Paketler */}
-                      {pkg.children && pkg.children.length > 0 && (
-                        <div className="ml-8 space-y-2">
-                          {pkg.children.map((childPkg: any) => (
-                            <Card key={childPkg.id} className="hover:shadow-md transition-all cursor-pointer border-l-4 border-blue-500" onClick={() => openEditPackageDialog(childPkg)}>
-                              <CardContent className="p-3">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <span className="text-sm">📦</span>
-                                      <h4 className="font-medium text-sm">{childPkg.name}</h4>
-                                      <Badge variant="outline" className="text-xs">Alt Paket</Badge>
+                                        <Badge variant="outline" className={`text-xs w-full justify-center ${PACKAGE_TYPE_COLORS[pkg.type as keyof typeof PACKAGE_TYPE_COLORS]}`}>
+                                          {PACKAGE_TYPE_LABELS[pkg.type as keyof typeof PACKAGE_TYPE_LABELS]}
+                                        </Badge>
+
+                                        <div className="space-y-1">
+                                          <PricingGuard fallback={
+                                            <div className="font-bold text-lg text-center text-gray-400">Gizli</div>
+                                          }>
+                                            <div className="font-bold text-lg text-green-600 text-center">
+                                              {formatCurrency(pkg.totalPrice)}
+                                            </div>
+                                          </PricingGuard>
+
+                                          {pkg.totalPower && (
+                                            <div className="text-xs text-muted-foreground text-center">
+                                              {pkg.totalPower} kW
+                                            </div>
+                                          )}
+
+                                          <div className="text-xs text-muted-foreground text-center">
+                                            {pkg.items.length} ürün
+                                          </div>
+                                        </div>
+
+                                        <div className="flex gap-1">
+                                          <Button
+                                            size="sm"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              openEditPackageDialog(pkg)
+                                            }}
+                                            className="flex-1 h-7 text-xs"
+                                          >
+                                            <Edit className="w-3 h-3 mr-1" />
+                                            Düzenle
+                                          </Button>
+                                          <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-7 w-7 p-0"
+                                                onClick={(e) => e.stopPropagation()}
+                                              >
+                                                <MoreHorizontal className="w-3 h-3" />
+                                              </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent>
+                                              <DropdownMenuItem onClick={(e) => {
+                                                e.stopPropagation()
+                                                openEditPackageDialog(pkg)
+                                              }}>
+                                                <Edit className="w-4 h-4 mr-2" />
+                                                Düzenle
+                                              </DropdownMenuItem>
+                                              <DropdownMenuItem onClick={(e) => {
+                                                e.stopPropagation()
+                                                handleDuplicatePackage(pkg)
+                                              }}>
+                                                <Copy className="w-4 h-4 mr-2" />
+                                                Çoğalt
+                                              </DropdownMenuItem>
+                                              <DropdownMenuItem onClick={(e) => {
+                                                e.stopPropagation()
+                                                openAddSubPackageDialog(pkg)
+                                              }}>
+                                                <Plus className="w-4 h-4 mr-2" />
+                                                Alt Paket Ekle
+                                              </DropdownMenuItem>
+                                              <DropdownMenuItem
+                                                onClick={(e) => {
+                                                  e.stopPropagation()
+                                                  openDeletePackageDialog(pkg)
+                                                }}
+                                                className="text-red-600"
+                                              >
+                                                <Trash2 className="w-4 h-4 mr-2" />
+                                                Sil
+                                              </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                          </DropdownMenu>
+                                        </div>
+                                      </div>
                                     </div>
-                                    {childPkg.description && (
-                                      <p className="text-xs text-muted-foreground mb-2">{childPkg.description}</p>
+                                  </div>
+                                </PopoverTrigger>
+                                <PopoverContent side="right" className="w-80">
+                                  <div className="space-y-3">
+                                    <div className="font-semibold text-base">{pkg.name}</div>
+                                    {pkg.description && (
+                                      <p className="text-sm text-muted-foreground">
+                                        {pkg.description}
+                                      </p>
                                     )}
-                                    <div className="flex items-center gap-4 text-xs">
-                                      <span className="font-medium text-green-600">{formatCurrency(childPkg.totalPrice)}</span>
-                                      {childPkg.totalPower && <span>{childPkg.totalPower} kW</span>}
-                                      <span>{childPkg.items?.length || 0} ürün</span>
+                                    <div className="border-t pt-3">
+                                      <div className="text-sm font-medium mb-2">Paket İçeriği:</div>
+                                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                                        {pkg.items && pkg.items.length > 0 ? (
+                                          pkg.items.map((item: any, index: number) => (
+                                            <div key={item.id || index} className="text-sm flex justify-between items-center p-2 bg-gray-50 rounded">
+                                              <span className="font-medium">{item.productName || item.product?.name || 'Ürün'}</span>
+                                              <span className="text-blue-600 font-bold">{item.quantity}x</span>
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <div className="text-sm text-muted-foreground">Ürün bilgisi yok</div>
+                                        )}
+                                      </div>
                                     </div>
+                                    {pkg.children && pkg.children.length > 0 && (
+                                      <div className="border-t pt-3">
+                                        <div className="text-sm font-medium mb-2">Alt Paketler:</div>
+                                        <div className="space-y-1">
+                                          {pkg.children.map((subPkg: any, index: number) => (
+                                            <div key={index} className="text-sm p-2 bg-blue-50 rounded">
+                                              📦 {subPkg.name}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="sm">
-                                          <MoreHorizontal className="w-4 h-4" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent>
-                                        <DropdownMenuItem onClick={() => openEditPackageDialog(childPkg)}>
-                                          <Edit className="w-4 h-4 mr-2" />
-                                          Düzenle
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleDuplicatePackage(childPkg)}>
-                                          <Copy className="w-4 h-4 mr-2" />
-                                          Çoğalt
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          onClick={() => openDeletePackageDialog(childPkg)}
-                                          className="text-red-600"
-                                        >
-                                          <Trash2 className="w-4 h-4 mr-2" />
-                                          Sil
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                                </PopoverContent>
+                              </Popover>
+
                             ))}
                           </div>
                         </div>

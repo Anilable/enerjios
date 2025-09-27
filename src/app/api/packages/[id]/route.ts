@@ -75,6 +75,12 @@ export async function PUT(
     const data = await request.json()
     const { parentId, name, type, description, images, isActive, isFeatured, items } = data
 
+    console.log('📦 Package update request:', {
+      packageId: params.id,
+      itemsCount: items?.length || 0,
+      items: items?.map((item: any) => ({ productId: item.productId, quantity: item.quantity }))
+    })
+
     // Check if package exists and user has permission
     const existingPackage = await (prisma as any).package.findUnique({
       where: { id: params.id },

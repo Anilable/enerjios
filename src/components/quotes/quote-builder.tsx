@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { PricingGuard, FinancialDataGuard, usePermissions } from '@/components/ui/permission-guard'
 import { Package as PackageType, PACKAGE_TYPE_LABELS, PACKAGE_TYPE_ICONS } from '@/types/package'
 import {
@@ -793,7 +794,7 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
                     className="w-full"
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                   {packages
                     .filter(pkg => {
                       if (!packageSearchQuery) return true
@@ -805,53 +806,77 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
                       )
                     })
                     .map(pkg => (
-                    <Card key={pkg.id} className="cursor-pointer hover:shadow-md transition-all border-2 hover:border-blue-300">
-                      <CardHeader className="pb-2">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">{PACKAGE_TYPE_ICONS[pkg.type]}</span>
-                              <h4 className="font-semibold">{pkg.name}</h4>
-                            </div>
-                            <Badge variant="outline" className={`mt-1 text-xs ${pkg.type === 'ON_GRID' ? 'bg-blue-50 text-blue-700' : pkg.type === 'OFF_GRID' ? 'bg-yellow-50 text-yellow-700' : pkg.type === 'TARIMSAL_SULAMA' ? 'bg-green-50 text-green-700' : 'bg-purple-50 text-purple-700'}`}>
-                              {PACKAGE_TYPE_LABELS[pkg.type]}
-                            </Badge>
-                          </div>
-                          <PricingGuard fallback={null}>
-                            <div className="text-right">
-                              <div className="font-bold text-lg text-green-600">
-                                ₺{pkg.totalPrice.toLocaleString()}
+                    <Popover key={pkg.id}>
+                      <PopoverTrigger asChild>
+                        <div className="cursor-pointer hover:shadow-md transition-all border-2 border-gray-200 hover:border-blue-300 rounded-lg bg-white h-fit">
+                          <div className="p-3">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-1">
+                                <span className="text-sm">{PACKAGE_TYPE_ICONS[pkg.type]}</span>
+                                <h4 className="font-medium text-sm truncate" title={pkg.name}>{pkg.name}</h4>
                               </div>
-                              {pkg.totalPower && (
-                                <div className="text-xs text-muted-foreground">
-                                  {(pkg.totalPower / 1000).toFixed(1)} kW
+
+                              <Badge variant="outline" className={`text-xs w-full justify-center ${pkg.type === 'ON_GRID' ? 'bg-blue-50 text-blue-700' : pkg.type === 'OFF_GRID' ? 'bg-yellow-50 text-yellow-700' : pkg.type === 'TARIMSAL_SULAMA' ? 'bg-green-50 text-green-700' : 'bg-purple-50 text-purple-700'}`}>
+                                {PACKAGE_TYPE_LABELS[pkg.type]}
+                              </Badge>
+
+                              <div className="space-y-1">
+                                <PricingGuard fallback={
+                                  <div className="font-bold text-lg text-center text-gray-400">Gizli</div>
+                                }>
+                                  <div className="font-bold text-lg text-green-600 text-center">
+                                    ₺{pkg.totalPrice.toLocaleString()}
+                                  </div>
+                                </PricingGuard>
+
+                                {pkg.totalPower && (
+                                  <div className="text-xs text-muted-foreground text-center">
+                                    {(pkg.totalPower / 1000).toFixed(1)} kW
+                                  </div>
+                                )}
+
+                                <div className="text-xs text-muted-foreground text-center">
+                                  {pkg.items.length} ürün
                                 </div>
-                              )}
+                              </div>
+
+                              <Button
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  addPackage(pkg)
+                                }}
+                                className="w-full h-8 text-xs"
+                              >
+                                <Plus className="w-3 h-3 mr-1" />
+                                Bu Paketi Seç
+                              </Button>
                             </div>
-                          </PricingGuard>
+                          </div>
                         </div>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        {pkg.description && (
-                          <p className="text-sm text-muted-foreground mb-3">
-                            {pkg.description}
-                          </p>
-                        )}
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">
-                            {pkg.items.length} ürün
-                          </span>
-                          <Button
-                            size="sm"
-                            onClick={() => addPackage(pkg)}
-                            className="ml-2"
-                          >
-                            <Plus className="w-3 h-3 mr-1" />
-                            Ekle
-                          </Button>
+                      </PopoverTrigger>
+                      <PopoverContent side="right" className="w-80">
+                        <div className="space-y-3">
+                          <div className="font-semibold text-base">{pkg.name}</div>
+                          {pkg.description && (
+                            <p className="text-sm text-muted-foreground">
+                              {pkg.description}
+                            </p>
+                          )}
+                          <div className="border-t pt-3">
+                            <div className="text-sm font-medium mb-2">Paket İçeriği:</div>
+                            <div className="space-y-2 max-h-40 overflow-y-auto">
+                              {pkg.items.map((item, index) => (
+                                <div key={index} className="text-sm flex justify-between items-center p-2 bg-gray-50 rounded">
+                                  <span className="font-medium">{item.product.name}</span>
+                                  <span className="text-blue-600 font-bold">{item.quantity}x</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </PopoverContent>
+                    </Popover>
                   ))}
                 </div>
               </CardContent>
@@ -890,7 +915,7 @@ export function QuoteBuilder({ quote, onSave, onCancel }: QuoteBuilderProps) {
               )}
               
               <div className="space-y-3">
-                {items.map((item, index) => (
+                {items.map((item) => (
                   <div key={item.id} className="border rounded-lg p-4">
                     <div className="grid grid-cols-12 gap-3 items-center">
                       <div className="col-span-1">

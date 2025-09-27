@@ -28,6 +28,7 @@ import {
   Search
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ProjectRequestAPI } from '@/lib/api/project-requests'
 import { ProjectRequest } from '@/types/project-request'
 import { formatCurrency } from '@/lib/utils'
@@ -1241,126 +1242,91 @@ export default function CreateQuotePage() {
                   )}
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                     {packages.map((pkg) => (
-                      <div key={pkg.id} className="space-y-3">
-                        {/* Main Package Card */}
-                        <Card className="cursor-pointer hover:shadow-md transition-all" onClick={() => applyPackage(pkg)}>
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-lg">{PACKAGE_TYPE_ICONS[pkg.type]}</span>
-                                  <h3 className="font-semibold">{pkg.name}</h3>
-                                  <Badge className="text-xs">
-                                    {PACKAGE_TYPE_LABELS[pkg.type] || pkg.type}
-                                  </Badge>
+                      <Popover key={pkg.id}>
+                        <PopoverTrigger asChild>
+                          <div className="cursor-pointer hover:shadow-md transition-all border-2 border-gray-200 hover:border-blue-300 rounded-lg bg-white h-fit">
+                            <div className="p-3">
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-sm">{PACKAGE_TYPE_ICONS[pkg.type]}</span>
+                                  <h4 className="font-medium text-sm truncate" title={pkg.name}>{pkg.name}</h4>
                                 </div>
-                                {pkg.description && (
-                                  <p className="text-sm text-muted-foreground mb-3">{pkg.description}</p>
-                                )}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                                  <div>
-                                    <p className="text-sm font-medium">Toplam Fiyat</p>
-                                    <p className="text-lg font-bold text-green-600">₺{pkg.totalPrice.toLocaleString()}</p>
+
+                                <Badge variant="outline" className={`text-xs w-full justify-center ${pkg.type === 'ON_GRID' ? 'bg-blue-50 text-blue-700' : pkg.type === 'OFF_GRID' ? 'bg-yellow-50 text-yellow-700' : pkg.type === 'TARIMSAL_SULAMA' ? 'bg-green-50 text-green-700' : 'bg-purple-50 text-purple-700'}`}>
+                                  {PACKAGE_TYPE_LABELS[pkg.type] || pkg.type}
+                                </Badge>
+
+                                <div className="space-y-1">
+                                  <div className="font-bold text-lg text-green-600 text-center">
+                                    ₺{pkg.totalPrice.toLocaleString()}
                                   </div>
+
                                   {pkg.totalPower && (
-                                    <div>
-                                      <p className="text-sm font-medium">Toplam Güç</p>
-                                      <p className="text-lg font-bold">{(pkg.totalPower / 1000).toFixed(1)} kW</p>
+                                    <div className="text-xs text-muted-foreground text-center">
+                                      {(pkg.totalPower / 1000).toFixed(1)} kW
                                     </div>
                                   )}
-                                  <div>
-                                    <p className="text-sm font-medium">Ürün Sayısı</p>
-                                    <p className="text-lg font-bold">{pkg.items?.length || 0} ürün</p>
+
+                                  <div className="text-xs text-muted-foreground text-center">
+                                    {pkg.items?.length || 0} ürün
                                   </div>
                                 </div>
-                                <div className="space-y-1">
-                                  <p className="text-xs font-medium text-muted-foreground">Ürünler:</p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {pkg.items && pkg.items.length > 0 ? (
-                                      <>
-                                        {pkg.items.slice(0, 3).map((item, index) => (
-                                          <Badge key={index} variant="outline" className="text-xs">
-                                            {item.quantity}x {item.productName || 'Ürün'}
-                                          </Badge>
-                                        ))}
-                                        {pkg.items.length > 3 && (
-                                          <Badge variant="outline" className="text-xs">
-                                            +{pkg.items.length - 3} daha
-                                          </Badge>
-                                        )}
-                                      </>
-                                    ) : (
-                                      <Badge variant="outline" className="text-xs">
-                                        Ürün yok
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 ml-4">
+
                                 <Button
-                                  variant="outline"
                                   size="sm"
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     applyPackage(pkg)
                                   }}
+                                  className="w-full h-8 text-xs"
                                 >
+                                  <Plus className="w-3 h-3 mr-1" />
                                   Bu Paketi Seç
                                 </Button>
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
-
-                        {/* Sub Packages */}
-                        {pkg.children && pkg.children.length > 0 && (
-                          <div className="ml-8 space-y-2">
-                            {pkg.children.map((subPkg) => (
-                              <Card
-                                key={subPkg.id}
-                                className="cursor-pointer hover:shadow-md transition-all border-l-4 border-blue-500"
-                                onClick={() => applyPackage(subPkg)}
-                              >
-                                <CardContent className="p-3">
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-sm">📦</span>
-                                        <h4 className="font-medium text-sm">{subPkg.name}</h4>
-                                        <Badge variant="outline" className="text-xs">Alt Paket</Badge>
-                                      </div>
-                                      {subPkg.description && (
-                                        <p className="text-xs text-muted-foreground mb-2">{subPkg.description}</p>
-                                      )}
-                                      <div className="flex items-center gap-4 text-xs">
-                                        <span className="font-medium text-green-600">₺{subPkg.totalPrice.toLocaleString()}</span>
-                                        {subPkg.totalPower && <span>{(subPkg.totalPower / 1000).toFixed(1)} kW</span>}
-                                        <span>{subPkg.items?.length || 0} ürün</span>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 text-xs"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          applyPackage(subPkg)
-                                        }}
-                                      >
-                                        Alt Paketi Seç
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            ))}
                           </div>
-                        )}
-                      </div>
+                        </PopoverTrigger>
+                        <PopoverContent side="right" className="w-80">
+                          <div className="space-y-3">
+                            <div className="font-semibold text-base">{pkg.name}</div>
+                            {pkg.description && (
+                              <p className="text-sm text-muted-foreground">
+                                {pkg.description}
+                              </p>
+                            )}
+                            <div className="border-t pt-3">
+                              <div className="text-sm font-medium mb-2">Paket İçeriği:</div>
+                              <div className="space-y-2 max-h-40 overflow-y-auto">
+                                {pkg.items && pkg.items.length > 0 ? (
+                                  pkg.items.map((item, index) => (
+                                    <div key={index} className="text-sm flex justify-between items-center p-2 bg-gray-50 rounded">
+                                      <span className="font-medium">{item.productName || 'Ürün'}</span>
+                                      <span className="text-blue-600 font-bold">{item.quantity}x</span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="text-sm text-muted-foreground">Ürün bilgisi yok</div>
+                                )}
+                              </div>
+                            </div>
+                            {pkg.children && pkg.children.length > 0 && (
+                              <div className="border-t pt-3">
+                                <div className="text-sm font-medium mb-2">Alt Paketler:</div>
+                                <div className="space-y-1">
+                                  {pkg.children.map((subPkg, index) => (
+                                    <div key={index} className="text-sm p-2 bg-blue-50 rounded">
+                                      📦 {subPkg.name}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     ))}
                   </div>
                 </CardContent>

@@ -6,8 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -21,9 +19,7 @@ import {
   Tag,
   Save,
   X,
-  Plus,
-  Check,
-  ChevronsUpDown
+  Plus
 } from 'lucide-react'
 import type { CustomerData } from '@/app/dashboard/customers/page'
 
@@ -66,7 +62,6 @@ export function CustomerForm({ customer, onSave, onCancel }: CustomerFormProps) 
   const [tags, setTags] = useState<string[]>([])
   const [newTag, setNewTag] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [cityOpen, setCityOpen] = useState(false)
 
   // Load existing customer data
   useEffect(() => {
@@ -367,62 +362,21 @@ export function CustomerForm({ customer, onSave, onCancel }: CustomerFormProps) 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="city">Şehir *</Label>
-                  <Popover open={cityOpen} onOpenChange={setCityOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={cityOpen}
-                        className={`w-full justify-between ${errors.city ? 'border-red-500' : ''}`}
-                      >
-                        {formData.city || "Şehir seçin..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <Command>
-                        <CommandInput placeholder="Şehir ara..." className="h-9" />
-                        <CommandList>
-                          <CommandEmpty>Şehir bulunamadı.</CommandEmpty>
-                          <CommandGroup>
-                            {cities.map((city) => (
-                              <CommandItem
-                                key={city}
-                                value={city}
-                                className="cursor-pointer hover:bg-gray-50 text-gray-900 data-[selected]:bg-gray-100 data-[selected]:text-gray-900"
-                                onSelect={(currentValue) => {
-                                  // Command component normalizes values to lowercase, so we need to find the original city name
-                                  const selectedCity = cities.find(c => c.toLowerCase() === currentValue.toLowerCase()) || currentValue
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    city: selectedCity
-                                  }))
-                                  setCityOpen(false)
-                                }}
-                                onMouseDown={(e) => {
-                                  // Prevent default and stop propagation to ensure click works
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    city: city
-                                  }))
-                                  setCityOpen(false)
-                                }}
-                              >
-                                <Check
-                                  className={`mr-2 h-4 w-4 ${
-                                    formData.city === city ? "opacity-100" : "opacity-0"
-                                  }`}
-                                />
-                                {city}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                  <Select
+                    value={formData.city}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, city: value }))}
+                  >
+                    <SelectTrigger className={`w-full ${errors.city ? 'border-red-500' : ''}`}>
+                      <SelectValue placeholder="Şehir seçin..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      {cities.map((city) => (
+                        <SelectItem key={city} value={city} className="cursor-pointer">
+                          {city}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {errors.city && (
                     <p className="text-sm text-red-600 mt-1">{errors.city}</p>
                   )}

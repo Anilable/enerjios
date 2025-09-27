@@ -126,6 +126,7 @@ export async function PUT(
 
         productType = getTypeFromCategoryLocal(category.name)
         console.log('UPDATE: Mapped category to ProductType:', category.name, '->', productType)
+        console.log('UPDATE: Final categoryId that will be saved:', categoryId)
       } else if (body.category) {
         // Legacy system: convert category name to ProductType
         const categoryTypeMap: Record<string, ProductType> = {

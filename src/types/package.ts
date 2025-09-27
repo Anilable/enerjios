@@ -86,15 +86,15 @@ export interface UpdatePackageData {
 }
 
 export const PACKAGE_TYPES = [
-  { value: 'ON_GRID', label: 'Şebekeye Bağlı', description: 'Standard grid-tied solar systems', icon: '🔌' },
-  { value: 'OFF_GRID', label: 'Şebekeden Bağımsız', description: 'Battery backup systems', icon: '🔋' },
+  { value: 'ON_GRID', label: 'Şebekeye Bağlı (On Grid)', description: 'Standard grid-tied solar systems', icon: '🔌' },
+  { value: 'OFF_GRID', label: 'Şebekeden Bağımsız (Off Grid)', description: 'Battery backup systems', icon: '🔋' },
   { value: 'TARIMSAL_SULAMA', label: 'Tarımsal Sulama', description: 'Agricultural irrigation systems', icon: '💧' },
   { value: 'DC_POMPALAR', label: 'DC Pompalar', description: 'DC pump systems', icon: '⛽' }
 ] as const
 
 export const PACKAGE_TYPE_LABELS: Record<PackageType, string> = {
-  ON_GRID: 'Şebekeye Bağlı',
-  OFF_GRID: 'Şebekeden Bağımsız',
+  ON_GRID: 'Şebekeye Bağlı (On Grid)',
+  OFF_GRID: 'Şebekeden Bağımsız (Off Grid)',
   TARIMSAL_SULAMA: 'Tarımsal Sulama',
   DC_POMPALAR: 'DC Pompalar'
 }

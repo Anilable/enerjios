@@ -33,13 +33,7 @@ import { formatCurrency } from '@/lib/utils'
 interface Quote {
   id: string
   quoteNumber: string
-  projectRequestId: string
-  customerName: string
-  customerEmail: string
-  customerPhone?: string
-  customerAddress?: string
-  projectType: string
-  capacity: number
+  projectRequestId?: string
   subtotal: number
   tax: number
   discount: number
@@ -50,6 +44,25 @@ interface Quote {
   sentAt?: string
   viewedAt?: string
   respondedAt?: string
+  notes?: string
+  terms?: string
+  customer?: {
+    id: string
+    firstName?: string
+    lastName?: string
+    email?: string
+    phone?: string
+    address?: string
+    city?: string
+    district?: string
+    companyName?: string
+    type?: string
+  }
+  project?: {
+    id: string
+    type: string
+    capacity?: number
+  }
   items?: Array<{
     id: string
     name: string
@@ -57,79 +70,16 @@ interface Quote {
     quantity: number
     unitPrice: number
     total: number
+    product?: {
+      id: string
+      name: string
+      brand: string
+      model: string
+      power?: number
+    }
   }>
 }
 
-// Mock data - gerçek uygulamada API'den gelecek
-const mockQuote: Quote = {
-  id: '1',
-  quoteNumber: 'Q-20240115',
-  projectRequestId: '1',
-  customerName: 'Ahmet Yılmaz',
-  customerEmail: 'ahmet@example.com',
-  customerPhone: '+90 532 123 45 67',
-  customerAddress: 'Merkez Mahallesi, İstanbul Caddesi No: 123, Edirne',
-  projectType: 'RESIDENTIAL',
-  capacity: 10,
-  subtotal: 120000,
-  tax: 21600,
-  discount: 5000,
-  total: 136600,
-  status: 'SENT',
-  createdAt: '2024-01-15T10:30:00Z',
-  validUntil: '2024-02-15T10:30:00Z',
-  sentAt: '2024-01-15T11:00:00Z',
-  items: [
-    {
-      id: '1',
-      name: 'Jinko Solar 550W Monokristal Panel',
-      description: 'Yüksek verimli monokristal güneş paneli',
-      quantity: 18,
-      unitPrice: 2800,
-      total: 50400
-    },
-    {
-      id: '2',
-      name: 'Huawei SUN2000-10KTL-M1 İnverter',
-      description: '10kW string inverter',
-      quantity: 1,
-      unitPrice: 12500,
-      total: 12500
-    },
-    {
-      id: '3',
-      name: 'Montaj Malzemeleri ve İşçilik',
-      description: 'Çatı montajı, kablolama ve işçilik',
-      quantity: 1,
-      unitPrice: 35000,
-      total: 35000
-    },
-    {
-      id: '4',
-      name: 'Elektrik Panosu Güçlendirme',
-      description: 'Mevcut elektrik panosunu güçlendirme',
-      quantity: 1,
-      unitPrice: 8000,
-      total: 8000
-    },
-    {
-      id: '5',
-      name: 'Proje ve Ruhsat İşlemleri',
-      description: 'Belediye ruhsatı ve EPDK başvuru işlemleri',
-      quantity: 1,
-      unitPrice: 6000,
-      total: 6000
-    },
-    {
-      id: '6',
-      name: 'Sistem Kurulum ve Devreye Alma',
-      description: 'Sistemin kurulumu ve test işlemleri',
-      quantity: 1,
-      unitPrice: 8100,
-      total: 8100
-    }
-  ]
-}
 
 export default function QuoteDetailPage() {
   const params = useParams()
@@ -139,12 +89,95 @@ export default function QuoteDetailPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Mock API call - gerçek uygulamada API'den veri çekilecek
-    setTimeout(() => {
-      setQuote(mockQuote)
-      setLoading(false)
-    }, 500)
-  }, [params.id])
+    const fetchQuote = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/quotes/${params.id}`)
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            setQuote(null)
+            setLoading(false)
+            return
+          }
+          throw new Error('Failed to fetch quote')
+        }
+
+        const quoteData = await response.json()
+
+        // Parse customer data if it's a string
+        if (typeof quoteData.customer === 'string') {
+          try {
+            quoteData.customer = JSON.parse(quoteData.customer)
+          } catch (e) {
+            console.error('Error parsing customer data:', e)
+            quoteData.customer = null
+          }
+        }
+
+        // Parse project data if it's a string
+        if (typeof quoteData.project === 'string') {
+          try {
+            quoteData.project = JSON.parse(quoteData.project)
+          } catch (e) {
+            console.error('Error parsing project data:', e)
+            quoteData.project = null
+          }
+        }
+
+        // Parse items data if needed
+        if (quoteData.items && Array.isArray(quoteData.items)) {
+          quoteData.items = quoteData.items.map((item: any) => {
+            // Parse name if it's an object or string
+            if (typeof item.name === 'object' && item.name !== null) {
+              item.name = item.name.name || 'Ürün Adı Belirtilmemiş'
+            } else if (typeof item.name === 'string') {
+              try {
+                const parsed = JSON.parse(item.name)
+                if (parsed && typeof parsed === 'object' && parsed.name) {
+                  item.name = parsed.name
+                }
+              } catch (e) {
+                // If it fails to parse, keep the original string
+              }
+            }
+
+            // Parse description if it's an object or string
+            if (typeof item.description === 'object' && item.description !== null) {
+              item.description = item.description.description || 'Açıklama Belirtilmemiş'
+            } else if (typeof item.description === 'string') {
+              try {
+                const parsed = JSON.parse(item.description)
+                if (parsed && typeof parsed === 'object' && parsed.description) {
+                  item.description = parsed.description
+                }
+              } catch (e) {
+                // If it fails to parse, keep the original string
+              }
+            }
+
+            return item
+          })
+        }
+
+        setQuote(quoteData)
+      } catch (error) {
+        console.error('Error fetching quote:', error)
+        toast({
+          title: "Hata",
+          description: "Teklif yüklenirken bir hata oluştu.",
+          variant: "destructive"
+        })
+        setQuote(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (params.id) {
+      fetchQuote()
+    }
+  }, [params.id, toast])
 
   const getStatusColor = (status: Quote['status']) => {
     switch (status) {
@@ -293,7 +326,10 @@ export default function QuoteDetailPage() {
             <div>
               <h1 className="text-3xl font-bold tracking-tight">{quote.quoteNumber}</h1>
               <p className="text-muted-foreground">
-                {quote.customerName} • {formatDate(quote.createdAt)}
+                {quote.customer ?
+                  `${quote.customer.firstName || ''} ${quote.customer.lastName || ''}`.trim() ||
+                  quote.customer.companyName || 'Müşteri Bilgisi Yok'
+                  : 'Müşteri Bilgisi Yok'} • {formatDate(quote.createdAt)}
               </p>
             </div>
             <Badge className={`${getStatusColor(quote.status)} flex items-center gap-1`}>
@@ -342,32 +378,42 @@ export default function QuoteDetailPage() {
                   <div className="flex items-center gap-3">
                     <User className="w-4 h-4 text-muted-foreground" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Ad Soyad</p>
-                      <p className="font-medium">{quote.customerName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {quote.customer?.type === 'COMPANY' ? 'Şirket Adı' : 'Ad Soyad'}
+                      </p>
+                      <p className="font-medium">
+                        {quote.customer?.type === 'COMPANY'
+                          ? quote.customer.companyName || 'Belirtilmemiş'
+                          : `${quote.customer?.firstName || ''} ${quote.customer?.lastName || ''}`.trim() || 'Belirtilmemiş'
+                        }
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <Mail className="w-4 h-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">Email</p>
-                      <p className="font-medium">{quote.customerEmail}</p>
+                      <p className="font-medium">{quote.customer?.email || 'Belirtilmemiş'}</p>
                     </div>
                   </div>
-                  {quote.customerPhone && (
+                  {quote.customer?.phone && (
                     <div className="flex items-center gap-3">
                       <Phone className="w-4 h-4 text-muted-foreground" />
                       <div>
                         <p className="text-sm text-muted-foreground">Telefon</p>
-                        <p className="font-medium">{quote.customerPhone}</p>
+                        <p className="font-medium">{quote.customer.phone}</p>
                       </div>
                     </div>
                   )}
-                  {quote.customerAddress && (
+                  {(quote.customer?.address || quote.customer?.city) && (
                     <div className="flex items-center gap-3">
                       <MapPin className="w-4 h-4 text-muted-foreground" />
                       <div>
                         <p className="text-sm text-muted-foreground">Adres</p>
-                        <p className="font-medium">{quote.customerAddress}</p>
+                        <p className="font-medium">
+                          {[quote.customer?.address, quote.customer?.city, quote.customer?.district]
+                            .filter(Boolean).join(', ') || 'Belirtilmemiş'}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -390,19 +436,22 @@ export default function QuoteDetailPage() {
                     <div>
                       <p className="text-sm text-muted-foreground">Proje Tipi</p>
                       <p className="font-medium">
-                        {quote.projectType === 'RESIDENTIAL' ? 'Konut' : 
-                         quote.projectType === 'COMMERCIAL' ? 'Ticari' : 
-                         'Endüstriyel'}
+                        {quote.project?.type === 'RESIDENTIAL' ? 'Konut' :
+                         quote.project?.type === 'COMMERCIAL' ? 'Ticari' :
+                         quote.project?.type === 'INDUSTRIAL' ? 'Endüstriyel' :
+                         'Belirtilmemiş'}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Zap className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Sistem Gücü</p>
-                      <p className="font-medium">{quote.capacity} kW</p>
+                  {quote.project?.capacity && (
+                    <div className="flex items-center gap-3">
+                      <Zap className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Sistem Gücü</p>
+                        <p className="font-medium">{quote.project.capacity} kW</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div className="flex items-center gap-3">
                     <Calendar className="w-4 h-4 text-muted-foreground" />
                     <div>
@@ -427,6 +476,12 @@ export default function QuoteDetailPage() {
                         <div className="flex-1">
                           <h4 className="font-medium">{item.name}</h4>
                           <p className="text-sm text-muted-foreground">{item.description}</p>
+                          {item.product && (
+                            <p className="text-xs text-blue-600 mt-1">
+                              {item.product.brand} {item.product.model}
+                              {item.product.power && ` • ${item.product.power}W`}
+                            </p>
+                          )}
                           <div className="flex items-center gap-4 mt-2 text-sm">
                             <span>Miktar: {item.quantity}</span>
                             <span>Birim Fiyat: {formatCurrency(item.unitPrice)}</span>
