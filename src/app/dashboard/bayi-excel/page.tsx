@@ -1,310 +1,348 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ExcelMapper } from '@/components/excel-mapper'
+import { PRODUCT_SYSTEM_FIELDS } from '@/types/excel-mapper'
+import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Progress } from '@/components/ui/progress'
-import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, X } from 'lucide-react'
-import * as XLSX from 'xlsx'
-
-interface ImportedProduct {
-  name: string
-  code: string
-  category: string
-  brand: string
-  model: string
-  price: number
-  usdPrice?: number
-  stock: number
-  power?: number
-  warranty?: number
-  description: string
-}
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { FileSpreadsheet, Upload, CheckCircle, AlertCircle, Info, ArrowRight, Zap } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 
 export default function BayiExcelPage() {
-  const [file, setFile] = useState<File | null>(null)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [results, setResults] = useState<{
-    success: ImportedProduct[]
-    errors: string[]
+  const [showMapper, setShowMapper] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importStats, setImportStats] = useState<{
+    total: number
+    success: number
+    failed: number
   } | null>(null)
+  const { toast } = useToast()
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0]
-    if (selectedFile) {
-      if (selectedFile.name.endsWith('.xlsx') || selectedFile.name.endsWith('.xls')) {
-        setFile(selectedFile)
-        setResults(null)
-      } else {
-        alert('Sadece Excel dosyaları (.xlsx, .xls) desteklenir!')
-      }
-    }
-  }
-
-  const processExcelFile = async () => {
-    if (!file) return
-
-    setIsProcessing(true)
-    setProgress(10)
+  const handleImport = async (data: Record<string, any>[]) => {
+    setIsImporting(true)
+    const stats = { total: data.length, success: 0, failed: 0 }
 
     try {
-      // Read Excel file
-      const data = await file.arrayBuffer()
-      const workbook = XLSX.read(data)
-      const sheetName = workbook.SheetNames[0]
-      const worksheet = workbook.Sheets[sheetName]
-      const jsonData = XLSX.utils.sheet_to_json(worksheet)
+      // Process products in batches of 50
+      const batchSize = 50
+      const batches = []
+      for (let i = 0; i < data.length; i += batchSize) {
+        batches.push(data.slice(i, i + batchSize))
+      }
 
-      setProgress(30)
+      for (const batch of batches) {
+        const response = await fetch('/api/products/bulk', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ products: batch }),
+        })
 
-      // Process data
-      const processedProducts: ImportedProduct[] = []
-      const errors: string[] = []
-
-      jsonData.forEach((row: any, index: number) => {
-        try {
-          const product: ImportedProduct = {
-            name: row['TANIM'] || row['Ürün Adı'] || row['Name'] || '',
-            code: row['KOD'] || row['Ürün Kodu'] || row['Code'] || `AUTO-${index}`,
-            category: inferCategory(row['TANIM'] || row['Ürün Adı'] || ''),
-            brand: row['MARKA'] || row['Brand'] || 'Bilinmeyen',
-            model: row['MODEL'] || row['Model'] || '',
-            price: parseFloat(row['BİRİM'] || row['Fiyat'] || row['Price'] || '0'),
-            usdPrice: parseFloat(row['NET'] || row['USD'] || '0') || undefined,
-            stock: parseInt(row['STOK'] || row['Stock'] || '0'),
-            power: parseInt(row['GÜÇ'] || row['Power'] || '0') || undefined,
-            warranty: parseInt(row['GARANTİ'] || row['Warranty'] || '0') || undefined,
-            description: row['AÇIKLAMA'] || row['Description'] || ''
-          }
-
-          if (product.name && product.price > 0) {
-            processedProducts.push(product)
-          } else {
-            errors.push(`Satır ${index + 1}: Ürün adı veya fiyat eksik`)
-          }
-        } catch (error) {
-          errors.push(`Satır ${index + 1}: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`)
-        }
-      })
-
-      setProgress(60)
-
-      // Save to database
-      const createdProducts = []
-      const saveErrors = []
-
-      for (const product of processedProducts) {
-        try {
-          const response = await fetch('/api/products', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: product.name,
-              brand: product.brand,
-              model: product.model,
-              category: product.category,
-              price: product.price,
-              costPrice: product.usdPrice ? product.usdPrice * 41 : undefined,
-              stock: product.stock,
-              power: product.power?.toString(),
-              warranty: product.warranty?.toString(),
-              description: product.description,
-              code: product.code,
-            }),
-          })
-
-          if (response.ok) {
-            createdProducts.push(product)
-          } else {
-            const error = await response.json()
-            saveErrors.push(`${product.name}: ${error.error}`)
-          }
-        } catch (error) {
-          saveErrors.push(`${product.name}: API hatası`)
+        if (response.ok) {
+          const result = await response.json()
+          stats.success += result.success || batch.length
+          stats.failed += result.failed || 0
+        } else {
+          stats.failed += batch.length
         }
       }
 
-      setProgress(100)
-      setResults({
-        success: createdProducts,
-        errors: [...errors, ...saveErrors]
+      setImportStats(stats)
+      toast({
+        title: 'İçe Aktarma Tamamlandı',
+        description: `${stats.success} ürün başarıyla eklendi, ${stats.failed} hata`,
       })
-
     } catch (error) {
-      setResults({
-        success: [],
-        errors: [`Excel dosyası okunamadı: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`]
+      console.error('Import error:', error)
+      stats.failed = data.length
+      setImportStats(stats)
+
+      toast({
+        title: 'Hata',
+        description: 'İçe aktarma sırasında bir hata oluştu',
+        variant: 'destructive',
       })
+    } finally {
+      setIsImporting(false)
+      setShowMapper(false)
     }
-
-    setIsProcessing(false)
   }
 
-  const inferCategory = (productName: string): string => {
-    const name = productName.toLowerCase()
-    if (name.includes('panel') || name.includes('solar')) return 'Solar Panel'
-    if (name.includes('inverter') || name.includes('evirici')) return 'İnverter'
-    if (name.includes('batarya') || name.includes('battery')) return 'Batarya'
-    if (name.includes('kablo') || name.includes('cable')) return 'Kablo'
-    if (name.includes('montaj') || name.includes('bracket')) return 'Montaj Sistemleri'
-    return 'Genel'
-  }
-
-  const resetForm = () => {
-    setFile(null)
-    setResults(null)
-    setProgress(0)
-    setIsProcessing(false)
+  if (showMapper) {
+    return (
+      <DashboardLayout>
+        <div className="h-[calc(100vh-100px)]">
+          <ExcelMapper
+            onImport={handleImport}
+            systemFields={PRODUCT_SYSTEM_FIELDS}
+            onClose={() => setShowMapper(false)}
+          />
+        </div>
+      </DashboardLayout>
+    )
   }
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Bayi Excel İçe Aktarma</h1>
-          <p className="text-muted-foreground">VENTA Excel dosyalarını sisteme aktarın</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Excel İçe Aktarma Sistemi</h1>
+            <p className="text-muted-foreground">
+              Gelişmiş Excel mapper ile ürünlerinizi kolayca içe aktarın
+            </p>
+          </div>
+          <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+            <Zap className="w-3 h-3 mr-1" />
+            Yeni Sistem
+          </Badge>
         </div>
 
-        {/* Upload Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="w-5 h-5" />
-              Excel Dosyası Yükle
-            </CardTitle>
-            <CardDescription>
-              VENTA formatında Excel dosyanızı seçin (.xlsx, .xls)
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid w-full max-w-sm items-center gap-1.5">
-              <Label htmlFor="excel-file">Dosya Seç</Label>
-              <Input
-                id="excel-file"
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleFileSelect}
-                disabled={isProcessing}
-              />
-            </div>
-
-            {file && (
-              <Alert>
-                <FileSpreadsheet className="h-4 w-4" />
-                <AlertDescription>
-                  Seçilen dosya: <strong>{file.name}</strong> ({(file.size / 1024).toFixed(2)} KB)
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {isProcessing && (
-              <div className="space-y-2">
-                <Progress value={progress} className="w-full" />
-                <p className="text-sm text-muted-foreground">İşleniyor... {progress}%</p>
+        {/* Import Stats */}
+        {importStats && (
+          <Card className="border-green-200 bg-green-50 dark:bg-green-900/20">
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-4">
+                <CheckCircle className="w-8 h-8 text-green-600" />
+                <div>
+                  <p className="font-semibold">İçe Aktarma Tamamlandı</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {importStats.success} / {importStats.total} ürün başarıyla eklendi
+                    {importStats.failed > 0 && `, ${importStats.failed} hata`}
+                  </p>
+                </div>
               </div>
-            )}
-
-            <div className="flex gap-2">
-              <Button
-                onClick={processExcelFile}
-                disabled={!file || isProcessing}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {isProcessing ? 'İşleniyor...' : 'İçe Aktar'}
-              </Button>
-              {(file || results) && (
-                <Button variant="outline" onClick={resetForm} disabled={isProcessing}>
-                  <X className="w-4 h-4 mr-2" />
-                  Temizle
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Results Section */}
-        {results && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                {results.success.length > 0 ? (
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                ) : (
-                  <AlertCircle className="w-5 h-5 text-red-600" />
-                )}
-                İçe Aktarma Sonuçları
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {results.success.length > 0 && (
-                <Alert className="border-green-200 bg-green-50">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <AlertDescription>
-                    <strong>✅ {results.success.length} ürün başarıyla eklendi!</strong>
-                    <ul className="mt-2 space-y-1">
-                      {results.success.slice(0, 5).map((product, index) => (
-                        <li key={index} className="text-sm">• {product.name}</li>
-                      ))}
-                      {results.success.length > 5 && (
-                        <li className="text-sm text-muted-foreground">...ve {results.success.length - 5} ürün daha</li>
-                      )}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {results.errors.length > 0 && (
-                <Alert className="border-red-200 bg-red-50">
-                  <AlertCircle className="h-4 w-4 text-red-600" />
-                  <AlertDescription>
-                    <strong>❌ {results.errors.length} hata oluştu:</strong>
-                    <ul className="mt-2 space-y-1">
-                      {results.errors.slice(0, 5).map((error, index) => (
-                        <li key={index} className="text-sm">• {error}</li>
-                      ))}
-                      {results.errors.length > 5 && (
-                        <li className="text-sm text-muted-foreground">...ve {results.errors.length - 5} hata daha</li>
-                      )}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              )}
             </CardContent>
           </Card>
         )}
 
-        {/* Usage Instructions */}
+        {/* Main Action Card */}
+        <Card className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20" />
+          <CardHeader className="relative">
+            <CardTitle className="flex items-center space-x-2 text-xl">
+              <FileSpreadsheet className="w-6 h-6 text-blue-600" />
+              <span>Akıllı Excel İçe Aktarma</span>
+            </CardTitle>
+            <CardDescription className="text-base">
+              Yeni gelişmiş mapper ile Excel dosyalarınızı kolayca içe aktarın
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="relative">
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="bg-white dark:bg-gray-800 rounded-full p-6 shadow-lg mb-6">
+                <Upload className="w-12 h-12 text-blue-600" />
+              </div>
+              <Button
+                size="lg"
+                onClick={() => setShowMapper(true)}
+                disabled={isImporting}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
+              >
+                {isImporting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    İçe Aktarılıyor...
+                  </>
+                ) : (
+                  <>
+                    Excel Mapper'ı Başlat
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </>
+                )}
+              </Button>
+              <p className="text-sm text-gray-500 mt-3">
+                XLSX, XLS formatları • Maksimum 10MB
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center space-x-2">
+                <CheckCircle className="w-5 h-5 text-green-500" />
+                <span>Akıllı Sütun Eşleştirme</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                <li>• Otomatik sütun tanıma ve eşleştirme</li>
+                <li>• Sürükle-bırak arayüzü</li>
+                <li>• Çoklu sayfa desteği</li>
+                <li>• Akıllı veri tipi algılama</li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center space-x-2">
+                <AlertCircle className="w-5 h-5 text-orange-500" />
+                <span>Gelişmiş Doğrulama</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                <li>• Gerçek zamanlı veri doğrulama</li>
+                <li>• Zorunlu alan kontrolü</li>
+                <li>• Tekrar eden kayıt tespiti</li>
+                <li>• Hata raporlama ve düzeltme</li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center space-x-2">
+                <FileSpreadsheet className="w-5 h-5 text-blue-500" />
+                <span>Esnek Veri İşleme</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                <li>• Satır bazlı hariç tutma</li>
+                <li>• Veri önizleme ve düzenleme</li>
+                <li>• Toplu seçim ve işlemler</li>
+                <li>• İçe aktarma önizlemesi</li>
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Supported Fields */}
         <Card>
           <CardHeader>
-            <CardTitle>Kullanım Talimatları</CardTitle>
+            <CardTitle className="flex items-center space-x-2">
+              <Info className="w-5 h-5" />
+              <span>Desteklenen Ürün Alanları</span>
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div>
-                <h4 className="font-semibold mb-2">Desteklenen Sütun Adları:</h4>
-                <ul className="text-sm space-y-1">
-                  <li>• <strong>Ürün:</strong> TANIM, Ürün Adı, Name</li>
-                  <li>• <strong>Kod:</strong> KOD, Ürün Kodu, Code</li>
-                  <li>• <strong>Fiyat:</strong> BİRİM, Fiyat, Price</li>
-                  <li>• <strong>USD:</strong> NET, USD</li>
-                  <li>• <strong>Stok:</strong> STOK, Stock</li>
-                  <li>• <strong>Diğer:</strong> MARKA, MODEL, GÜÇ, GARANTİ</li>
+                <h4 className="font-semibold mb-3 text-red-600">Zorunlu Alanlar</h4>
+                <ul className="space-y-1 text-sm">
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full" />
+                    <span>Ürün Adı</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full" />
+                    <span>Ürün Kodu</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full" />
+                    <span>Ürün Tipi</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full" />
+                    <span>Birim Fiyat</span>
+                  </li>
                 </ul>
               </div>
+
               <div>
-                <h4 className="font-semibold mb-2">Otomatik Özellikler:</h4>
-                <ul className="text-sm space-y-1">
-                  <li>• Kategori otomatik belirlenir</li>
-                  <li>• Eksik kodlar otomatik oluşturulur</li>
-                  <li>• USD fiyat TL'ye çevrilir</li>
-                  <li>• Güç değeri ürün adından çıkarılır</li>
-                  <li>• Hatalı satırlar atlanır</li>
+                <h4 className="font-semibold mb-3 text-blue-600">Teknik Özellikler</h4>
+                <ul className="space-y-1 text-sm">
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                    <span>Güç (W)</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                    <span>Verimlilik (%)</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                    <span>Garanti (Yıl)</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                    <span>Teknik Özellikler</span>
+                  </li>
                 </ul>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-3 text-green-600">İsteğe Bağlı</h4>
+                <ul className="space-y-1 text-sm">
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                    <span>Marka, Model</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                    <span>Stok Miktarı</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                    <span>Para Birimi</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                    <span>Açıklama</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* How to Use */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Nasıl Kullanılır?</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="flex items-start space-x-3">
+                  <div className="bg-blue-100 text-blue-600 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">1</div>
+                  <div>
+                    <h4 className="font-semibold">Excel Dosyanızı Hazırlayın</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Ürün bilgilerinizi içeren Excel dosyanızın sütun başlıklarının açık olduğundan emin olun.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3">
+                  <div className="bg-blue-100 text-blue-600 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">2</div>
+                  <div>
+                    <h4 className="font-semibold">Dosyayı Yükleyin</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Excel Mapper'ı başlatın ve dosyanızı seçin. Sistem otomatik analiz yapacaktır.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-start space-x-3">
+                  <div className="bg-blue-100 text-blue-600 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">3</div>
+                  <div>
+                    <h4 className="font-semibold">Sütunları Eşleştirin</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Akıllı eşleştirme ile sütunlarınızı sistem alanlarına bağlayın.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3">
+                  <div className="bg-blue-100 text-blue-600 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">4</div>
+                  <div>
+                    <h4 className="font-semibold">Doğrulayın ve İçe Aktarın</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Verilerinizi doğrulayın, hataları düzeltin ve içe aktarma işlemini başlatın.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>

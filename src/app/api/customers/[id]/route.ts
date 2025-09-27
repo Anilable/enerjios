@@ -80,6 +80,15 @@ export async function DELETE(
         },
       },
     })
+
+    // Also check if user owns any projects (separate from customer projects)
+    let ownedProjects = 0
+    if (customer?.user?.id) {
+      const projectCount = await prisma.project.count({
+        where: { ownerId: customer.user.id }
+      })
+      ownedProjects = projectCount
+    }
     console.log('🔥 Customer found:', customer ? 'Yes' : 'No')
 
     if (!customer) {
@@ -104,6 +113,7 @@ export async function DELETE(
       quoteRequests: customer.quoteRequests?.length || 0,
       partnerReviews: customer.partnerReviews?.length || 0,
       projects: customer.projects?.length || 0,
+      ownedProjects: ownedProjects,
     }
 
     const hasAssociatedData = Object.values(associatedCounts).some((count) => count > 0)
@@ -130,20 +140,38 @@ export async function DELETE(
     await prisma.$transaction(async (tx) => {
       if (forceDelete) {
         console.log('⚠️ Force deleting customer with associated data')
+
+        // Delete related records in correct order
         await tx.quote.deleteMany({ where: { customerId: id } })
         await tx.projectRequest.deleteMany({ where: { customerId: id } })
         await tx.photoRequest.deleteMany({ where: { customerId: id } })
         await tx.lead.deleteMany({ where: { customerId: id } })
         await tx.quoteRequest.deleteMany({ where: { customerId: id } })
         await tx.partnerReview.deleteMany({ where: { customerId: id } })
-        await tx.project.updateMany({ where: { customerId: id }, data: { customerId: null } })
-      } else if (associatedCounts.projects > 0) {
-        // Ensure we detach any remaining projects to avoid foreign key issues
-        await tx.project.updateMany({ where: { customerId: id }, data: { customerId: null } })
+
+        // For projects where customer is the customer, detach the customer
+        await tx.project.updateMany({
+          where: { customerId: id },
+          data: { customerId: null }
+        })
+
+        // For projects where user is the owner, we need to handle differently
+        // Since owner is required, we cannot set it to null
+        // We'll delete these projects or transfer ownership
+        if (customer.user?.id && ownedProjects > 0) {
+          // Option 1: Delete projects where user is the owner
+          // This is destructive but necessary if owner is required
+          await tx.project.deleteMany({
+            where: { ownerId: customer.user.id }
+          })
+          console.log(`⚠️ Deleted ${ownedProjects} projects owned by user`)
+        }
       }
 
+      // Delete the customer record
       await tx.customer.delete({ where: { id } })
 
+      // Delete the associated user account if it exists
       if (customer.user?.id) {
         await tx.user.delete({ where: { id: customer.user.id } })
       }
@@ -165,10 +193,75 @@ export async function DELETE(
     )
   } catch (error) {
     console.error('Error deleting customer:', error)
+
+    // Check if it's a foreign key constraint error
+    if (error instanceof Error) {
+      if (error.message.includes('Foreign key constraint') ||
+          error.message.includes('violates foreign key constraint') ||
+          error.message.includes('Project_ownerId_fkey')) {
+
+        // Re-fetch customer data to show current associations
+        try {
+          const { id: customerId } = await params
+          const customerWithData = await prisma.customer.findUnique({
+            where: { id: customerId },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                },
+              },
+              quotes: { select: { id: true } },
+              projectRequests: { select: { id: true } },
+              photoRequests: { select: { id: true } },
+              leads: { select: { id: true } },
+              quoteRequests: { select: { id: true } },
+              partnerReviews: { select: { id: true } },
+              projects: { select: { id: true } },
+            },
+          })
+
+          if (customerWithData) {
+            // Check for owned projects as well
+            let ownedProjectCount = 0
+            if (customerWithData.user?.id) {
+              ownedProjectCount = await prisma.project.count({
+                where: { ownerId: customerWithData.user.id }
+              })
+            }
+
+            const details = {
+              quotes: customerWithData.quotes?.length || 0,
+              projectRequests: customerWithData.projectRequests?.length || 0,
+              photoRequests: customerWithData.photoRequests?.length || 0,
+              leads: customerWithData.leads?.length || 0,
+              quoteRequests: customerWithData.quoteRequests?.length || 0,
+              partnerReviews: customerWithData.partnerReviews?.length || 0,
+              projects: customerWithData.projects?.length || 0,
+              ownedProjects: ownedProjectCount,
+            }
+
+            return NextResponse.json(
+              {
+                error: 'Bu müşteri silinemez çünkü ilişkili kayıtlar bulunmaktadır',
+                canForceDelete: true,
+                details,
+                debugMessage: error.message
+              },
+              { status: 400 }
+            )
+          }
+        } catch (refetchError) {
+          console.error('Error refetching customer data:', refetchError)
+        }
+      }
+    }
+
     return NextResponse.json(
       {
-        error: 'Failed to delete customer',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: 'Müşteri silinirken bir hata oluştu',
+        details: error instanceof Error ? error.message : 'Bilinmeyen hata',
+        debugMessage: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     )
@@ -271,6 +364,20 @@ export async function PUT(
       taxNumber
     } = body
 
+    // First get the customer to check if user exists
+    const existingCustomer = await prisma.customer.findUnique({
+      where: { id },
+      include: { user: true }
+    })
+
+    if (!existingCustomer) {
+      return NextResponse.json(
+        { error: 'Customer not found' },
+        { status: 404 }
+      )
+    }
+
+    // Update customer data
     const customer = await prisma.customer.update({
       where: { id },
       data: {
@@ -285,6 +392,14 @@ export async function PUT(
         taxNumber
       }
     })
+
+    // Update user email if customer has a user account and email is provided
+    if (existingCustomer.user && email && email !== existingCustomer.user.email) {
+      await prisma.user.update({
+        where: { id: existingCustomer.user.id },
+        data: { email }
+      })
+    }
 
     return NextResponse.json(customer)
   } catch (error) {

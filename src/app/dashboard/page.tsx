@@ -481,10 +481,10 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Building className="h-5 w-5" />
-                  Son Projeler
+                  Son Proje Talepleri
                 </CardTitle>
                 <CardDescription>
-                  En son eklenen ve güncellenen GES projeleri
+                  En son eklenen proje talepleri ve başvuruları
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -517,34 +517,38 @@ export default function DashboardPage() {
                         </div>
                         <Badge
                           variant={
+                            project.status === 'OPEN' ? 'secondary' :
+                            project.status === 'IN_PROGRESS' ? 'default' :
                             project.status === 'COMPLETED' ? 'default' :
-                            project.status === 'IN_PROGRESS' ? 'secondary' :
-                            project.status === 'PLANNED' ? 'secondary' :
+                            project.status === 'CANCELLED' ? 'outline' :
+                            project.status === 'ON_HOLD' ? 'destructive' :
                             'outline'
                           }
                           className={
+                            project.status === 'OPEN' ? 'bg-blue-100 text-blue-800' :
+                            project.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
                             project.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                            project.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
-                            project.status === 'PLANNED' ? 'bg-yellow-100 text-yellow-800' :
-                            project.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                            project.status === 'CANCELLED' ? 'bg-gray-100 text-gray-800' :
+                            project.status === 'ON_HOLD' ? 'bg-red-100 text-red-800' :
                             ''
                           }
                         >
-                          {project.status === 'COMPLETED' ? 'Tamamlandı' :
-                           project.status === 'IN_PROGRESS' ? 'Devam Ediyor' :
-                           project.status === 'PLANNED' ? 'Planlanıyor' :
+                          {project.status === 'OPEN' ? 'Açık' :
+                           project.status === 'IN_PROGRESS' ? 'İşlemde' :
+                           project.status === 'COMPLETED' ? 'Tamamlandı' :
                            project.status === 'CANCELLED' ? 'İptal Edildi' :
-                           'Taslak'}
+                           project.status === 'ON_HOLD' ? 'Bekletildi' :
+                           project.status || 'Bilinmiyor'}
                         </Badge>
                       </div>
                     ))
                   ) : (
                     <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                       <Building className="h-12 w-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-                      <p className="text-lg font-medium mb-2">Henüz proje bulunmuyor</p>
-                      <p className="text-sm mb-4">İlk GES projenizi oluşturmak için aşağıdaki bağlantıyı kullanabilirsiniz.</p>
+                      <p className="text-lg font-medium mb-2">Henüz proje talebi bulunmuyor</p>
+                      <p className="text-sm mb-4">Yeni bir proje talebi oluşturmak için aşağıdaki bağlantıyı kullanabilirsiniz.</p>
                       <Link href="/dashboard/project-requests" className="text-primary hover:underline font-medium">
-                        Yeni proje oluştur →
+                        Yeni proje talebi oluştur →
                       </Link>
                     </div>
                   )}
@@ -553,7 +557,7 @@ export default function DashboardPage() {
                 {recentProjects.length > 0 && (
                   <div className="mt-6 pt-4 border-t">
                     <Link href="/dashboard/project-requests" className="text-primary hover:underline text-sm font-medium">
-                      Tüm projeleri görüntüle →
+                      Tüm proje taleplerini görüntüle →
                     </Link>
                   </div>
                 )}

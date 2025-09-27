@@ -392,7 +392,9 @@ export function ProjectRequestDetails({
                     </div>
                     <div className="flex-1">
                       <div className="text-xs text-slate-500 uppercase tracking-wide mb-0.5">Adres</div>
-                      <div className="font-semibold text-slate-900 text-sm leading-relaxed">{request.address}</div>
+                      <div className="font-semibold text-slate-900 text-sm leading-relaxed">
+                        {request.address || request.location || 'Adres bilgisi bulunmuyor'}
+                      </div>
                     </div>
                   </div>
                 </div>

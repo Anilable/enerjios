@@ -215,6 +215,93 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Create or find customer
+    console.log('👤 Backend API: Creating or finding customer...')
+
+    let customerId = body.customerId
+
+    if (!customerId) {
+      // Check if customer already exists with this email (via User relation)
+      let existingCustomer = await prisma.customer.findFirst({
+        where: {
+          OR: [
+            {
+              user: {
+                email: body.customerEmail
+              }
+            },
+            {
+              AND: [
+                { firstName: body.customerName.split(' ')[0] || body.customerName },
+                { lastName: body.customerName.split(' ').slice(1).join(' ') || '' }
+              ]
+            }
+          ]
+        },
+        include: {
+          user: true
+        }
+      })
+
+      if (!existingCustomer) {
+        // Create new customer
+        console.log('🆕 Backend API: Creating new customer...')
+
+        // Parse customer name into first and last name
+        const nameParts = body.customerName.trim().split(' ')
+        const firstName = nameParts[0] || body.customerName
+        const lastName = nameParts.slice(1).join(' ') || ''
+
+        // Parse location for city/district if available
+        let city = ''
+        let district = ''
+
+        if (body.location) {
+          const locationParts = body.location.split(',').map((part: string) => part.trim())
+          if (locationParts.length >= 2) {
+            district = locationParts[0]
+            city = locationParts[1]
+          } else {
+            city = locationParts[0]
+          }
+        }
+
+        // First create a User account for the customer
+        const newUser = await prisma.user.create({
+          data: {
+            email: body.customerEmail,
+            name: body.customerName,
+            role: 'CUSTOMER',
+            status: 'ACTIVE'
+            // Don't set password - customer will need to set it if they want to login
+          }
+        })
+
+        // Then create the Customer record linked to the User
+        existingCustomer = await prisma.customer.create({
+          data: {
+            userId: newUser.id,
+            firstName,
+            lastName,
+            phone: body.customerPhone || null,
+            address: body.address || body.location || null,
+            city: city || null,
+            district: district || null,
+            type: 'INDIVIDUAL', // Default to individual customer
+          },
+          include: {
+            user: true
+          }
+        })
+
+        console.log('✅ Backend API: New customer created:', existingCustomer.id)
+      } else {
+        console.log('👤 Backend API: Found existing customer:', existingCustomer.id)
+      }
+
+      customerId = existingCustomer.id
+    }
+
     // Create project request
     console.log('💾 Backend API: Creating project request in database...')
 
@@ -224,7 +311,7 @@ export async function POST(request: NextRequest) {
         customerEmail: body.customerEmail,
         customerPhone: body.customerPhone || null,
         location: body.location || null,
-        address: body.address || null,
+        address: body.address || body.location || null, // Use location as fallback for address
         projectType: body.projectType,
         estimatedCapacity: body.estimatedCapacity ? parseFloat(body.estimatedCapacity) : null,
         estimatedBudget: body.estimatedBudget ? parseFloat(body.estimatedBudget) : null,
@@ -235,7 +322,7 @@ export async function POST(request: NextRequest) {
         tags: body.tags || [],
         notes: body.notes || [],
         contactPreference: body.contactPreference || null,
-        customerId: body.customerId || null,
+        customerId: customerId,
         assignedEngineerId: body.assignedEngineerId || null,
         scheduledVisitDate: body.scheduledVisitDate ? new Date(body.scheduledVisitDate) : null
       },

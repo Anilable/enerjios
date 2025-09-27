@@ -41,38 +41,47 @@ export async function GET(request: NextRequest) {
           ? customerId ? { customerId } : { ownerId: userId }
           : { ownerId: userId }
 
-    // Fetch recent projects
-    const recentProjects = await prisma.project.findMany({
-      where: whereClause,
-      take: 3,
+    // Fetch recent project requests (not projects)
+    const recentProjectRequests = await prisma.projectRequest.findMany({
+      where: userRole === 'ADMIN'
+        ? {}
+        : userRole === 'CUSTOMER' && customerId
+          ? { customerId }
+          : {}, // For other roles, show all project requests
+      take: 5,
       orderBy: {
         createdAt: 'desc'
       },
       select: {
         id: true,
-        name: true,
-        capacity: true,
+        title: true,
+        estimatedCapacity: true,
         status: true,
-        type: true,
-        location: {
+        projectType: true,
+        location: true,
+        address: true,
+        createdAt: true,
+        customer: {
           select: {
-            city: true,
-            district: true
+            firstName: true,
+            lastName: true
           }
         }
       }
     })
 
-    // Format the projects for display
-    const formattedProjects = recentProjects.map(project => ({
-      id: project.id,
-      name: project.name,
-      capacity: project.capacity,
-      status: project.status,
-      type: project.type,
-      location: project.location
-        ? `${project.location.district || ''} ${project.location.city || ''}`.trim() || 'Konum belirtilmemiş'
-        : 'Konum belirtilmemiş'
+    // Format the project requests for display
+    const formattedProjects = recentProjectRequests.map(request => ({
+      id: request.id,
+      name: request.title || 'İsimsiz Proje Talebi',
+      capacity: request.estimatedCapacity || 0,
+      status: request.status || 'OPEN',
+      type: request.projectType || 'ROOFTOP',
+      location: request.location || request.address || 'Konum belirtilmemiş',
+      customerName: request.customer
+        ? `${request.customer.firstName || ''} ${request.customer.lastName || ''}`.trim()
+        : 'Müşteri bilgisi yok',
+      createdAt: request.createdAt
     }))
 
     return NextResponse.json(formattedProjects)

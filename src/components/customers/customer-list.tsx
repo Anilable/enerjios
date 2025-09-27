@@ -316,7 +316,8 @@ export function CustomerList({
             leads: 'lead',
             quoteRequests: 'teklif isteği',
             partnerReviews: 'iş ortağı değerlendirmesi',
-            projects: 'proje',
+            projects: 'müşteri projesi',
+            ownedProjects: 'sahip olunan proje',
           }
 
           const relatedItems = Object.entries(data.details)
@@ -745,15 +746,17 @@ export function CustomerList({
               <AlertTriangle className="h-5 w-5 text-red-600" />
               Müşteri Silme Onayı
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              Bu müşteriyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
-              {deleteCustomerId && (
-                <div className="mt-2 p-3 bg-gray-50 rounded-md">
-                  <strong>
-                    {customers.find(c => c.id === deleteCustomerId)?.fullName}
-                  </strong>
-                </div>
-              )}
+            <AlertDialogDescription asChild>
+              <div>
+                <div>Bu müşteriyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.</div>
+                {deleteCustomerId && (
+                  <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                    <strong>
+                      {customers.find(c => c.id === deleteCustomerId)?.fullName}
+                    </strong>
+                  </div>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -787,11 +790,11 @@ export function CustomerList({
               <AlertTriangle className="h-5 w-5 text-red-600" />
               Zorla Silme Onayı
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription asChild>
               <div className="space-y-3">
-                <p className="text-red-700 font-medium">
+                <div className="text-red-700 font-medium">
                   ⚠️ Bu müşterinin aşağıdaki bağlı verileri bulunmaktadır:
-                </p>
+                </div>
 
                 {forceDeleteData?.details && (
                   <div className="bg-red-50 border border-red-200 rounded-md p-3 space-y-2">
@@ -813,17 +816,49 @@ export function CustomerList({
                         <span>{forceDeleteData.details.photoRequests} adet fotoğraf talebi</span>
                       </div>
                     )}
+                    {forceDeleteData.details.leads > 0 && (
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-red-600" />
+                        <span>{forceDeleteData.details.leads} adet lead</span>
+                      </div>
+                    )}
+                    {forceDeleteData.details.quoteRequests > 0 && (
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-red-600" />
+                        <span>{forceDeleteData.details.quoteRequests} adet teklif isteği</span>
+                      </div>
+                    )}
+                    {forceDeleteData.details.partnerReviews > 0 && (
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-red-600" />
+                        <span>{forceDeleteData.details.partnerReviews} adet partner değerlendirmesi</span>
+                      </div>
+                    )}
+                    {forceDeleteData.details.projects > 0 && (
+                      <div className="flex items-center gap-2">
+                        <FolderPlus className="w-4 h-4 text-red-600" />
+                        <span>{forceDeleteData.details.projects} adet müşteri projesi</span>
+                      </div>
+                    )}
+                    {forceDeleteData.details.ownedProjects > 0 && (
+                      <div className="flex items-center gap-2">
+                        <FolderPlus className="w-4 h-4 text-red-600" />
+                        <span className="font-semibold text-red-700">
+                          {forceDeleteData.details.ownedProjects} adet sahip olunan proje (silinecek!)
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                <p className="text-gray-700">
+                <div className="text-gray-700">
                   Bu müşteriyi silmek, yukarıdaki tüm bağlı verileri de kalıcı olarak silecektir.
                   <strong className="text-red-700"> Bu işlem geri alınamaz.</strong>
-                </p>
+                </div>
 
-                <p className="text-red-700 font-medium">
+                <div className="text-red-700 font-medium">
                   Yine de silmek istiyor musunuz?
-                </p>
+                </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
